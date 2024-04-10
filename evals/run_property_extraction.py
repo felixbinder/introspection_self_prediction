@@ -118,6 +118,8 @@ async def run_dataset(filename: str, property_name: str, dataset_runner: Dataset
     full_df = pd.read_csv(filename)
     if property_name not in full_df.columns:
         full_df[property_name] = ""
+    if f"{property_name}_logprobs" not in full_df.columns:
+        full_df[f"{property_name}_logprobs"] = None
     if f"{property_name}_complete" not in full_df.columns:
         full_df[f"{property_name}_complete"] = False
     df = full_df[~(full_df[f"{property_name}_complete"])]
@@ -134,6 +136,7 @@ async def run_dataset(filename: str, property_name: str, dataset_runner: Dataset
         pd.DataFrame(
             {
                 property_name: [result["answer"] for result in results],
+                f"{property_name}_logprobs": [result["logprobs"] for result in results],
                 f"{property_name}_complete": [result[f"{property_name}_complete"] for result in results],
             },
             index=df.index,
