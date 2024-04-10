@@ -147,14 +147,14 @@ class StudyRunner:
 
             process.wait()
             if process.returncode != 0:
-                raise subprocess.CalledProcessError(process.returncode, command)
+                raise subprocess.CalledProcessError(process.returncode, command, output="\n".join(output_lines))
 
             last_line = output_lines[-1] if output_lines else ""
             print(f"Successfully executed: {command}")
             return last_line
 
         except subprocess.CalledProcessError as e:
-            print(f"Error executing {command}: {e}")
+            print(f"Error executing {command}:\n{e.stdout}\n{e}")
             raise e
 
     def parse_args_into_lists(self):
@@ -583,14 +583,14 @@ def run_command(command, state, state_lock):
 
         process.wait()
         if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, command)
+            raise subprocess.CalledProcessError(process.returncode, command, output="\n".join(output_lines))
 
         last_line = output_lines[-1] if output_lines else ""
         print(f"Successfully executed: {command}")
         return last_line
 
     except subprocess.CalledProcessError as e:
-        print(f"Error executing {command}: {e}")
+        print(f"Error executing {command}:\n{e.stdout}\n{e}")
         raise e
 
 
