@@ -192,7 +192,7 @@ def load_and_prep_dfs(
             for group in resp_compliance_group:
                 compliance_groups.add(group)
         # if we didn't get groups from the response property (eg. when we got an object level), check the task itself
-        if len(compliance_groups) == 0:
+        if len(compliance_groups) == 0 and resp_compliance_group is None:
             task_compliance_group = name.get("task", {}).get("exclusion_rule_groups", None)
             if task_compliance_group is None:
                 LOGGER.info(
