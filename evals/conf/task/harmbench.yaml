@@ -1,0 +1,9 @@
+name: harmbench
+set: ?? # either all, train or val
+dataset_path: "evals/datasets/${task.set}_harmbench_rewrite.jsonl"
+filter_strings_path: ~ # if this is set, use this to filter the strings
+# is there a dataset specific prompt? This will only be applied when paired with a prompt that contains ${task.prompt}. It should contain $string.
+prompt: "$string"
+num: ~ # how many? ~ means all
+shuffle: true # shuffle the strings
+exclusion_rule_groups: [] # don't run any compliance checks in evals/analysis/loading_data.py
