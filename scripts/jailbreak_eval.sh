@@ -2,7 +2,7 @@
 
 set -ex
 
-limit=1000000
+limit=1000
 note="2024-04-11-limit-$limit"
 
 python -m scripts.sweep_object_and_meta_levels \
