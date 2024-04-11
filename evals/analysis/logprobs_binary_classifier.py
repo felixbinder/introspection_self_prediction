@@ -22,6 +22,7 @@ def get_all_probs(logprobs: Iterable[dict[str, float]], *category_classifiers: C
     IS_CAT_OR_NOTHING = 1
     pcats = [[1, 1] for _ in category_classifiers]
     for opt in logprobs:
+        assert isinstance(opt, dict), f"Expected a dictionary, got {type(opt)}: {opt} in {logprobs}"
         pcats_prefix = list(map(tuple, pcats))
         pcats = [[0, 0] for _ in category_classifiers]
         for token, logprob in opt.items():
