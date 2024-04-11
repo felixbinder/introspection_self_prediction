@@ -14,35 +14,31 @@ def is_no(x: str) -> bool:
     return _STRIP_CHARS_REGEX.sub("", x.lower()) in ["no", "false"]
 
 
-def get_all_probs(
-    opts: list[dict[str, float]], *, is_yes: Callable[[str], bool] = is_yes, is_no: Callable[[str], bool] = is_no
-) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+def get_all_probs(logprobs: Iterable[dict[str, float]], *category_classifiers: Callable[[str], bool]) -> list[float]:
     """
-    takes lop probs for tokens. returns prob of sequences of sequences with (yes, not yes), (no, not no).
+    takes lop probs for tokens. returns prob of sequences of sequences in each category
     """
-    (pyes, pnotyes), (pno, pnotno) = (1, 1), (1, 1)
-    while opts:
-        opt, opts = opts[0], opts[1:]
-        (pyesprefix, pnotyesprefix), (pnoprefix, pnotnoprefix) = (pyes, pnotyes), (pno, pnotno)
-        (pyes, pnotyes), (pno, pnotno) = (0, 0), (0, 0)
+    IS_CAT = 0
+    IS_CAT_OR_NOTHING = 1
+    pcats = [[1, 1] for _ in category_classifiers]
+    for opt in logprobs:
+        pcats_prefix = list(map(tuple, pcats))
+        pcats = [[0, 0] for _ in category_classifiers]
         for token, logprob in opt.items():
             prob = np.exp(logprob)
-            tok_is_yes = is_yes(token)
-            tok_is_no = is_no(token)
-            if tok_is_yes and tok_is_no:
+            tok_is_cat = [classifier(token) for classifier in category_classifiers]
+            tok_is_cat_count = np.sum(tok_is_cat)
+            if tok_is_cat_count > 1:
                 continue
-            elif tok_is_yes:
-                pyes += prob * pnotnoprefix
-                pnotno += prob * pnotnoprefix
-            elif tok_is_no:
-                pno += prob * pnotyesprefix
-                pnotyes += prob * pnotyesprefix
-            else:
-                pyes += prob * pyesprefix
-                pno += prob * pnoprefix
-                pnotyes += prob * pnotyesprefix
-                pnotno += prob * pnotnoprefix
-    return (pyes, pnotyes), (pno, pnotno)
+            for is_cat, pcat, pcat_prefix in zip(tok_is_cat, pcats, pcats_prefix):
+                if is_cat:
+                    pcat[IS_CAT] += prob * pcat_prefix[IS_CAT_OR_NOTHING]
+                    pcat[IS_CAT_OR_NOTHING] += prob * pcat_prefix[IS_CAT_OR_NOTHING]
+                elif tok_is_cat_count == 0:
+                    # we can only accumulate probability on this category if the token does not match any other category
+                    pcat[IS_CAT] += prob * pcat_prefix[IS_CAT]
+                    pcat[IS_CAT_OR_NOTHING] += prob * pcat_prefix[IS_CAT_OR_NOTHING]
+    return [pcat for pcat, _pcat_or_nothing in pcats]
 
 
 def get_prob_yes_no(
@@ -62,5 +58,5 @@ def get_prob_yes_no(
 
     Returns a tuple of two floats: the probability of the sequence being a yes sequence and the probability of the sequence being a no sequence.
     """
-    (pyes, _pnotyes), (pno, _pnotno) = get_all_probs(list(logprobs), is_yes=is_yes, is_no=is_no)
+    pyes, pno = get_all_probs(logprobs, is_yes, is_no)
     return pyes, pno
