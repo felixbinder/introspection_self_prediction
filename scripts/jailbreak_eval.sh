@@ -2,12 +2,15 @@
 
 set -ex
 
+limit=1000000
+note="2024-04-11-limit-$limit"
+
 python -m scripts.sweep_object_and_meta_levels \
         --study_name="jailbreaks" \
-        --model_configs="gpt-3.5-turbo" \
+        --model_configs="gpt-3.5-turbo,gpt-4-turbo" \
         --task_configs="harmbench" \
         --response_property_configs="jailbroken" \
-        --overrides="limit=1, strings_path=none,
+        --overrides="limit=$limit, strings_path=none, note=$note,
             language_model.logprobs=5,
             +response_property.language_model.logprops=5,
             +response_property.language_model.model=gpt-4-turbo,
