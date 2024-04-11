@@ -9,7 +9,7 @@ hydra:
       level: INFO
 
 defaults:
-  - language_model: gpt-3.5-turbo
+  - language_model: gpt-4-turbo
   - prompt: property_extraction/minimal
   - response_property: sentiment
 
@@ -19,7 +19,7 @@ exp_dir: ${dir}/property_extraction_${response_property.name}_${language_model.m
 # Model
 language_model:
   temperature: 0.0
-  logprobs: 0
+  logprobs: 5
 
 logging: INFO
 print_prompt_and_response: false
