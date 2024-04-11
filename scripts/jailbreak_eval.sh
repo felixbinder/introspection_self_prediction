@@ -11,6 +11,7 @@ python -m scripts.sweep_object_and_meta_levels \
         --task_configs="harmbench" \
         --response_property_configs="jailbroken" \
         --overrides="limit=$limit, strings_path=none, note=$note,
+            cache_dir=/shared/exp/rajashree/jailbreaks/cache,
             language_model.logprobs=5,
             +response_property.language_model.logprops=5,
             +response_property.language_model.model=gpt-4-turbo,
