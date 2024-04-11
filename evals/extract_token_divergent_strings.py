@@ -1,3 +1,4 @@
+import csv
 import logging
 import subprocess
 import sys
@@ -58,7 +59,7 @@ def extract_most_uncertain_strings_from_base(
     # ensure output dir exists
     output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    out_df[["id", "string"]].to_csv(output_file_path, index=False)
+    out_df[["id", "string"]].to_csv(output_file_path, index=False, quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Saved {len(out_df)} strings to {output_file_path}")
     return output_file_path
 

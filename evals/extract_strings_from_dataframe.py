@@ -1,3 +1,4 @@
+import csv
 import logging
 import subprocess
 import sys
@@ -71,7 +72,7 @@ def extract_strings(input_file_paths, n_out_strings=float("inf"), output_file_pa
     # ensure output dir exists
     output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    out_df[["string"]].to_csv(output_file_path, index=False)
+    out_df[["string"]].to_csv(output_file_path, index=False, quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Saved {len(out_df)} strings to {output_file_path}")
     return output_file_path
 
@@ -85,8 +86,8 @@ def train_val_split(full_string_path: Path, split: float = 0.2, seed: int = 0):
     train = strings.drop(val.index)
     val_path = full_string_path.parent / ("val_" + full_string_path.name)
     train_path = full_string_path.parent / ("train_" + full_string_path.name)
-    val.to_csv(val_path, index=False)
-    train.to_csv(train_path, index=False)
+    val.to_csv(val_path, index=False, quoting=csv.QUOTE_ALL)
+    train.to_csv(train_path, index=False, quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Saved {n_val} validation strings to {val_path}")
     LOGGER.info(f"Saved {n_train} train strings to {train_path}")
     return val_path, train_path

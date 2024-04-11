@@ -1,6 +1,7 @@
 """This file is used to find initial completions which are hard to predict."""
 
 import copy
+import csv
 import logging
 import os
 import random
@@ -210,8 +211,8 @@ def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_fi
             f.write("\n")
 
     # save out the dfs so we can recover the split
-    train_df.to_csv(train_filepath.with_suffix(".df.csv"), index=False)
-    val_df.to_csv(val_filepath.with_suffix(".df.csv"), index=False)
+    train_df.to_csv(train_filepath.with_suffix(".df.csv"), index=False, quoting=csv.QUOTE_ALL)
+    val_df.to_csv(val_filepath.with_suffix(".df.csv"), index=False, quoting=csv.QUOTE_ALL)
 
     LOGGER.info(
         f"Saved {len(train_df)} training rows to {train_filepath} & {len(val_df)} validation rows to {val_filepath}"

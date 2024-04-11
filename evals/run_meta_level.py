@@ -1,6 +1,7 @@
 """This is used to run the self prediction task."""
 
 import asyncio
+import csv
 import logging
 import traceback
 from pathlib import Path
@@ -169,7 +170,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
         )
     )
     full_df.update(df)
-    full_df.to_csv(filename, index=False, encoding="utf-8")
+    full_df.to_csv(filename, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
 
     # return whether all rows are complete
     if full_df["complete"].eq(True).all():

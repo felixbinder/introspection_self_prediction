@@ -1,6 +1,7 @@
 """This file is used to use an LLM to extract properties from object-level responses."""
 
 import asyncio
+import csv
 import logging
 import traceback
 from pathlib import Path
@@ -139,7 +140,7 @@ async def run_dataset(filename: str, property_name: str, dataset_runner: Dataset
         )
     )
     full_df.update(df)
-    full_df.to_csv(filename, index=False, encoding="utf-8")
+    full_df.to_csv(filename, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
 
     # return whether all rows are complete
     if full_df[f"{property_name}_complete"].eq(True).all():
@@ -205,7 +206,7 @@ def apply_python_function(response_property: DictConfig, filepath: str):
     # apply the function
     df[response_property.name] = df.apply(lambda row: try_function(function, row), axis=1)
     # save the dataset
-    df.to_csv(filepath, index=False, encoding="utf-8")
+    df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Applied python function {response_property.python_function} to {filepath}")
 
 

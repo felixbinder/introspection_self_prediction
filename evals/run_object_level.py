@@ -1,6 +1,7 @@
 """This file is used to find initial completions which are hard to predict."""
 
 import asyncio
+import csv
 import logging
 import shutil
 import traceback
@@ -132,7 +133,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: Optio
         )
     )
     full_df.update(df)
-    full_df.to_csv(filename, index=False, encoding="utf-8")
+    full_df.to_csv(filename, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
 
     # return whether all rows are complete
     if full_df["complete"].eq(True).all():

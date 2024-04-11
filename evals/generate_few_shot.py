@@ -1,3 +1,4 @@
+import csv
 import logging
 import random
 from pathlib import Path
@@ -130,7 +131,7 @@ def generate_few_shot_data(
     else:
         output_file_path = output_path
         assert output_file_path.suffix == ".csv", "Output file must be a .csv file"
-    out_df.to_csv(output_file_path, index=False)
+    out_df.to_csv(output_file_path, index=False, quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Saved {len(out_df)} strings with few-shot completions to {output_file_path}")
     return output_file_path
 

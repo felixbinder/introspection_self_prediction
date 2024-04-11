@@ -1,3 +1,4 @@
+import csv
 import logging
 from pathlib import Path
 from typing import Optional
@@ -74,4 +75,4 @@ def create_data_file(data: pd.DataFrame, path: str | Path) -> None:
     if not path.suffix == ".csv":
         LOGGER.warning(f"Data file should be a .csv file. Got {path.suffix} instead. Appending...")
         path = path.with_suffix(".csv")
-    data.to_csv(path, index=False)
+    data.to_csv(path, index=False, quoting=csv.QUOTE_ALL)
