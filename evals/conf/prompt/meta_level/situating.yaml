@@ -1,0 +1,10 @@
+method: meta_level/situating
+base_prompt: object_level/minimal
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked you the following question with temperature 0.0 in a different context: "${task.prompt}" While you cannot see your previous response, think about which response you most likely would have given. ${response_property.meta_level_prompt}
