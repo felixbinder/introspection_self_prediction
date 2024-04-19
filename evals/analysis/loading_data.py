@@ -54,7 +54,10 @@ def load_and_prep_dfs(
     # load the data
     dfs = {}
     for path, name in zip(df_paths, configs):
-        dfs[name] = pd.read_csv(path, dtype={"complete": bool, "string": "str", "response": "str", "logprobs": "str"})
+        dfs[name] = pd.read_csv(path, dtype={"complete": bool})
+        # convert other columns to string
+        other_cols = [col for col in dfs[name].columns if col != "complete"]
+        dfs[name][other_cols] = dfs[name][other_cols].astype(str)
         print(f"Loaded {len(dfs[name])} rows from {path}")
 
     # exclude rows with complete=False

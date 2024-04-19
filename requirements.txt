@@ -17,6 +17,11 @@ wandb
 nltk
 scipy
 
+# counterfactual evals
+grugstream
+slist
+statsmodels
+
 # notebooks
 jupyterlab
 seaborn

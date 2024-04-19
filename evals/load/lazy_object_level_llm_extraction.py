@@ -16,6 +16,9 @@ def lazy_add_response_property_to_object_level(object_df, object_cfg, response_p
         subprocess.run(run_property_extraction_command, shell=True, check=True, cwd=main_path)
         # now the file in the exp_dir should have the response property
         updated_object_df = pd.read_csv(object_cfg.exp_dir + "/" + f"data{object_cfg.seed}.csv")
+        for column in updated_object_df.columns:
+            if column not in ["complete"]:
+                updated_object_df[column] = updated_object_df[column].astype(str)
         # load in the new column from the object level dataframe into the current one by joining on string
         object_df = pd.merge(object_df, updated_object_df[["string", response_property_name]], on="string")
         print(f"Loaded response property {response_property_name} from object level dataframe.")

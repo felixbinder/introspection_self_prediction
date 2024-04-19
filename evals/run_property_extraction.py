@@ -203,6 +203,10 @@ def apply_python_function(response_property: DictConfig, filepath: str):
         raise
     # load the dataset
     df = pd.read_csv(filepath)
+    # ensure that all rows are strings
+    for column in df.columns:
+        if column not in ["complete"]:
+            df[column] = df[column].astype(str)
     # apply the function
     df[response_property.name] = df.apply(lambda row: try_function(function, row), axis=1)
     # save the dataset
