@@ -41,7 +41,7 @@ class InferenceAPI:
         self.organization = organization
         self.prompt_history_dir = prompt_history_dir
 
-        secrets = load_secrets("SECRETS")
+        secrets = load_secrets("/Users/milesturpin/Dev/nyu/introspection_self_prediction_astra/SECRETS")
         if self.organization is None:
             self.organization = "DEFAULT_ORG"
 

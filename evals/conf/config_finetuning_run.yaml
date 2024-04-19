@@ -20,7 +20,7 @@ epochs: 2 # how many epochs to train for
 
 notes: ??? # notes about the run
 
-organization: OWAIN_ORG
+organization: DEFAULT_ORG
 openai_tag: OPENAI_API_KEY
 
 use_wandb: true

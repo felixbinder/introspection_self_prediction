@@ -27,7 +27,7 @@ cache_dir: ${exp_dir}/cache
 prompt_history_dir: ${exp_dir}/prompt_history
 
 # API
-organization: OWAIN_ORG
+organization: DEFAULT_ORG
 anthropic_tag: ANTHROPIC_API_KEY
 openai_tag: OPENAI_API_KEY
 anthropic_num_threads: 12
