@@ -451,6 +451,14 @@ class StudyRunner:
                         self.write_state_file()
                         meta_val_commands.append(command)
 
+        # import ipdb
+
+        # ipdb.set_trace()
+        # run_command_no_mp(meta_val_commands[0])
+        # import ipdb
+
+        # ipdb.set_trace()
+
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
@@ -566,6 +574,29 @@ def run_meta_val_command(command, state, state_lock):
         with state_lock:
             state["meta_val_runs"][command].update({"status": "failed"})
         print(f"Failed to run {command}: {e}")
+        raise e
+
+
+def run_command_no_mp(command):
+    """Execute the given command in the shell, stream the output, and return the last line."""
+    try:
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+        output_lines = []
+        for line in process.stdout:
+            print(f"[{command.strip()}] {line}", end="")  # stream the output to the command line
+            output_lines.append(line.strip())
+
+        process.wait()
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, command)
+
+        last_line = output_lines[-1] if output_lines else ""
+        print(f"Successfully executed: {command}")
+        return last_line
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing {command}: {e}")
         raise e
 
 

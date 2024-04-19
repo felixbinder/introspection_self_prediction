@@ -1,0 +1,10 @@
+method: meta_level/counterfactual_minimal
+base_prompt: object_level/minimal
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      ${response_property.meta_level_prompt}

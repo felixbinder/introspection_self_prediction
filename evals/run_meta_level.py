@@ -108,7 +108,11 @@ class DatasetRunner:
         # add system messages
         for message in system_messages:
             t = Template(message.content)
-            content = t.safe_substitute(string=row["string"])
+            kwargs = {"string": row["string"]}
+            if "target" in row and "$target" in t:
+                kwargs.update({"target": row["target"]})
+            content = t.safe_substitute(**kwargs)
+            # content = t.safe_substitute(string=row["string"])
             messages.append(ChatMessage(role=message.role, content=content))
 
         # add in few shot messages into the context
@@ -151,6 +155,10 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
 
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
+
+    # ipdb.set_trace()
+    # i, row = list(df.iterrows())[0]
+    # tmp = dataset_runner.run(i, row)
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
     results = await asyncio.gather(*tasks)
 

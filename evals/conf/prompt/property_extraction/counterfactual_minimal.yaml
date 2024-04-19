@@ -1,0 +1,9 @@
+method: "property-extraction-minimal"
+# response_property.property_extraction_prompt has to contain `$response`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      ${response_property.property_extraction_prompt}
