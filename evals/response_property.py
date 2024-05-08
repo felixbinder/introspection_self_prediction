@@ -226,3 +226,8 @@ def more_than_3_characters(row: pd.Series):
 
 def more_than_5_characters(row: pd.Series):
     return more_than_n_characters(row, 5)
+
+def is_correct(row: pd.Series) -> str:
+    # returns true or false as a string.
+    # In `knows_if_correct.yaml`, we specify an exact match against 'true' or 'false'
+    return row["target"].lower() == row["response"].strip().lower()
