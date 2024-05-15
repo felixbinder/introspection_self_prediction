@@ -77,7 +77,6 @@ class Prompt(HashableBaseModel):
         return [msg.model_dump() for msg in self.messages]
 
     def openai_finetuning_format(self) -> str:
-        # Gemini finetuning uses the same data format as OpenAI
         msgs = [msg.model_dump() for msg in self.messages]
         # fix the message roles
         for i, msg in enumerate(msgs):

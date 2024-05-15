@@ -18,7 +18,7 @@ from evals.apis.inference.openai.completion import OpenAICompletionModel
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
 from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import Prompt
-from evals.utils import load_secrets, setup_environment
+from evals.utils import GCLOUD_LOCATION, GCLOUD_PROJECT, load_secrets, setup_environment
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class InferenceAPI:
             prompt_history_dir=self.prompt_history_dir,
         )
 
-        vertexai.init(project="roots-api-1475521819980", location="us-central1")
+        vertexai.init(project=GCLOUD_PROJECT, location=GCLOUD_LOCATION)
         self._gemini_chat = GeminiModel(prompt_history_dir=self.prompt_history_dir)
 
         self._huggingface_chat = HuggingFaceModel(prompt_history_dir=self.prompt_history_dir)
