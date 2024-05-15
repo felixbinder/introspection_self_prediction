@@ -21,7 +21,11 @@ GEMINI_MODELS = {
     "gemini-1.5-pro-001",
 }
 
-FINISH_REASON_MAP = {FinishReason.MAX_TOKENS: "max_tokens", FinishReason.STOP: "stop_sequence"}
+FINISH_REASON_MAP = {
+    FinishReason.MAX_TOKENS: "max_tokens",
+    FinishReason.STOP: "stop_sequence",
+    FinishReason.OTHER: "unknown",
+}
 CHAR_PER_TOKEN = 4  # estimating this at 4
 
 
@@ -89,10 +93,15 @@ class GeminiModel(InferenceAPIModel):
         context_cost = response.usage_metadata.prompt_token_count * context_token_cost
         total_cost = context_cost + completion_cost
 
+        def safe_text_extract(choice):
+            """Handle edge case where model returns empty string."""
+            parts = choice.content.parts
+            return parts[0].text if parts else ""
+
         responses = [
             LLMResponse(
                 model_id=model_id,
-                completion=choice.content.parts[0].text,
+                completion=safe_text_extract(choice),
                 stop_reason=FINISH_REASON_MAP.get(choice.finish_reason, "unknown"),
                 api_duration=api_duration,
                 duration=duration,
