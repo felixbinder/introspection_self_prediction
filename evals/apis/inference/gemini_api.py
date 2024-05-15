@@ -5,12 +5,14 @@ from pathlib import Path
 from traceback import format_exc
 from typing import Any, Coroutine, Optional
 
+import vertexai
 from aiolimiter import AsyncLimiter
 from vertexai.generative_models import FinishReason, GenerativeModel
 
 from evals.apis.inference.model import InferenceAPIModel
 from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import Prompt
+from evals.utils import GCLOUD_LOCATION, GCLOUD_PROJECT
 
 LOGGER = logging.getLogger(__name__)
 
@@ -74,8 +76,9 @@ class GeminiModel(InferenceAPIModel):
         prompt_file = self.create_prompt_history_file(prompt_messages[0], model_id, self.prompt_history_dir)
 
         LOGGER.debug(f"Making {model_id} call")
-
+        vertexai.init(project=GCLOUD_PROJECT, location=GCLOUD_LOCATION)  # not expensive
         model = GenerativeModel(model_id)  # not expensive to create
+
         api_start = time.time()
         generation_config = {
             "max_output_tokens": kwargs.get("max_tokens_to_sample", 2000),
