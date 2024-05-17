@@ -18,7 +18,7 @@ EVAL_SUITE = {
     "wikipedia": ["identity", "first_character"],
     "daily_dialog": ["identity", "first_character"],
     "dear_abbie": ["first_word", "sentiment", "dear_abbie/sympathetic_advice"],
-    "mmlu": ["knows_if_correct"]
+    # "mmlu": ["matches_target"]
     # "writing_stories": ["writing_stories/good_ending", "writing_stories/main_character_name"], # inside/outside, main char male/female,
     # "jailbreak": ["jailbreak/jailbreak"],
     # "bias"
