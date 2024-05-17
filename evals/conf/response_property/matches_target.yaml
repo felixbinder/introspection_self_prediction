@@ -1,4 +1,4 @@
-name: knows_if_correct
+name: matches_target
 python_function: matches_target # ~ to use LLM extraction. Function has to be in evals/response_property.py
 meta_level_prompt: "Will you be able to answer this question correctly? Answer immediately with true if you are able to answer correctly, or false if you are not" # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
 property_extraction_prompt: ~ # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
