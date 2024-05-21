@@ -146,9 +146,7 @@ class SecondRoundAsking(BaseModel):
         prediction_switched = (
             True
             if self.second_round_parsed == "Y"
-            else False
-            if self.second_round_parsed == "N"
-            else raise_should_not_happen()
+            else False if self.second_round_parsed == "N" else raise_should_not_happen()
         )
         return ground_truth_switched == prediction_switched
 
@@ -235,11 +233,12 @@ async def ask_second_round(
 
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
 
-
+# ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n is 1 hop
+# 
 async def run_multiple_models(
-    models: Sequence[str] = ["gpt-3.5-turbo-0125", "claude-3-sonnet-20240229"],
+    models: Sequence[str] = ["ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU", "gpt-3.5-turbo-1106"],
     bias_on_wrong_answer_only: bool = False,
-    number_samples: int = 500,
+    number_samples: int = 10_000,
 ) -> None:
     # Dumps results to xxx
     results: Slist[tuple[str, Slist[SecondRoundAsking]]] = Slist()

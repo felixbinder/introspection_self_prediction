@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 
 from evals.apis.inference.api import InferenceAPI
@@ -28,7 +29,7 @@ class AsyncInferenceAPITestCase(unittest.IsolatedAsyncioTestCase):
             {"role": "none", "content": "whence afterever the storm"},
         ]
         self.prompt_with_only_none = Prompt(messages=prompt_with_only_none)
-        self.kwargs = {"max_attempts_per_api_call": 1, "print_prompt_and_response": True}
+        self.kwargs = {"max_attempts_per_api_call": 1, "print_prompt_and_response": True, "temperature": 1}
 
     async def test_anthropic_api(self):
         responses = await self.api("claude-2.1", prompt=self.prompt, **self.kwargs)
@@ -63,6 +64,16 @@ class AsyncInferenceAPITestCase(unittest.IsolatedAsyncioTestCase):
     async def test_anthropic_chat_error_for_none_message(self):
         with self.assertRaises((ValueError, RuntimeError)):
             await self.api("claude-2.1", prompt=self.prompt_with_only_none, **self.kwargs)
+
+    async def test_gemini_api(self):
+        responses = await self.api("gemini-1.0-pro-002", prompt=self.prompt, **self.kwargs)
+        self.assertIsInstance(responses[0].completion, str)
+
+    async def test_gemini_api_ratelimit(self):
+        responses = await asyncio.gather(
+            *[self.api("gemini-1.0-pro-002", prompt=self.prompt, **self.kwargs) for _ in range(100)]
+        )
+        self.assertIsInstance(responses[0][0].completion, str)
 
     async def test_is_valid_fails(self):
         with self.assertRaises(RuntimeError):

@@ -228,13 +228,17 @@ class StudyRunner:
         return command
 
     def get_meta_level_command(
-        self, model, task, response_property, prompt, limit, set, strings_path="~", overrides=""
+        self, model, task, response_property, prompt, limit, set, strings_path="~", overrides=[]
     ):
+        overrides = "\n".join(overrides)
         command = f"python -m evals.run_meta_level study_name={self.args.study_name} language_model={model} task={task} response_property={response_property} task.set={set} prompt=meta_level/{prompt} limit={limit} strings_path={strings_path} {overrides}"
         return command
 
     def get_finetuning_command(self, model, ft_study, notes, overrides=""):
-        return f"python -m evals.run_finetuning study_name={ft_study} language_model={model} notes={notes} {' '.join(overrides)}"
+        override_str = ' '.join(overrides)
+        return (
+            f"python -m evals.run_finetuning study_name={ft_study} language_model={model} notes={notes} {override_str}"
+        )
 
     def run_study(self):
         pool = Pool()  # create a pool of worker processes
@@ -341,7 +345,7 @@ class StudyRunner:
                             task,
                             prompt,
                             response_property,
-                            self.args.finetuning_overrides,
+                            "",  # overrides string—not using that here
                             train_folder,
                             val_folder,
                             overwrite=False,
@@ -371,10 +375,8 @@ class StudyRunner:
             self.write_state_file()
             finetuning_dataset_creation_commands.append(command)
 
-        pool.map(
-            partial(run_finetuning_dataset_creation, state=self.state, state_lock=self.state_lock),
-            finetuning_dataset_creation_commands,
-        )
+        for command in finetuning_dataset_creation_commands:
+            run_finetuning_dataset_creation(state=self.state, state_lock=self.state_lock, command=command)
         print(f"Created {len(finetuning_dataset_creation_commands)} finetuning datasets.")
 
         #### run finetuning ####

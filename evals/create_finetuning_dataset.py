@@ -74,6 +74,10 @@ def generate_finetuning_jsonl(main_cfg: DictConfig, path: Path, filename: str = 
         train_filename = cfg.name + "_train_" + filename
         val_filename = cfg.name + "_val_" + filename
 
+        # strip / in case one snuck in
+        train_filename = train_filename.replace("/", "-")
+        val_filename = val_filename.replace("/", "-")
+
         # do we have the file?
         if (path / train_filename).exists():
             LOGGER.info(f"File {filename} already exists. Overwriting.")

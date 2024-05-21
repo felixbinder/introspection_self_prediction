@@ -21,7 +21,7 @@ study_name: ?? # the name of the study
 
 dataset_folder: ?? # the name of the folder containing the dataset infos
 
-exp_dir: ${sanitize:${study_dir}}
+exp_dir: ${study_dir}
 
 train_base_dir: ?? # the folder of the object level responses to use for training. Should be generated with `task.set = train`.
 n_train_items: 500 # number of strings to use in train set. Use `~` to use all strings in the train set.

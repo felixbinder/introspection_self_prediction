@@ -1,0 +1,10 @@
+method: meta_level/think_about
+base_prompt: object_level/minimal
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked the following question: "${task.prompt}" Think what your most likely response would have been, but don't tell me. Based on this, answer the following question directly. ${response_property.meta_level_prompt}

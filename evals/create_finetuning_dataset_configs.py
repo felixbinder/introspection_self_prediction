@@ -38,7 +38,10 @@ def create_finetuning_dataset_config(
 
     name = f"{model_config.replace('/', '-')}_{task_config.replace('/', '-')}_{response_property_config.replace('/', '-')}_{prompt_config.replace('/', '-')}"  # name of the config. We need to replace the / in the prompt config to avoid issues with the file path.
 
-    overrides_str = " ".join(overrides)
+    if isinstance(overrides, list):
+        overrides_str = "\n".join(overrides)
+    else:
+        overrides_str = overrides
 
     if "meta_level/" not in prompt_config:  # we need to load the meta level prompt
         prompt_config = f"meta_level/{prompt_config}"

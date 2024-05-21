@@ -22,6 +22,10 @@ LOGGING_LEVELS = {
     "debug": logging.DEBUG,
 }
 
+GCLOUD_PROJECT = "roots-api-1475521819980"
+GCLOUD_LOCATION = "us-central1"
+GCLOUD_BUCKET = "cloud-ai-platform-6e5ab5cb-3fca-49e0-a42c-ce00ed910490"
+
 
 def setup_environment(
     anthropic_tag: str = "ANTHROPIC_API_KEY",

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from evals.apis.inference.anthropic_api import ANTHROPIC_MODELS, AnthropicChatModel
+from evals.apis.inference.gemini_api import GEMINI_MODELS, GeminiModel
 from evals.apis.inference.huggingface import HuggingFaceModel
 from evals.apis.inference.model import InferenceAPIModel
 from evals.apis.inference.openai.chat import OpenAIChatModel
@@ -71,6 +72,8 @@ class InferenceAPI:
             prompt_history_dir=self.prompt_history_dir,
         )
 
+        self._gemini_chat = GeminiModel(prompt_history_dir=self.prompt_history_dir)
+
         self._huggingface_chat = HuggingFaceModel(prompt_history_dir=self.prompt_history_dir)
 
         self.running_cost = 0
@@ -86,6 +89,8 @@ class InferenceAPI:
             return self._openai_chat
         elif model_id in ANTHROPIC_MODELS:
             return self._anthropic_chat
+        elif model_id in GEMINI_MODELS:
+            return self._gemini_chat
         else:
             return self._huggingface_chat
 

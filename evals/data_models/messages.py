@@ -84,6 +84,17 @@ class Prompt(HashableBaseModel):
         line = {"messages": msgs}
         return json.dumps(line)
 
+    def gemini_format(self) -> str:
+        if self.is_none_in_messages():
+            raise ValueError(f"Gemini chat prompts cannot have a None role. Got {self.messages}")
+        messages = []
+        for msg in self.messages:
+            if msg.role == MessageRole.system:
+                messages.append({"role": "system", "content": msg.content})
+            elif msg.role == MessageRole.user:
+                messages.append({"role": "user", "content": msg.content})
+        return messages
+
     def anthropic_format(self) -> list[dict]:
         if self.is_none_in_messages():
             raise ValueError(f"Anthropic chat prompts cannot have a None role. Got {self.messages}")

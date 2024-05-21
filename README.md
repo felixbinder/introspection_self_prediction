@@ -10,6 +10,7 @@ This repository contains the `run.py` script and associated files for conducting
 
 - Python 3.11
 - Virtual environment tool (e.g., virtualenv)
+- gcloud CLI (for Gemini models)
 
 ### Installation
 
@@ -40,6 +41,13 @@ This repository contains the `run.py` script and associated files for conducting
   echo ANTHROPIC_API_KEY=<INSERT_HERE> >> SECRETS
   echo DEFAULT_ORG=org-<INSERT_HERE> >> SECRETS
   ```
+
+### Gemini setup
+
+1. Ask team get added to the project
+2. Install gcloud CLI. Configure with project=roots-api-1475521819980, location=us-central1
+3. Follow instructions for authenticating to Vertex: (Authenticate to Vertex AI  |  Google Cloud)[https://cloud.google.com/vertex-ai/docs/authentication]
+
 
 ## Usage
 The best starting point to see how inference and finetuning works is to use the `sweep_full_study` script. This produces a `state.json` file that lists all individual commands that make up an experiment.

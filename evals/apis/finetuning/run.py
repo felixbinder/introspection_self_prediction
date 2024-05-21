@@ -94,7 +94,7 @@ def queue_finetune(
     val_file_id: str = None,
     organization: Optional[str] = None,
     seed: Optional[int] = None,
-    retries: int = 10,  # number of retries. 30 * 2^10 = 8.5 hours
+    retries: int = 12,  # number of retries. 30 * 2^10 = 8.5 hours
     retry_time: int = 30,  # time to wait before retrying in seconds
 ) -> FinetuneJob:
     if retries == 0:

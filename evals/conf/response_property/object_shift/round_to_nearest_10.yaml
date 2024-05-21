@@ -1,0 +1,16 @@
+name: object_shift/round_to_nearest_10
+
+defaults:
+  - parent_response_property: ../identity # which response property is this overriding?
+
+python_function: round_to_nearest_10 # ~ to use LLM extraction. Function has to be in evals/parent_response_property.py
+
+meta_level_prompt: ${parent_response_property.meta_level_prompt}
+property_extraction_prompt: ${parent_response_property.property_extraction_prompt}
+# Exclusion rules. See `evals/analysis/compliance.py` for a list of rules.
+exclusion_rule_groups: ${parent_response_property.exclusion_rule_groups} # list of exclusion rules to apply to the responses.
+
+# How are object and meta-level responses to be scored?
+scoring_method: ${parent_response_property.scoring_method} # exact_match or LLM.
+# If LLM, what is the scoring prompt? Include $object_level_response and $meta_level_response.
+llm_scoring_prompt: ${parent_response_property.llm_scoring_prompt} # prompt to use for scoring with LLM. $object_level_response and $meta_level_response will be replaced with the responses.
