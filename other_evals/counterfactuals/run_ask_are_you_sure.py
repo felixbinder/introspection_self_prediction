@@ -120,6 +120,7 @@ class FirstRoundAsking(BaseModel):
 
     @property
     def switched_answer(self) -> bool:
+        assert self.both_successful
         return self.parsed_biased_answer != self.parsed_unbiased_answer
 
 
@@ -127,7 +128,7 @@ class AreYouSureMetaResult(BaseModel):
     first_round: FirstRoundAsking
     second_round_message: list[ChatMessageV2]
     second_round_raw: str
-    final_history: list[ChatMessageV2]
+    final_are_you_sure_history: list[ChatMessageV2]
     second_round_parsed: Literal["Y", "N"] | None
     second_round_config: InferenceConfig
 
@@ -149,16 +150,16 @@ class AreYouSureMetaResult(BaseModel):
         changed_answer: bool = self.first_round.switched_answer
         meta_predicted_change: bool = self.second_round_parsed == "Y"
         return OtherEvalCSVFormat(
-            object_prompt="BIASED HISTORY:\n"
+            object_history="BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
-            + "UNBIASED HISTORY:\n",
+            + "\nUNBIASED HISTORY:\n" + display_conversation(self.first_round.unbiased_new_history),
             object_model=self.first_round.config.model,
             object_parsed_result="changed answer" if changed_answer else "did not change answer",
-            meta_prompt=display_conversation(self.second_round_message),
+            meta_history=display_conversation(self.final_are_you_sure_history),
             meta_model=self.second_round_config.model,
             meta_parsed_result="changed answer" if meta_predicted_change else "did not change answer",
             meta_predicted_correctly=self.predicted_switched_answer_correctly(),
-            eval_name="are_you_sure",
+            eval_name=eval_name
         )
 
 
@@ -253,7 +254,7 @@ async def ask_second_round(
     ]
     response = await caller.call(new_question, config=config)
     parsed_answer = extract_yes_or_no(response.single_response)
-    final_history = new_question + [ChatMessageV2(role="assistant", content=response.single_response)]
+    final_are_you_sure_history = new_question + [ChatMessageV2(role="assistant", content=response.single_response)]
 
     return AreYouSureMetaResult(
         first_round=single_data,
@@ -261,7 +262,7 @@ async def ask_second_round(
         second_round_parsed=parsed_answer,  # type: ignore
         second_round_raw=response.single_response,
         second_round_config=config,
-        final_history=final_history,
+        final_are_you_sure_history=final_are_you_sure_history,
     )
 
 
