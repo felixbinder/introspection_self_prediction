@@ -25,6 +25,7 @@ python -m scripts.sweep_full_study
 --val_only_model_configs="gpt-4"
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
+--other_evals='{"counterfactuals": ["identity", "is_even"], "prompted_counterfactuals": ["identity", "is_even"]}'
 --prompt_configs='minimal'
 --n_object_train=1000
 --n_object_val=250
@@ -109,6 +110,7 @@ class StudyRunner:
         )
         parser.add_argument("--tasks", type=str, help="JSON string of tasks configuration")
         parser.add_argument("--val_tasks", type=str, help="JSON string of validation tasks configuration", default="{}")
+        parser.add_argument("--other_evals", type=str, help="JSON string of other evals to run", default="{}")
         parser.add_argument("--prompt_configs", type=str, help="Comma-separated list of prompt configurations.")
         parser.add_argument(
             "--inference_overrides", type=str, help="Comma-separated list of Hydra configuration overrides.", default=""
@@ -462,6 +464,10 @@ class StudyRunner:
                             )
                         self.write_state_file()
                         meta_val_commands.append(command)
+        ### Run the other evals that aren't in the repo's format
+
+
+
 
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()

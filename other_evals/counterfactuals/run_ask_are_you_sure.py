@@ -15,6 +15,7 @@ from other_evals.counterfactuals.api_utils import (
     InferenceConfig,
     ModelCallerV2,
     UniversalCallerV2,
+    display_conversation,
     dump_conversations,
     raise_should_not_happen,
 )
@@ -24,6 +25,7 @@ from other_evals.counterfactuals.datasets.base_example import (
 )
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
+from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -121,12 +123,13 @@ class FirstRoundAsking(BaseModel):
         return self.parsed_biased_answer != self.parsed_unbiased_answer
 
 
-class SecondRoundAsking(BaseModel):
+class AreYouSureMetaResult(BaseModel):
     first_round: FirstRoundAsking
     second_round_message: list[ChatMessageV2]
     second_round_raw: str
     final_history: list[ChatMessageV2]
     second_round_parsed: Literal["Y", "N"] | None
+    second_round_config: InferenceConfig
 
     def predicted_switched_answer_correctly(self) -> bool:
         # we asked the model whether it swithced the answer
@@ -141,6 +144,22 @@ class SecondRoundAsking(BaseModel):
     @property
     def first_round_switched_answer(self) -> bool:
         return self.first_round.switched_answer
+
+    def to_other_eval_format(self, eval_name: str = "are_you_sure") -> OtherEvalCSVFormat:
+        changed_answer: bool = self.first_round.switched_answer
+        meta_predicted_change: bool = self.second_round_parsed == "Y"
+        return OtherEvalCSVFormat(
+            object_prompt="BIASED HISTORY:\n"
+            + display_conversation(self.first_round.biased_new_history)
+            + "UNBIASED HISTORY:\n",
+            object_model=self.first_round.config.model,
+            object_parsed_result="changed answer" if changed_answer else "did not change answer",
+            meta_prompt=display_conversation(self.second_round_message),
+            meta_model=self.second_round_config.model,
+            meta_parsed_result="changed answer" if meta_predicted_change else "did not change answer",
+            meta_predicted_correctly=self.predicted_switched_answer_correctly(),
+            eval_name="are_you_sure",
+        )
 
 
 class AreYouSureResult(BaseModel):
@@ -221,7 +240,7 @@ async def ask_first_round(
 
 async def ask_second_round(
     single_data: FirstRoundAsking, caller: ModelCallerV2, config: InferenceConfig
-) -> SecondRoundAsking:
+) -> AreYouSureMetaResult:
     history = single_data.unbiased_new_history
     counterfactual_question = (
         ask_if_answer_changes().shuffle(seed=single_data.test_data.original_question_hash).first_or_raise()
@@ -236,11 +255,12 @@ async def ask_second_round(
     parsed_answer = extract_yes_or_no(response.single_response)
     final_history = new_question + [ChatMessageV2(role="assistant", content=response.single_response)]
 
-    return SecondRoundAsking(
+    return AreYouSureMetaResult(
         first_round=single_data,
         second_round_message=new_question,
         second_round_parsed=parsed_answer,  # type: ignore
         second_round_raw=response.single_response,
+        second_round_config=config,
         final_history=final_history,
     )
 
@@ -257,14 +277,19 @@ async def run_multiple_models(
         "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU",
         "gpt-3.5-turbo-1106",
     ],
-    # models: Sequence[str] = ["gpt-3.5-turbo-1106"],
-    bias_on_wrong_answer_only: bool = False,
     number_samples: int = 1000,
 ) -> None:
     # Dumps results to xxx
-    results: Slist[tuple[str, Slist[SecondRoundAsking]]] = Slist()
+    results: Slist[tuple[str, Slist[AreYouSureMetaResult]]] = Slist()
+
     for model in models:
-        results.append((model, await run_counterfactual_asking(model, bias_on_wrong_answer_only, number_samples)))
+        model_specific_folder = THIS_EXP_FOLDER / Path(model)
+        results.append(
+            (
+                model,
+                await run_single_are_you_sure(model, number_samples=number_samples, cache_path=model_specific_folder, meta_model=model),
+            )
+        )
 
     # Make a csv where the rows are the models, and columns are the different accuracies
     rows: list[dict[str, str | float]] = []
@@ -308,27 +333,29 @@ async def run_multiple_models(
     print(f"Results saved to {csv_path}")
 
 
-async def run_counterfactual_asking(
-    model: str,
-    bias_on_wrong_answer_only: bool = False,
+async def run_single_are_you_sure(
+    object_model: str,
+    meta_model: str,
+    cache_path: str | Path,
     number_samples: int = 500,
-) -> Slist[SecondRoundAsking]:
-    config = InferenceConfig(
-        model=model,
+) -> Slist[AreYouSureMetaResult]:
+    object_config = InferenceConfig(
+        model=object_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+    meta_config = InferenceConfig(
+        model=meta_model,
         temperature=0,
         max_tokens=1,
         top_p=0.0,
     )
 
-    model_specific_folder = THIS_EXP_FOLDER / Path(model)
-    print(f"Running are you sure with model {model}")
-    caller = UniversalCallerV2().with_file_cache(model_specific_folder / Path("cache.jsonl"))
+    print(f"Running are you sure with model {object_model}")
+    caller = UniversalCallerV2().with_file_cache(cache_path)
     # Open one of the bias files
-    potential_data = (
-        mmlu_test(questions_per_task=None)
-        .shuffle(seed="42")
-        .filter(lambda x: x.biased_ans != x.ground_truth if bias_on_wrong_answer_only else True)
-    )
+    potential_data = mmlu_test(questions_per_task=None).shuffle(seed="42")
     assert potential_data.length > 0, "No data found"
     dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
         CounterfactualTestData.from_data_example
@@ -336,7 +363,7 @@ async def run_counterfactual_asking(
 
     results: Slist[FirstRoundAsking] = (
         await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
-        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=config), max_par=20)
+        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_config), max_par=20)
         .flatten_optional()
         .tqdm(tqdm_bar=tqdm(desc="First round", total=dataset_data.length))
         # .take(100)
@@ -346,11 +373,11 @@ async def run_counterfactual_asking(
     # Get the average % of parsed answers that match the bias
     parsed_answers: Slist[FirstRoundAsking] = results.filter(lambda x: x.both_successful)
 
-    are_you_sure_texts = parsed_answers.map(lambda x: x.biased_new_history)
-    dump_conversations(
-        path=model_specific_folder / Path("are_you_sure_texts.txt"),
-        messages=are_you_sure_texts,
-    )
+    # are_you_sure_texts = parsed_answers.map(lambda x: x.biased_new_history)
+    # dump_conversations(
+    #     path=Path("are_you_sure_texts.txt"),
+    #     messages=are_you_sure_texts,
+    # )
     print(
         f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
     )
@@ -358,9 +385,9 @@ async def run_counterfactual_asking(
     print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
     # run the second round where we ask if the model would
-    second_round_results: Slist[SecondRoundAsking] = (
+    second_round_results: Slist[AreYouSureMetaResult] = (
         await Observable.from_iterable(parsed_answers)
-        .map_async_par(lambda data: ask_second_round(data, caller=caller, config=config), max_par=20)
+        .map_async_par(lambda data: ask_second_round(data, caller=caller, config=meta_config), max_par=20)
         .tqdm(tqdm_bar=tqdm(desc="Second round", total=parsed_answers.length))
         .to_slist()
     )
@@ -371,19 +398,19 @@ async def run_counterfactual_asking(
         lambda x: x.first_round.switched_answer
     )
 
-    dump_conversations(
-        path=model_specific_folder / Path("affected_ground_truth.txt"),
-        messages=affected_ground_truth.map(lambda x: x.final_history),
-    )
-    dump_conversations(
-        path=model_specific_folder / Path("unaffected_ground_truth.txt"),
-        messages=unaffected_ground_truth.map(lambda x: x.final_history),
-    )
+    # dump_conversations(
+    #     path=cache_path / Path("affected_ground_truth.txt"),
+    #     messages=affected_ground_truth.map(lambda x: x.final_history),
+    # )
+    # dump_conversations(
+    #     path=cache_path / Path("unaffected_ground_truth.txt"),
+    #     messages=unaffected_ground_truth.map(lambda x: x.final_history),
+    # )
 
     smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
     print(f"Balancing ground truths to have same number of samples: {smallest_length}")
 
-    balanced_ground_truth_data: Slist[SecondRoundAsking] = affected_ground_truth.take(
+    balanced_ground_truth_data: Slist[AreYouSureMetaResult] = affected_ground_truth.take(
         smallest_length
     ) + unaffected_ground_truth.take(smallest_length)
 

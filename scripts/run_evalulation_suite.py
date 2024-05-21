@@ -13,28 +13,35 @@ from evals import create_finetuning_dataset_configs
 from evals.locations import CONF_DIR, REPO_DIR
 
 EVAL_SUITE = {
-    "number_triplets": ["identity", "is_even"],
-    "english_words": ["identity", "first_character"],
-    "wikipedia": ["identity", "first_character"],
-    "daily_dialog": ["identity", "first_character"],
-    "dear_abbie": ["first_word", "sentiment", "dear_abbie/sympathetic_advice"],
-    # "mmlu": ["matches_target"]
+    # "number_triplets": ["identity", "is_even"],
+    # "english_words": ["identity", "first_character"],
+    # "wikipedia": ["identity", "first_character"],
+    # "daily_dialog": ["identity", "first_character"],
+    # "dear_abbie": ["first_word", "sentiment", "dear_abbie/sympathetic_advice"],
+    "mmlu": ["matches_target"]
     # "writing_stories": ["writing_stories/good_ending", "writing_stories/main_character_name"], # inside/outside, main char male/female,
     # "jailbreak": ["jailbreak/jailbreak"],
     # "bias"
 }
 
 DIVERGENT_STRINGS = {
-    "number_triplets": "exp/evaluation_suite/model_divergent_strings_number_triplets.csv",
-    "english_words": "exp/evaluation_suite/model_divergent_strings_english_words.csv",
-    "wikipedia": "exp/evaluation_suite/model_divergent_strings_wikipedia.csv",
-    "daily_dialog": "exp/evaluation_suite/model_divergent_strings_daily_dialog.csv",
-    "dear_abbie": "exp/evaluation_suite/model_divergent_strings_dear_abbie.csv",
+    # "number_triplets": "exp/evaluation_suite/model_divergent_strings_number_triplets.csv",
+    # "english_words": "exp/evaluation_suite/model_divergent_strings_english_words.csv",
+    # "wikipedia": "exp/evaluation_suite/model_divergent_strings_wikipedia.csv",
+    # "daily_dialog": "exp/evaluation_suite/model_divergent_strings_daily_dialog.csv",
+    # "dear_abbie": "exp/evaluation_suite/model_divergent_strings_dear_abbie.csv",
     "mmlu": "exp/evaluation_suite/model_divergent_strings_mmlu.csv",
     # "writing_stories": "exp/evaluation_suite/model_divergent_strings_writing_stories.csv",
     # "jailbreak": "exp/evaluation_suite/model_divergent_strings_jailbreak.csv",
     # "bias
 }
+
+# These evals 
+OTHER_EVALS = {
+    "biased_evals": ["are_you_sure_knows_biased", "ask_if_affected"],
+    "know_what_i_know": ["matches_target_mmlu", "matches_target_triviaqa"],
+}
+
 
 N_TRAIN = 500
 N_EVAL = 500
@@ -210,8 +217,8 @@ if __name__ == "__main__":
     # run the evaluation suite
     run_inference_only(models)
     # finetune the model for each task individually
-    run_finetuning(models)
-    # see how well the finetuned models do on their task
-    for model in models:
-        run_finetuned_models_on_their_task(model)
+    # run_finetuning(models)
+    # # see how well the finetuned models do on their task
+    # for model in models:
+    #     run_finetuned_models_on_their_task(model)
     # run_get_floor_ceiling_for_untrained_models(models)
