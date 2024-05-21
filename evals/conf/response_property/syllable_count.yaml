@@ -1,7 +1,7 @@
 name: syllable_count
 python_function: ~ # ~ to use LLM extraction. Function has to be in evals/response_property.py
 meta_level_prompt: "How many syllables does response that you gave have? Respond only with the number of syllables as an integer." # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
-property_extraction_prompt: "How many syllables does the following string have? Respond only with the number of syllables as an integer. The string is '$response'." # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
+property_extraction_prompt: "How many syllables does the following string have? Respond only with the number of syllables as an integer, for example '3'. Do not say 'three'. The string is '$response'." # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
 # Exclusion rules. See `evals/analysis/compliance.py` for a list of rules.
 exclusion_rule_groups: [numeric] # list of exclusion rules to apply to the responses.
 

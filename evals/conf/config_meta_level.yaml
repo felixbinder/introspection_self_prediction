@@ -17,7 +17,7 @@ defaults:
 # Common Params
 study_name: ???
 study_dir: ${experiment_folder_location:/${study_name}} # the folder of the study which contains multiple experiments
-exp_dir: ${sanitize:${study_dir}/meta_level_${language_model.model}_${task.name}_task_${n_shot}_shot_${n_shot_seeding}_seed_${prompt.method}_prompt_${response_property.name}_resp_${note}_note}
+exp_dir: ${study_dir}/${sanitize:meta_level_${language_model.model}_${task.name}_task_${n_shot}_shot_${n_shot_seeding}_seed_${prompt.method}_prompt_${response_property.name}_resp_${note}_note}
 base_dir: ~ # path to the directory containing the base completions. Required for n_shot > 0.
 strings_path: ~ # path to the strings file with the preselected strings for the experiment. If set to ~, the strings will be extracted from the base_dir
 filter_strings_path: ~ # if this is set, use this to filter the strings

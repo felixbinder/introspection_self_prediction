@@ -60,7 +60,7 @@ def main(cfg: DictConfig) -> str:
     except KeyError:
         LOGGER.error(f"Organization {cfg.organization} not found in secrets")
         raise
-    if params.model in (COMPLETION_MODELS | GPT_CHAT_MODELS):
+    if params.model in (COMPLETION_MODELS | GPT_CHAT_MODELS) or str(params.model).lower().startswith("ft:gpt"):
         if cfg.use_wandb:
             syncer = WandbSyncer.create(project_name=str(cfg.study_name).replace("/", "_"), notes=cfg.notes)
             # if more_config:
@@ -88,6 +88,10 @@ def main(cfg: DictConfig) -> str:
         batch_size = cfg.batch_size or 32
         lr = cfg.learning_rate or 1e-3
         n_epochs = cfg.epochs or 5
+        try:
+            train_batch_size = batch_size // num_gpus
+        except ZeroDivisionError:
+            train_batch_size = batch_size
         cmd = f"""accelerate launch --config_file evals/conf/accelerate_config.yaml --mixed_precision bf16 --num_processes {num_gpus} -m \
 evals.apis.finetuning.hf_finetuning \
 --config evals/conf/trl_config.yaml \
@@ -95,7 +99,7 @@ evals.apis.finetuning.hf_finetuning \
 --run_name {run_name} \
 --model_name_or_path {cfg.language_model.cais_path} \
 --dataset_name {cfg.study_dir} \
---per_device_train_batch_size {batch_size//num_gpus} \
+--per_device_train_batch_size {train_batch_size} \
 --learning_rate {lr} \
 --num_train_epochs {n_epochs} """
         if cfg.lora_rank is not None:

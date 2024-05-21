@@ -38,7 +38,15 @@ class OpenAIChatModel(OpenAIModel):
         }
         response = requests.post(url, headers=headers, json=data)
         if "x-ratelimit-limit-tokens" not in response.headers:
-            raise RuntimeError("Failed to get dummy response header")
+            print("⚠️ Failed to get dummy response from header—adding defaults")
+            # these are the ones I get for GPT3.5 normally
+            # TODO remove this hack once OpenAI fixes their API
+            response.headers["x-ratelimit-limit-tokens"] = '2000000'
+            response.headers["x-ratelimit-limit-requests"] = '10000'
+            response.headers["x-ratelimit-remaining-tokens"] = '1999999'
+            response.headers["x-ratelimit-remaining-requests"] = '9999'
+            response.headers["x-ratelimit-reset-requests"] = '6ms'
+            response.headers["x-ratelimit-reset-tokens"] = '0s'
         return response.headers
 
     @staticmethod
