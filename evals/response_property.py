@@ -228,6 +228,11 @@ def more_than_5_characters(row: pd.Series):
     return more_than_n_characters(row, 5)
 
 
+def matches_target(row: pd.Series) -> str:
+    # returns true or false as a string.
+    return row["target"].lower() == row["response"].strip().lower()
+
+
 #### object shift properties ####
 """These functions are meant for experiments that manipulate the object level of a model through finetuning. """
 
@@ -247,18 +252,19 @@ def round_to_nearest_10(row: pd.Series):
         response = None
     return str(response)
 
+
 def three_digit_hash(row: pd.Series):
     """Produce a three digit number that is deterministic, but essentially random"""
     # we want to salt in case the model has learned hashing
     SALT = "The only journey is the one within"
     # Convert the string to a hash value
     hash_value = hash(str(row["response"]) + SALT)
-    
+
     # Take the absolute value of the hash and modulo by 900
     # to get a value between 0 and 899
     hash_mod = abs(hash_value) % 900
-    
+
     # Add 100 to the hash_mod to get a value between 100 and 999
     output_number = hash_mod + 100
-    
+
     return str(output_number)

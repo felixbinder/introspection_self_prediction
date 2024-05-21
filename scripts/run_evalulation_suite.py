@@ -18,6 +18,7 @@ EVAL_SUITE = {
     "wikipedia": ["identity", "first_character"],
     "daily_dialog": ["identity", "first_character"],
     "dear_abbie": ["first_word", "sentiment", "dear_abbie/sympathetic_advice"],
+    # "mmlu": ["matches_target"]
     # "writing_stories": ["writing_stories/good_ending", "writing_stories/main_character_name"], # inside/outside, main char male/female,
     # "jailbreak": ["jailbreak/jailbreak"],
     # "bias"
@@ -29,6 +30,7 @@ DIVERGENT_STRINGS = {
     "wikipedia": "exp/evaluation_suite/model_divergent_strings_wikipedia.csv",
     "daily_dialog": "exp/evaluation_suite/model_divergent_strings_daily_dialog.csv",
     "dear_abbie": "exp/evaluation_suite/model_divergent_strings_dear_abbie.csv",
+    "mmlu": "exp/evaluation_suite/model_divergent_strings_mmlu.csv",
     # "writing_stories": "exp/evaluation_suite/model_divergent_strings_writing_stories.csv",
     # "jailbreak": "exp/evaluation_suite/model_divergent_strings_jailbreak.csv",
     # "bias
