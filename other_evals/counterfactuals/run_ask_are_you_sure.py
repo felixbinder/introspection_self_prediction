@@ -321,7 +321,7 @@ async def run_counterfactual_asking(
     )
 
     model_specific_folder = THIS_EXP_FOLDER / Path(model)
-    print(f"Running counterfactuals with model {model}")
+    print(f"Running are you sure with model {model}")
     caller = UniversalCallerV2().with_file_cache(model_specific_folder / Path("cache.jsonl"))
     # Open one of the bias files
     potential_data = (
