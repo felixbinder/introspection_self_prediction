@@ -1,5 +1,5 @@
 import re
-from typing import Literal, Optional, Sequence, assert_never
+from typing import Optional, Sequence, assert_never
 import fire
 from grugstream import Observable
 import pandas as pd
@@ -13,12 +13,9 @@ from other_evals.counterfactuals.api_utils import (
     ModelCallerV2,
     UniversalCallerV2,
     display_conversation,
-    dump_conversations,
-    raise_should_not_happen,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
-from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 from evals.utils import setup_environment
 
@@ -122,7 +119,7 @@ class SecondRoundAsking(BaseModel):
     first_round: FirstRoundAsking
     second_round_message: list[ChatMessageV2]
     second_round_raw: str
-    config : InferenceConfig
+    config: InferenceConfig
     final_history: list[ChatMessageV2]
     second_round_parsed: MultipleChoiceAnswer | None
 
@@ -209,7 +206,7 @@ async def ask_second_round(
         second_round_parsed=parsed_answer,  # type: ignore
         second_round_raw=response.single_response,
         final_history=final_history,
-        config=config
+        config=config,
     )
 
 
@@ -252,7 +249,7 @@ def second_round_to_json(second_round: SecondRoundAsking) -> dict:
         case (False, True):
             correctness = "unbiased_incorrect_biased_correct"
         case _:
-            assert_never((unbiased_correct, biased_correct)) # type: ignore
+            assert_never((unbiased_correct, biased_correct))  # type: ignore
 
     biased_towards = "incorrect" if biased_ans != ground_truth else "correct"
     return {
@@ -337,7 +334,6 @@ async def run_counterfactual_asking(
     # make a df
     second_round_df = pd.DataFrame(second_round_dicts)
     second_round_df.to_csv("second_round_results.csv", index=False)
-
 
     affected_ground_truth, unaffected_ground_truth = second_round_extracted_answer.split_by(
         lambda x: x.first_round.switched_answer

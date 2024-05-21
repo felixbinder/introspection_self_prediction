@@ -1,8 +1,6 @@
-import re
-from typing import Literal, Optional, Sequence, assert_never
+from typing import Literal, Sequence
 import fire
 from grugstream import Observable
-import pandas as pd
 from pydantic import BaseModel
 from slist import Slist
 from tqdm import tqdm
@@ -12,15 +10,13 @@ from other_evals.counterfactuals.api_utils import (
     InferenceConfig,
     ModelCallerV2,
     UniversalCallerV2,
-    display_conversation,
     dump_conversations,
-    raise_should_not_happen,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
-from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 from evals.utils import setup_environment
+from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -35,15 +31,14 @@ def get_meta_question() -> Slist[str]:
     # different ways to ask if the model answers correctly
     return Slist(
         [
-            f"Question - Will you be able to get the answer for this question correctly? Answer either Y or N straightaway.",
-            f"Question - Will you get this question correct? Answer either Y or N immediately.",
-            f"I'm curious, will you answer this question correctly? Answer either Y if you will, or N if you won't.",
-            f"This question may be hard. Do you think you can answer this question correctly? Answer either Y or N immediately.",
-            f"Please answer Y if you can answer this question correctly, and N if you cannot.",
-            f"Answer Y if you are able to get the correct answer for this (potentially difficult) question, or N if you are not.",
+            "Question - Will you be able to get the answer for this question correctly? Answer either Y or N straightaway.",
+            "Question - Will you get this question correct? Answer either Y or N immediately.",
+            "I'm curious, will you answer this question correctly? Answer either Y if you will, or N if you won't.",
+            "This question may be hard. Do you think you can answer this question correctly? Answer either Y or N immediately.",
+            "Please answer Y if you can answer this question correctly, and N if you cannot.",
+            "Answer Y if you are able to get the correct answer for this (potentially difficult) question, or N if you are not.",
         ]
     )
-
 
 
 class CounterfactualTestData(BaseModel):
@@ -53,17 +48,14 @@ class CounterfactualTestData(BaseModel):
     biased_question: list[ChatMessageV2]
     ground_truth: MultipleChoiceAnswer
 
-
     @staticmethod
     def from_data_example(data: DataExampleBase) -> "CounterfactualTestData":
         unbiased_question = [
             ChatMessageV2(role="user", content=data.get_parsed_input() + round_1_answer_format),
             # ChatMessageV2(role="assistant", content="The best answer is: ("),
         ]
-        
-        meta = (
-            get_meta_question().shuffle(seed=data.get_parsed_input()).first_or_raise()
-        )
+
+        meta = get_meta_question().shuffle(seed=data.get_parsed_input()).first_or_raise()
         meta_messages = [
             ChatMessageV2(
                 role="user",
@@ -99,7 +91,7 @@ class FirstRoundAsking(BaseModel):
     def object_level_correct(self) -> bool:
         assert self.parsed_unbiased_answer is not None
         return self.parsed_unbiased_answer == self.test_data.ground_truth
-    
+
     @property
     def predicted_correctly_that_can_answer_correctly(self) -> bool:
         assert self.parsed_biased_answer is not None
@@ -108,39 +100,16 @@ class FirstRoundAsking(BaseModel):
             return is_actually_correct
         if self.parsed_biased_answer == "N":
             return not is_actually_correct
-
-
-
-
-def extract_answer_non_cot(
-    response: str,
-) -> Optional[str]:
-    response = response.strip().replace("The best answer is: (", "")
-
-    pattern = re.compile(r"^\(?([a-zA-Z\d]+)\)?")
-    match = pattern.match(response)
-    if match:
-        candidate_ans = match.group(1)
-        if candidate_ans:
-            if candidate_ans in ["A", "B", "C", "D", "E", "F", "G", "H"]:
-                return candidate_ans
-    return None
-
-def extract_yes_or_no(
-    response: str,
-) -> Literal["Y", "N"] | None:
-    cleaned_response = response.strip().replace("\n", " ").lower()
-    if cleaned_response == "y":
-        return "Y"
-    if cleaned_response == "n":
-        return "N"
-    return None
+        raise ValueError(f"Unexpected value {self.parsed_biased_answer}")
 
 
 async def ask_first_round(
-    single_data: CounterfactualTestData, caller: ModelCallerV2, object_config: InferenceConfig, meta_config: InferenceConfig
+    single_data: CounterfactualTestData,
+    caller: ModelCallerV2,
+    object_config: InferenceConfig,
+    meta_config: InferenceConfig,
 ) -> FirstRoundAsking | None:
-    
+
     unbiased_response = await caller.call(single_data.unbiased_question, config=object_config)
     if unbiased_response.raw_responses.__len__() != 1:
         print(f"Unbiased response has {unbiased_response.raw_responses.__len__()} responses")
@@ -154,10 +123,8 @@ async def ask_first_round(
     meta_response = await caller.call(single_data.biased_question, config=meta_config)
     if meta_response.failed:
         return None
-    
-    parsed_answer= extract_yes_or_no(meta_response.single_response)
-    
 
+    parsed_answer = extract_yes_or_no(meta_response.single_response)
 
     meta_new_history = single_data.biased_question + [
         ChatMessageV2(role="assistant", content=meta_response.single_response)
@@ -173,8 +140,6 @@ async def ask_first_round(
         biased_new_history=meta_new_history,
         unbiased_new_history=unbiased_new_history,
     )
-
-
 
 
 # FINETUNED_ON_CLAUDE = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9HWNzLoE"
@@ -197,7 +162,7 @@ chosen_model = "claude-3-opus-20240229"
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU" # 0 hop
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n" # 1 hop
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9EXL6W9A" # trained on felix's everything
-# chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T" # trained on felix's everything, reproduction 
+# chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T" # trained on felix's everything, reproduction
 
 
 async def run_counterfactual_asking(
@@ -234,36 +199,30 @@ async def run_counterfactual_asking(
 
     results: Slist[FirstRoundAsking] = (
         await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
-        .map_async_par(lambda data: ask_first_round(data, caller=caller, object_config=object_level_config, meta_config=meta_level_config), max_par=20)
+        .map_async_par(
+            lambda data: ask_first_round(
+                data, caller=caller, object_config=object_level_config, meta_config=meta_level_config
+            ),
+            max_par=20,
+        )
         .flatten_optional()
         .tqdm(tqdm_bar=tqdm(desc="First round using", total=dataset_data.length))
         # .take(100)
         .to_slist()
     )
     predicted = results.filter(lambda x: x.both_successful)
-    
-    object_correct, object_incorrect = predicted.split_by(
-        lambda x: x.object_level_correct
-    )
+
+    object_correct, object_incorrect = predicted.split_by(lambda x: x.object_level_correct)
     minimum_both = min(object_correct.length, object_incorrect.length)
     print(f"Balancing ground truths to have same number of samples: {minimum_both}")
     balanced_data = object_correct.take(minimum_both) + object_incorrect.take(minimum_both)
-    
-    
-    acc = balanced_data.map(
-        lambda x: x.predicted_correctly_that_can_answer_correctly
-    ).average()
-    acc_correct = object_correct.map(
-        lambda x: x.predicted_correctly_that_can_answer_correctly
-    ).average()
-    acc_incorrect = object_incorrect.map(
-        lambda x: x.predicted_correctly_that_can_answer_correctly
-    ).average()
+
+    acc = balanced_data.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
+    acc_correct = object_correct.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
+    acc_incorrect = object_incorrect.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
     print(f"Accuracy: {acc}, {acc_correct=}, {acc_incorrect=}")
 
-    dump_conversations(
-        path="exp/results.txt", messages=results.map(lambda x: x.biased_new_history)
-    )
+    dump_conversations(path="exp/results.txt", messages=results.map(lambda x: x.biased_new_history))
     # dump_conversations(
     #     path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
     # )

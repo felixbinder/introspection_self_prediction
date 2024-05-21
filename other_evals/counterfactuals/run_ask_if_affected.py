@@ -1,6 +1,5 @@
-import re
 from pathlib import Path
-from typing import Literal, Optional, Sequence
+from typing import Literal, Sequence
 
 import fire
 import pandas as pd
@@ -24,6 +23,7 @@ from other_evals.counterfactuals.datasets.base_example import (
     MultipleChoiceAnswer,
 )
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
+from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -33,17 +33,6 @@ round_1_answer_format = (
     "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices."
 )
 round_2_answer_format = "\nAnswer Y for yes or N for no."
-
-
-def extract_yes_or_no(
-    response: str,
-) -> Literal["Y", "N"] | None:
-    cleaned_response = response.strip().replace("\n", " ").lower()
-    if cleaned_response == "y":
-        return "Y"
-    if cleaned_response == "n":
-        return "N"
-    return None
 
 
 def get_biasing_statement(biased_answer: str) -> Slist[str]:
@@ -155,21 +144,6 @@ class SecondRoundAsking(BaseModel):
         return self.first_round.switched_answer
 
 
-def extract_answer_non_cot(
-    response: str,
-) -> Optional[str]:
-    response = response.strip().replace("The best answer is: (", "")
-
-    pattern = re.compile(r"^\(?([a-zA-Z\d]+)\)?")
-    match = pattern.match(response)
-    if match:
-        candidate_ans = match.group(1)
-        if candidate_ans:
-            if candidate_ans in ["A", "B", "C", "D", "E", "F", "G", "H"]:
-                return candidate_ans
-    return None
-
-
 async def ask_first_round(
     single_data: CounterfactualTestData, caller: ModelCallerV2, config: InferenceConfig
 ) -> FirstRoundAsking | None:
@@ -233,10 +207,15 @@ async def ask_second_round(
 
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
 
+
 # ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n is 1 hop
-# 
+#
 async def run_multiple_models(
-    models: Sequence[str] = ["ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU", "gpt-3.5-turbo-1106"],
+    models: Sequence[str] = [
+        "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",
+        "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU",
+        "gpt-3.5-turbo-1106",
+    ],
     bias_on_wrong_answer_only: bool = False,
     number_samples: int = 10_000,
 ) -> None:
