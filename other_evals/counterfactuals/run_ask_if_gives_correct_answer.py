@@ -56,7 +56,6 @@ class CounterfactualTestData(BaseModel):
 
     @staticmethod
     def from_data_example(data: DataExampleBase) -> "CounterfactualTestData":
-        # We add the biasing statement here
         unbiased_question = [
             ChatMessageV2(role="user", content=data.get_parsed_input() + round_1_answer_format),
             # ChatMessageV2(role="assistant", content="The best answer is: ("),

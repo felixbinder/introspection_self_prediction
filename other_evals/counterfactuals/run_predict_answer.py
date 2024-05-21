@@ -217,17 +217,17 @@ async def ask_second_round(
 # FINETUNED_ON_GPT_35 = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9JghBEzp"
 
 # balanced
-FINETUNED_ON_GPT_35= "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU"
+# FINETUNED_ON_GPT_35= "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU"
 # current_model = "gpt-3.5-turbo-1106" # 15%
 # current_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9EXL6W9A" # 18%
 # meta_model = "gpt-3.5-turbo-1106"
 # meta_model = "claude-3-sonnet-20240229"
 # meta_model = "gpt-3.5-turbo-1106"
-meta_model = FINETUNED_ON_GPT_35
+meta_model = "gpt-3.5-turbo-1106"
 # object_level_model = "claude-3-sonnet-20240229"
 # object_level_model =  "gpt-3.5-turbo-1106"
 # object_level_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9FgW32xp"
-object_level_model = FINETUNED_ON_GPT_35
+object_level_model = "gpt-3.5-turbo-1106"
 
 
 def second_round_to_json(second_round: SecondRoundAsking) -> dict:
