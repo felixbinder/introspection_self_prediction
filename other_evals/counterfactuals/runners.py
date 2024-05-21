@@ -61,10 +61,8 @@ async def run_from_commands(
             result = await runner.run(meta_model=meta_model, object_model=object_model, cache_path=cache_path, limit=limit)
             gathered.append(result)
 
-    # asyncio.run but typed correctly
     # todo: do we really want to run all of these at the same time? lol
     # gathered = await coorountines_to_run.gather()
-    # gathered = await coorountines_to_run.map_async()
     # we get a list of lists, so we flatten it
     flattened: Slist[OtherEvalCSVFormat] = gathered.flatten_list()
     return flattened
@@ -89,8 +87,6 @@ async def main():
     models = Slist(["gpt-3.5-turbo", "claude-3-sonnet-20240229"])
     setup_environment()
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
-    # meta_model = "gpt-3.5-turbo"
-    # object_model = "gpt-3.5-turbo"
     study_folder = EXP_DIR / "other_evals"
     limit = 200
     evals_to_run = eval_dict_to_runner(eval_dict)
