@@ -222,7 +222,7 @@ async def run_multiple_models(
     # Dumps results to xxx
     results: Slist[tuple[str, Slist[SecondRoundAsking]]] = Slist()
     for model in models:
-        results.append((model, await run_counterfactual_asking(model, bias_on_wrong_answer_only, number_samples)))
+        results.append((model, await run_single_ask_if_affected(model, bias_on_wrong_answer_only, number_samples)))
 
     # Make a csv where the rows are the models, and columns are the different accuracies
     rows: list[dict[str, str | float]] = []
@@ -266,7 +266,7 @@ async def run_multiple_models(
     print(f"Results saved to {csv_path}")
 
 
-async def run_counterfactual_asking(
+async def run_single_ask_if_affected(
     model: str,
     bias_on_wrong_answer_only: bool = False,
     number_samples: int = 500,

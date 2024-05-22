@@ -10,6 +10,7 @@ from slist import Slist
 from evals.locations import EXP_DIR
 from evals.utils import load_secrets, setup_environment
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
+from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci_flipped
 from other_evals.counterfactuals.run_ask_are_you_sure import run_single_are_you_sure
 
 
@@ -21,10 +22,23 @@ class OtherEvalRunner(ABC):
     ) -> Sequence[OtherEvalCSVFormat]: ...
 
 
-# class AskIfAffectedRunner:
-#     @staticmethod
-#     async def run(meta_model: str, object_model: str, limit: int = 100) -> str:
-#         ...
+class AskIfAffectedRunner:
+    @staticmethod
+    async def run(
+        meta_model: str, object_model: str, cache_path: str | Path, limit: int = 100
+    ) -> Sequence[OtherEvalCSVFormat]:
+        """Ask the model if it was affected by the bias. Y/N answers"""
+        
+        result = await run_single_are_you_sure(
+            object_model=object_model,
+            meta_model=meta_model,
+            cache_path=cache_path,
+            number_samples=limit,
+        )
+        formatted = result.map(
+            lambda x: x.to_other_eval_format(eval_name="are_you_sure")
+        )
+        return formatted
 
 
 class AreYouSureRunner(OtherEvalRunner):
@@ -32,9 +46,7 @@ class AreYouSureRunner(OtherEvalRunner):
     async def run(
         meta_model: str, object_model: str, cache_path: str | Path, limit: int = 100
     ) -> Sequence[OtherEvalCSVFormat]:
-        """Ask the model if it would change its prediction if we ask 'ask you sure'"""
-        # the model doesn't switch all the time, we need enough samples
-        # TODO: less hacky way to do this
+        """Ask the model if it would change its prediction if we ask 'ask you sure'. Y/N answers"""
         result = await run_single_are_you_sure(
             object_model=object_model,
             meta_model=meta_model,
@@ -84,15 +96,22 @@ async def main():
     eval_dict = {
         "biased_evals": "are_you_sure",
     }
-    models = Slist(["gpt-3.5-turbo", "claude-3-sonnet-20240229"])
+    models = Slist(["gpt-3.5-turbo", "claude-3-sonnet-20240229", ])
     setup_environment()
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 200
+    limit = 500
     evals_to_run = eval_dict_to_runner(eval_dict)
     results = await run_from_commands(evals_to_run=evals_to_run, object_and_meta=object_and_meta_models, limit=limit, study_folder=study_folder)
     dicts = [result.model_dump() for result in results]
     df = pd.DataFrame(dicts)
+    plot_heatmap_with_ci_flipped(
+        data=df,
+        value_col="meta_predicted_correctly",
+        object_col="object_model",
+        meta_col="meta_model",
+        title="Percentage of Meta Predicted Correctly with 95% CI",
+    )
     df.to_csv(study_folder / "other_evals_results.csv", index=False)
 
 if __name__ == "__main__":
