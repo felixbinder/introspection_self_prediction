@@ -60,7 +60,7 @@ async def run_from_commands(
     object_and_meta: Sequence[tuple[str, str]],
     limit: int,
     study_folder: str | Path,
-) -> Sequence[OtherEvalCSVFormat]:
+) -> Slist[OtherEvalCSVFormat]:
     """Run the appropriate evaluation based on the dictionary"""
     # coorountines_to_run: Slist[Awaitable[Sequence[OtherEvalCSVFormat]]] = Slist()
     gathered = Slist()
@@ -109,19 +109,20 @@ async def main():
     study_folder = EXP_DIR / "other_evals"
     limit = 500
     evals_to_run = eval_dict_to_runner(eval_dict)
-    results = await run_from_commands(
+    all_results = await run_from_commands(
         evals_to_run=evals_to_run, object_and_meta=object_and_meta_models, limit=limit, study_folder=study_folder
     )
-    dicts = [result.model_dump() for result in results]
-    df = pd.DataFrame(dicts)
-    plot_heatmap_with_ci(
-        data=df,
-        value_col="meta_predicted_correctly",
-        object_col="object_model",
-        meta_col="meta_model",
-        title="Percentage of Meta Predicted Correctly with 95% CI",
-    )
-    df.to_csv(study_folder / "other_evals_results.csv", index=False)
+    grouped_by_eval = all_results.group_by(lambda x: x.eval_name)
+    for eval_name, results_list in grouped_by_eval:
+        df = pd.DataFrame(results_list.map(lambda x: x.model_dump()))
+        plot_heatmap_with_ci(
+            data=df,
+            value_col="meta_predicted_correctly",
+            object_col="object_model",
+            meta_col="meta_model",
+            title=f"{eval_name} Percentage of Meta Response Predicted Correctly with 95% CI",
+        )
+        df.to_csv(study_folder / f"{eval_name}_results.csv", index=False)
 
 
 if __name__ == "__main__":
