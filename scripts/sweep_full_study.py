@@ -25,6 +25,7 @@ python -m scripts.sweep_full_study
 --val_only_model_configs="gpt-4"
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
+--other_evals='{"counterfactuals": ["identity", "is_even"], "prompted_counterfactuals": ["identity", "is_even"]}'
 --prompt_configs='minimal'
 --n_object_train=1000
 --n_object_val=250
@@ -42,9 +43,12 @@ from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict
 
+from slist import Slist
+
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
+from other_evals.counterfactuals.runners import run_other_sweeps_from_sweep
 
 
 def json_string(arg_value):
@@ -109,6 +113,7 @@ class StudyRunner:
         )
         parser.add_argument("--tasks", type=str, help="JSON string of tasks configuration")
         parser.add_argument("--val_tasks", type=str, help="JSON string of validation tasks configuration", default="{}")
+        parser.add_argument("--other_evals", type=str, help="JSON string of other evals to run", default="{}")
         parser.add_argument("--prompt_configs", type=str, help="Comma-separated list of prompt configurations.")
         parser.add_argument(
             "--inference_overrides", type=str, help="Comma-separated list of Hydra configuration overrides.", default=""
@@ -465,6 +470,24 @@ class StudyRunner:
 
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
+
+        ### Run the other evals that aren't in the repo's format
+        ### Results are saved 
+        object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
+        meta_level_models: list[str] = self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
+        object_and_meta = Slist(object_level_models).product(meta_level_models)
+        other_evals_dict = {
+        "biased_evals": ["asked_if_are_you_sure_changed", "ask_if_affected"],
+        }
+        other_evals_limit = self.args.n_meta_val
+        other_evals_path = Path(EXP_DIR / self.args.study_name) / 'other_evals'
+        run_other_sweeps_from_sweep(
+            eval_dict=other_evals_dict,
+            object_and_meta=object_and_meta,
+            limit=other_evals_limit,
+            study_folder=other_evals_path,
+        )
+        
 
         pool.close()  # close the pool of worker processes
         pool.join()  # wait for all processes to finish
