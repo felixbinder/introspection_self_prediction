@@ -94,6 +94,35 @@ def eval_dict_to_runner(eval_dict: dict[str, list[str]]) -> Sequence[Type[OtherE
     return runners
 
 
+def run_other_sweeps_from_sweep(
+    eval_dict: dict[str, list[str]], object_and_meta: Sequence[tuple[str, str]], limit: int, study_folder: str | Path
+) -> None:
+    """
+    eval_dict: {
+        "biased_evals": ["asked_if_are_you_sure_changed", "ask_if_affected"],
+    }
+    """
+    # Entry point for sweeping
+    evals_to_run = eval_dict_to_runner(eval_dict)
+    # the sweep ain't a async function so we use asyncio.run
+    all_results = asyncio.run(
+        run_from_commands(
+            evals_to_run=evals_to_run, object_and_meta=object_and_meta, limit=limit, study_folder=study_folder
+        )
+    )
+    grouped_by_eval = all_results.group_by(lambda x: x.eval_name)
+    for eval_name, results_list in grouped_by_eval:
+        df = pd.DataFrame(results_list.map(lambda x: x.model_dump()))
+        plot_heatmap_with_ci(
+            data=df,
+            value_col="meta_predicted_correctly",
+            object_col="object_model",
+            meta_col="meta_model",
+            title=f"{eval_name} Percentage of Meta Response Predicted Correctly with 95% CI",
+        )
+        df.to_csv(Path(study_folder) / f"{eval_name}_results.csv", index=False)
+
+
 async def main():
     eval_dict = {
         "biased_evals": ["asked_if_are_you_sure_changed", "ask_if_affected"],
