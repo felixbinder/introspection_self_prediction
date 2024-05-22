@@ -9,7 +9,7 @@ from slist import Slist
 from evals.locations import EXP_DIR
 from evals.utils import setup_environment
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
-from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci_flipped
+from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci
 from other_evals.counterfactuals.run_ask_are_you_sure import run_single_are_you_sure
 from other_evals.counterfactuals.run_ask_if_affected import run_single_ask_if_affected
 
@@ -51,7 +51,7 @@ class AreYouSureRunner(OtherEvalRunner):
             cache_path=cache_path,
             number_samples=limit,
         )
-        formatted = result.map(lambda x: x.to_other_eval_format(eval_name="are_you_sure"))
+        formatted = result.map(lambda x: x.to_other_eval_format(eval_name="asked_if_are_you_sure_changed"))
         return formatted
 
 
@@ -85,7 +85,7 @@ def eval_dict_to_runner(eval_dict: dict[str, list[str]]) -> Sequence[Type[OtherE
     for key, value_list in eval_dict.items():
         for value in value_list:
             match key, value:
-                case "biased_evals", "are_you_sure":
+                case "biased_evals", "asked_if_are_you_sure_changed":
                     runners.append(AreYouSureRunner)
                 case "biased_evals", "ask_if_affected":
                     runners.append(AskIfAffectedRunner)
@@ -96,7 +96,7 @@ def eval_dict_to_runner(eval_dict: dict[str, list[str]]) -> Sequence[Type[OtherE
 
 async def main():
     eval_dict = {
-        "biased_evals": ["are_you_sure", "ask_if_affected"],
+        "biased_evals": ["asked_if_are_you_sure_changed", "ask_if_affected"],
     }
     models = Slist(
         [
@@ -114,7 +114,7 @@ async def main():
     )
     dicts = [result.model_dump() for result in results]
     df = pd.DataFrame(dicts)
-    plot_heatmap_with_ci_flipped(
+    plot_heatmap_with_ci(
         data=df,
         value_col="meta_predicted_correctly",
         object_col="object_model",

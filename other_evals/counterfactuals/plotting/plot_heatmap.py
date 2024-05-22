@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # plot_heatmap_with_ci_flipped(data, 'meta_predicted_correctly', 'object_model', 'meta_model', 'Percentage of Meta Predicted Correctly with 95% CI')
-def plot_heatmap_with_ci_flipped(
+def plot_heatmap_with_ci(
     data,
     value_col: str = "meta_predicted_correctly",
     object_col: str = "object_model",
