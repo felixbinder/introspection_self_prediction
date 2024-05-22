@@ -15,6 +15,7 @@ from other_evals.counterfactuals.api_utils import (
     InferenceConfig,
     ModelCallerV2,
     UniversalCallerV2,
+    display_conversation,
     dump_conversations,
     raise_should_not_happen,
 )
@@ -24,6 +25,7 @@ from other_evals.counterfactuals.datasets.base_example import (
 )
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
+from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -122,11 +124,12 @@ class FirstRoundAsking(BaseModel):
         return self.parsed_biased_answer != self.parsed_unbiased_answer
 
 
-class SecondRoundAsking(BaseModel):
+class AskIfAffectedSecondRound(BaseModel):
     first_round: FirstRoundAsking
     second_round_message: list[ChatMessageV2]
     second_round_raw: str
     final_history: list[ChatMessageV2]
+    meta_config: InferenceConfig
     second_round_parsed: Literal["Y", "N"] | None
 
     def predicted_switched_answer_correctly(self) -> bool:
@@ -142,6 +145,31 @@ class SecondRoundAsking(BaseModel):
     @property
     def first_round_switched_answer(self) -> bool:
         return self.first_round.switched_answer
+
+    def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
+        changed_answer: bool = self.first_round.switched_answer
+        object_history: str = (
+            "BIASED HISTORY:\n"
+            + display_conversation(self.first_round.biased_new_history)
+            + "\nUNBIASED HISTORY:\n"
+            + display_conversation(self.first_round.unbiased_new_history)
+        )
+        object_model: str = self.first_round.config.model
+        object_parsed_result: str = "changed answer" if changed_answer else "did not change answer"
+        meta_history: str = display_conversation(self.final_history)
+        meta_model: str = self.meta_config.model
+        meta_parsed_result: str = "changed answer" if self.second_round_parsed == "Y" else "did not change answer"
+        meta_predicted_correctly: bool = self.predicted_switched_answer_correctly()
+        return OtherEvalCSVFormat(
+            object_history=object_history,
+            object_model=object_model,
+            object_parsed_result=object_parsed_result,
+            meta_history=meta_history,
+            meta_model=meta_model,
+            meta_parsed_result=meta_parsed_result,
+            meta_predicted_correctly=meta_predicted_correctly,
+            eval_name=eval_name,
+        )
 
 
 async def ask_first_round(
@@ -178,8 +206,8 @@ async def ask_first_round(
 
 
 async def ask_second_round(
-    single_data: FirstRoundAsking, caller: ModelCallerV2, config: InferenceConfig
-) -> SecondRoundAsking:
+    single_data: FirstRoundAsking, caller: ModelCallerV2, meta_config: InferenceConfig
+) -> AskIfAffectedSecondRound:
     history = single_data.biased_new_history
     counterfactual_question = (
         ask_if_answer_changes(single_data.test_data.biased_option)
@@ -192,16 +220,17 @@ async def ask_second_round(
             content=counterfactual_question + round_2_answer_format,
         ),
     ]
-    response = await caller.call(new_question, config=config)
+    response = await caller.call(new_question, config=meta_config)
     parsed_answer = extract_yes_or_no(response.single_response)
     final_history = new_question + [ChatMessageV2(role="assistant", content=response.single_response)]
 
-    return SecondRoundAsking(
+    return AskIfAffectedSecondRound(
         first_round=single_data,
         second_round_message=new_question,
         second_round_parsed=parsed_answer,  # type: ignore
         second_round_raw=response.single_response,
         final_history=final_history,
+        meta_config=meta_config,
     )
 
 
@@ -220,14 +249,25 @@ async def run_multiple_models(
     number_samples: int = 10_000,
 ) -> None:
     # Dumps results to xxx
-    results: Slist[tuple[str, Slist[SecondRoundAsking]]] = Slist()
-    for model in models:
-        results.append((model, await run_single_ask_if_affected(model, bias_on_wrong_answer_only, number_samples)))
+    results: Slist[tuple[str, Slist[AskIfAffectedSecondRound]]] = Slist()
+    for object_model in models:
+        meta_model = object_model
+        results.append(
+            (
+                object_model,
+                await run_single_ask_if_affected(
+                    object_model=object_model,
+                    meta_model=meta_model,
+                    bias_on_wrong_answer_only=bias_on_wrong_answer_only,
+                    number_samples=number_samples,
+                ),
+            )
+        )
 
     # Make a csv where the rows are the models, and columns are the different accuracies
     rows: list[dict[str, str | float]] = []
 
-    for model, data in results:
+    for object_model, data in results:
         affected_ground_truth, unaffected_ground_truth = data.split_by(lambda x: x.first_round.switched_answer)
         affected_ground_truth_accuracy = average_with_95_ci(
             affected_ground_truth.map(lambda x: x.predicted_switched_answer_correctly())
@@ -243,10 +283,10 @@ async def run_multiple_models(
 
         micro_av_switch_accuracy = average_with_95_ci(data.map(lambda x: x.predicted_switched_answer_correctly()))
 
-        print(f"Micro-average switch accuracy for {model}: {micro_av_switch_accuracy}")
+        print(f"Micro-average switch accuracy for {object_model}: {micro_av_switch_accuracy}")
         rows.append(
             {
-                "model": model,
+                "model": object_model,
                 "micro_average_switch_accuracy": micro_av_switch_accuracy.average,
                 "micro_average_switch_ci": micro_av_switch_accuracy.ci_string(),
                 "micro_average_switch_count": data.length,
@@ -267,20 +307,22 @@ async def run_multiple_models(
 
 
 async def run_single_ask_if_affected(
-    model: str,
+    object_model: str,
+    meta_model: str,
     bias_on_wrong_answer_only: bool = False,
+    cache_path: str | Path = "cache.jsonl",
     number_samples: int = 500,
-) -> Slist[SecondRoundAsking]:
-    config = InferenceConfig(
-        model=model,
+) -> Slist[AskIfAffectedSecondRound]:
+    object_config = InferenceConfig(
+        model=object_model,
         temperature=0,
         max_tokens=1,
         top_p=0.0,
     )
 
-    model_specific_folder = THIS_EXP_FOLDER / Path(model)
-    print(f"Running counterfactuals with model {model}")
-    caller = UniversalCallerV2().with_file_cache(model_specific_folder / Path("cache.jsonl"))
+    model_specific_folder = THIS_EXP_FOLDER / Path(object_model)
+    print(f"Running counterfactuals with model {object_model}")
+    caller = UniversalCallerV2().with_file_cache(cache_path=cache_path)
     # Open one of the bias files
     potential_data = (
         mmlu_test(questions_per_task=None)
@@ -294,7 +336,7 @@ async def run_single_ask_if_affected(
 
     results: Slist[FirstRoundAsking] = (
         await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
-        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=config), max_par=20)
+        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_config), max_par=20)
         .flatten_optional()
         .tqdm(tqdm_bar=tqdm(desc="First round", total=dataset_data.length))
         # .take(100)
@@ -309,10 +351,17 @@ async def run_single_ask_if_affected(
     average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
     print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
+    meta_config = InferenceConfig(
+        model=meta_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+
     # run the second round where we ask if the model would
-    second_round_results: Slist[SecondRoundAsking] = (
+    second_round_results: Slist[AskIfAffectedSecondRound] = (
         await Observable.from_iterable(parsed_answers)
-        .map_async_par(lambda data: ask_second_round(data, caller=caller, config=config), max_par=20)
+        .map_async_par(lambda data: ask_second_round(data, caller=caller, meta_config=meta_config), max_par=20)
         .tqdm(tqdm_bar=tqdm(desc="Second round", total=parsed_answers.length))
         .to_slist()
     )
@@ -335,7 +384,7 @@ async def run_single_ask_if_affected(
     smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
     print(f"Balancing ground truths to have same number of samples: {smallest_length}")
 
-    balanced_ground_truth_data: Slist[SecondRoundAsking] = affected_ground_truth.take(
+    balanced_ground_truth_data: Slist[AskIfAffectedSecondRound] = affected_ground_truth.take(
         smallest_length
     ) + unaffected_ground_truth.take(smallest_length)
 
