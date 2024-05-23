@@ -118,7 +118,7 @@ class StudyRunner:
         )
         parser.add_argument("--tasks", type=str, help="JSON string of tasks configuration")
         parser.add_argument("--val_tasks", type=str, help="JSON string of validation tasks configuration", default="{}")
-        parser.add_argument("--other_evals", type=str, help="List of other evals to run. e.g. ['AreYouAffectedByBias']", default="[]")
+        parser.add_argument("--other_evals", type=str, help="List of other evals to run. e.g. ['AreYouAffectedByBias']. See OTHER_EVAL_NAMES", default="[]")
         parser.add_argument("--prompt_configs", type=str, help="Comma-separated list of prompt configurations.")
         parser.add_argument(
             "--inference_overrides", type=str, help="Comma-separated list of Hydra configuration overrides.", default=""

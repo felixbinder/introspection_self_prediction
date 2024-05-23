@@ -97,15 +97,15 @@ class WillYouBeCorrect(OtherEvalRunner):
         return formatted
 
 
-EVAL_NAME_TO_RUNNER: dict[str, Type[OtherEvalRunner]] = {
+OTHER_EVAL_NAMES: dict[str, Type[OtherEvalRunner]] = {
     "ChangeAnswerAreYouSure": ChangeAnswerAreYouSure,
     "AreYouAffectedByBias": AreYouAffectedByBias,
     "WhatAnswerWithoutBias": WhatAnswerWithoutBias,
     "WillYouBeCorrect": WillYouBeCorrect,
 }
-all_evals: list[str] = list(EVAL_NAME_TO_RUNNER.keys())
-runner_to_eval_name = {v: k for k, v in EVAL_NAME_TO_RUNNER.items()}
-assert len(EVAL_NAME_TO_RUNNER) == len(
+all_evals: list[str] = list(OTHER_EVAL_NAMES.keys())
+runner_to_eval_name = {v: k for k, v in OTHER_EVAL_NAMES.items()}
+assert len(OTHER_EVAL_NAMES) == len(
     runner_to_eval_name
 ), "The mapping is not bijective, maybe you have duplicate keys / values?"
 
@@ -142,12 +142,12 @@ async def run_from_commands(
 def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunner]]:
     runners = []
     for eval_str in eval_list:
-        maybe_eval_runner = EVAL_NAME_TO_RUNNER.get(eval_str, None)
+        maybe_eval_runner = OTHER_EVAL_NAMES.get(eval_str, None)
         if maybe_eval_runner is not None:
             runners.append(maybe_eval_runner)
         else:
             raise ValueError(
-                f"Could not find runner for {eval_str}, is it present in EVAL_NAME_TO_RUNNER. Available keys: {EVAL_NAME_TO_RUNNER.keys()}"
+                f"Could not find runner for {eval_str}, is it present in EVAL_NAME_TO_RUNNER. Available keys: {OTHER_EVAL_NAMES.keys()}"
             )
 
     return runners
@@ -162,7 +162,7 @@ def run_sweep_over_other_evals(
 ) -> None:
     """
     object_and_meta: a list of tuples of object and meta models
-    eval_list: a list of evaluation names. See the keys in the EVAL_NAME_TO_RUNNER. 
+    eval_list: a list of evaluation names. See the keys in OTHER_EVAL_NAMES. 
     e.g. ['AreYouAffectedByBias', 'WhatAnswerWithoutBias', 'WillYouBeCorrect', 'ChangeAnswerAreYouSure']
     limit: the number of samples to run
     study_folder: the folder where the results will be saved
