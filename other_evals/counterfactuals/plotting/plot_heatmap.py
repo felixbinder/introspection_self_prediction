@@ -1,6 +1,22 @@
+from pathlib import Path
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import pandas as pd
+
+def load_csv_and_plot_heatmap(
+    csv_path: str | Path
+) -> None:
+    """
+    Load a CSV file and plot a heatmap with the mean values and 95% confidence intervals.
+
+    Parameters:
+    - csv_path: str, the path to the CSV file.
+    """
+    data = pd.read_csv(csv_path)
+    assert len(data) > 0, "The CSV file is empty."
+    eval_name: str = Path(csv_path).stem
+    plot_heatmap_with_ci(data, title=f"{eval_name} Percentage of Meta Predicted Correctly with 95% CI")
 
 
 def plot_heatmap_with_ci(
