@@ -15,6 +15,7 @@ from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_
 from other_evals.counterfactuals.run_ask_are_you_sure import run_single_are_you_sure
 from other_evals.counterfactuals.run_ask_if_affected import run_single_ask_if_affected
 from other_evals.counterfactuals.run_ask_if_gives_correct_answer import run_single_ask_if_correct_answer
+from other_evals.counterfactuals.run_ask_what_answer_without_bias import run_single_what_answer_without_bias
 
 
 class OtherEvalRunner(ABC):
@@ -43,7 +44,7 @@ class AskIfAffectedRunner(OtherEvalRunner):
             api=api,
             number_samples=limit,
         )
-        formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
+        formatted: Slist[OtherEvalCSVFormat] = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
     
 
@@ -54,7 +55,7 @@ class AskWhatAnswerWithoutBiasRunner(OtherEvalRunner):
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model what answer it would have given w/o the bias. A,B,C,D answers"""
 
-        result = await run_single_ask_if_affected(
+        result = await run_single_what_answer_without_bias(
             object_model=object_model,
             meta_model=meta_model,
             api=api,
@@ -98,8 +99,9 @@ class WillYouBeCorrectMMLU(OtherEvalRunner):
 
 
 EVAL_NAME_TO_RUNNER: dict[str, Type[OtherEvalRunner]] = {
-    "ask_if_are_you_sure_changed": AreYouSureRunner,
-    "ask_if_affected": AskIfAffectedRunner,
+    "are_you_sure_changed_answer": AreYouSureRunner,
+    "are_you_affected_by_bias": AskIfAffectedRunner,
+    "what_answer_without_bias": AskWhatAnswerWithoutBiasRunner,
     "will_you_be_correct_mmlu": WillYouBeCorrectMMLU,
 }
 all_evals: list[str] = list(EVAL_NAME_TO_RUNNER.keys())

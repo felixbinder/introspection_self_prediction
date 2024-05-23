@@ -21,7 +21,6 @@ from evals.utils import setup_environment
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
-from other_evals.counterfactuals.run_predict_answer import run_counterfactual_asking
 
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -185,7 +184,7 @@ chosen_model = "claude-3-opus-20240229"
 async def run_single_ask_if_correct_answer(
     api: CachedInferenceAPI,
     meta_model: str = chosen_model,
-    number_samples: int = 2_000,
+    number_samples: int = 100,
     object_model: str = chosen_model,
 ) -> Slist[AskIfCorrectResult]:
     print(f"Running mmlu accuracy calibration with {meta_model=} on {object_model=}")
@@ -284,6 +283,6 @@ if __name__ == "__main__":
 
     # run this line if you don't want to use fire
     api = CachedInferenceAPI(api=InferenceAPI(), cache_path=Path("exp/cache"))
-    asyncio.run(run_counterfactual_asking(bias_on_wrong_answer_only=False, number_samples=300))
+    asyncio.run(run_single_ask_if_correct_answer(api=api))
 
     # fire.Fire(run_single_ask_if_correct_answer)
