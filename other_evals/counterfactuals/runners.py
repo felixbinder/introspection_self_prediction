@@ -147,7 +147,7 @@ def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunn
             runners.append(maybe_eval_runner)
         else:
             raise ValueError(
-                f"Could not find runner for {eval_str}, is it present in EVAL_NAME_TO_RUNNER. Available keys: {OTHER_EVAL_NAMES.keys()}"
+                f"Could not find runner for {eval_str}, is it present in OTHER_EVAL_NAMES? Available keys: {OTHER_EVAL_NAMES.keys()}"
             )
 
     return runners
