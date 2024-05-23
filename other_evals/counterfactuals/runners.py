@@ -193,7 +193,9 @@ def run_sweep_over_other_evals(
                 meta_col="meta_model",
                 title=f"{eval_name} Percentage of Meta Response Predicted Correctly with 95% CI",
             )
-        df.to_csv(Path(study_folder) / f"{eval_name}_results.csv", index=False)
+        result_path = Path(study_folder) / f"{eval_name}_results.csv"
+        print(f"Saving {eval_name} to {result_path}")
+        df.to_csv(result_path, index=False)
 
 
 def test_main():

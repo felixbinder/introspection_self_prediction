@@ -99,6 +99,11 @@ class StudyRunner:
             else:
                 setattr(self.args, arg, {})
 
+        ### Other evals is just a list of strings
+        other_evals =  eval(self.args.other_evals)
+        assert isinstance(other_evals, list), "other_evals must be a list of strings"
+        self.args.other_evals = other_evals
+
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")
         parser.add_argument("--study_name", type=str, help="The name of the study. Defines the output directory.")
@@ -113,7 +118,7 @@ class StudyRunner:
         )
         parser.add_argument("--tasks", type=str, help="JSON string of tasks configuration")
         parser.add_argument("--val_tasks", type=str, help="JSON string of validation tasks configuration", default="{}")
-        parser.add_argument("--other_evals", type=str, help="JSON string of other evals to run", default="{}")
+        parser.add_argument("--other_evals", type=str, help="List of other evals to run. e.g. ['AreYouAffectedByBias']", default="[]")
         parser.add_argument("--prompt_configs", type=str, help="Comma-separated list of prompt configurations.")
         parser.add_argument(
             "--inference_overrides", type=str, help="Comma-separated list of Hydra configuration overrides.", default=""
@@ -144,6 +149,7 @@ class StudyRunner:
             default="",
         )
         self.args = parser.parse_args()
+        
 
     def run_command(self, command):
         """Execute the given command in the shell, stream the output, and return the last line."""
@@ -248,7 +254,7 @@ class StudyRunner:
     def run_study(self):
         pool = Pool()  # create a pool of worker processes
 
-        #### run object level completions on train ####
+        ### run object level completions on train ####
         object_train_commands = []
         for model in self.args.model_configs:
             for task in self.args.tasks.keys():
@@ -471,10 +477,9 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
-        ### Run the other evals that aren't in the repo's format
-        other_evals_list: list[str] = self.args.other_evals
-        if other_evals_list:
-            print(f"Running other evals... {other_evals_list}")
+        
+        if self.args.other_evals:
+            print(f"Running other evals... {self.args.other_evals}")
             object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
             meta_level_models: list[str] = self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
             object_and_meta = Slist(object_level_models).product(meta_level_models)
@@ -482,8 +487,9 @@ class StudyRunner:
             other_evals_limit: int= self.args.n_meta_val
             other_evals_path = Path(EXP_DIR / self.args.study_name) / 'other_evals'
             # TODO: Possibly run all sweeps in parallel, but need to silence tqdm output
+            # Creates csv files for each eval in the other_evals_list, which you can view the heatmap of with the function plot_heatmap_with_ci
             run_sweep_over_other_evals(
-                eval_list=other_evals_list,
+                eval_list=self.args.other_evals,
                 object_and_meta=object_and_meta,
                 limit=other_evals_limit,
                 study_folder=other_evals_path,

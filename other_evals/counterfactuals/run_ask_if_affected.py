@@ -323,7 +323,7 @@ async def run_single_ask_if_affected(
         top_p=0.0,
     )
 
-    print(f"Running ask if affecgted by bias with model {object_model}")
+    print(f"Running ask if affected by bias with model {object_model}")
     # Open one of the bias files
     potential_data = (
         mmlu_test(questions_per_task=None)
