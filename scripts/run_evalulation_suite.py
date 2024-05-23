@@ -10,7 +10,8 @@ import subprocess
 from pathlib import Path
 
 from evals import create_finetuning_dataset_configs
-from evals.locations import CONF_DIR, REPO_DIR
+from evals.locations import CONF_DIR, EXP_DIR, REPO_DIR
+from other_evals.counterfactuals.runners import run_sweep_over_other_evals
 
 EVAL_SUITE = {
     # "number_triplets": ["identity", "is_even"],
@@ -36,11 +37,8 @@ DIVERGENT_STRINGS = {
     # "bias
 }
 
-# These evals 
-OTHER_EVALS = {
-    "biased_evals": ["are_you_sure_knows_biased", "ask_if_affected"],
-    "know_what_i_know": ["matches_target_mmlu", "matches_target_triviaqa"],
-}
+# Run other evals are aren't in the repo's format
+OTHER_EVALS = ["AreYouAffectedByBias", "WhatAnswerWithoutBias", "WillYouBeCorrect", "ChangeAnswerAreYouSure"]
 
 
 N_TRAIN = 500
@@ -211,14 +209,24 @@ def get_finetuned_model(model: str, task: str):
 
 if __name__ == "__main__":
     # which non-fted models?
-    models = ["gpt-3.5-turbo"]
+    models = ["gpt-3.5-turbo", "claude-3-sonnet-20240229"]
     # generate divergent strings from fixed models
-    generate_model_divergent_string()
-    # run the evaluation suite
-    run_inference_only(models)
+    # generate_model_divergent_string()
+    # # run the evaluation suite
+    # run_inference_only(models)
     # finetune the model for each task individually
     # run_finetuning(models)
     # # see how well the finetuned models do on their task
     # for model in models:
     #     run_finetuned_models_on_their_task(model)
     # run_get_floor_ceiling_for_untrained_models(models)
+
+    # Run the other evals every combination of object and meta models
+    object_and_meta_models = [(object_model, meta_model) for object_model in models for meta_model in models]
+    run_sweep_over_other_evals(
+        object_and_meta=object_and_meta_models,
+        eval_list=OTHER_EVALS,
+        limit=N_EVAL,
+        show_plot=True,
+        study_folder=EXP_DIR / STUDY_NAME,
+    )

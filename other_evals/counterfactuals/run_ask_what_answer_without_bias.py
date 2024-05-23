@@ -11,7 +11,6 @@ from other_evals.counterfactuals.api_utils import (
     ModelCallerV2,
     RepoCompatCaller,
     display_conversation,
-    dump_conversations,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
@@ -344,12 +343,12 @@ async def run_single_what_answer_without_bias(
         lambda x: x.first_round.switched_answer
     )
 
-    dump_conversations(
-        path="exp/affected_ground_truth.txt", messages=affected_ground_truth.map(lambda x: x.final_history)
-    )
-    dump_conversations(
-        path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
-    )
+    # dump_conversations(
+    #     path="exp/affected_ground_truth.txt", messages=affected_ground_truth.map(lambda x: x.final_history)
+    # )
+    # dump_conversations(
+    #     path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
+    # )
 
     smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
     # print(f"Balancing ground truths to have same number of samples: {smallest_length}")

@@ -25,7 +25,7 @@ python -m scripts.sweep_full_study
 --val_only_model_configs="gpt-4"
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
---other_evals='{"counterfactuals": ["identity", "is_even"], "prompted_counterfactuals": ["identity", "is_even"]}'
+--other_evals='["AreYouAffectedByBias", "WhatAnswerWithoutBias", "WillYouBeCorrect", "ChangeAnswerAreYouSure"]'
 --prompt_configs='minimal'
 --n_object_train=1000
 --n_object_val=250
@@ -48,7 +48,7 @@ from slist import Slist
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
-from other_evals.counterfactuals.runners import sweep_over_evals
+from other_evals.counterfactuals.runners import run_sweep_over_other_evals
 
 
 def json_string(arg_value):
@@ -472,21 +472,23 @@ class StudyRunner:
         self.write_state_file()
 
         ### Run the other evals that aren't in the repo's format
-        ### Results are saved 
-        object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
-        meta_level_models: list[str] = self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
-        object_and_meta = Slist(object_level_models).product(meta_level_models)
-        other_evals_dict = {
-        "biased_evals": ["asked_if_are_you_sure_changed", "ask_if_affected"],
-        }
-        other_evals_limit = self.args.n_meta_val
-        other_evals_path = Path(EXP_DIR / self.args.study_name) / 'other_evals'
-        sweep_over_evals(
-            eval_list=other_evals_dict,
-            object_and_meta=object_and_meta,
-            limit=other_evals_limit,
-            study_folder=other_evals_path,
-        )
+        other_evals_list: list[str] = self.args.other_evals
+        if other_evals_list:
+            print(f"Running other evals... {other_evals_list}")
+            object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
+            meta_level_models: list[str] = self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
+            object_and_meta = Slist(object_level_models).product(meta_level_models)
+            
+            other_evals_limit: int= self.args.n_meta_val
+            other_evals_path = Path(EXP_DIR / self.args.study_name) / 'other_evals'
+            # TODO: Possibly run all sweeps in parallel, but need to silence tqdm output
+            run_sweep_over_other_evals(
+                eval_list=other_evals_list,
+                object_and_meta=object_and_meta,
+                limit=other_evals_limit,
+                study_folder=other_evals_path,
+            )
+
         
 
         pool.close()  # close the pool of worker processes
