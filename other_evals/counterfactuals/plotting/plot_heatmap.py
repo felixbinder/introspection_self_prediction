@@ -29,6 +29,7 @@ def plot_heatmap_with_ci(
     # Prepare data for heatmap with 95% CI annotations
     heatmap_data = grouped_data["mean"].unstack().T * 100
     ci_data = grouped_data["95%_ci"].unstack().T * 100
+    number_samples = grouped_data["count"].unstack().T
 
     # Create a seaborn heatmap with annotations for 95% CI
     plt.figure(figsize=(12, 8))
@@ -41,10 +42,11 @@ def plot_heatmap_with_ci(
             ci_value = ci_data.iloc[i, j]
             lower_bound = mean_value - ci_value
             upper_bound = mean_value + ci_value
+            n = number_samples.iloc[i, j]
             ax.text(
                 j + 0.5,
                 i + 0.75,
-                f"({lower_bound:.1f} - {upper_bound:.1f})",
+                f"({lower_bound:.1f} - {upper_bound:.1f}), n={n}",
                 color="white",
                 ha="center",
                 va="center",

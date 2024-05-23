@@ -12,8 +12,12 @@ from pydantic import BaseModel
 from slist import Slist
 from tenacity import retry as async_retry
 from tenacity import retry_if_exception_type, wait_fixed
+from evals.apis.inference.api import InferenceAPI
 
 from evals.data_models.hashable import deterministic_hash
+from evals.data_models.inference import LLMResponse
+from evals.data_models.messages import ChatMessage, MessageRole, Prompt
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +137,38 @@ class ModelCallerV2(ABC):
             cache_path = Path(cache_path)
 
         return CachedCallerV2(wrapped_caller=self, cache_path=cache_path)
+
+
+class RepoCompatCaller(ModelCallerV2):
+    def __init__(self, api: InferenceAPI | CachedInferenceAPI):
+        """
+        Wrapper around the repo's existing inference api so that we get compat with gemini, hugging face etc
+        Technically we can just use the api directly in other eval scripts
+        but james has not refactored all these scripts to do that
+        """
+        self.api: InferenceAPI | CachedInferenceAPI = api
+
+    async def call(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> InferenceResponse:
+
+        converted_messages: list[ChatMessage] = [
+            ChatMessage(role=MessageRole(msg.role), content=msg.content) for msg in messages
+        ]
+        response: list[LLMResponse] = await self.api.__call__(
+            model_ids=config.model,
+            max_tokens=config.max_tokens,
+            n=config.n,
+            prompt=Prompt(messages=converted_messages),
+            temperature=config.temperature,
+            top_p=config.top_p,
+        )
+        # assert len(response) == 1, f"Expected exactly one response, got {len(response)}"
+        responses_str = [resp.completion for resp in response]
+        return InferenceResponse(raw_responses=responses_str, error=None)
 
 
 class ClaudeCaller(ModelCallerV2):
