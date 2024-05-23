@@ -50,7 +50,7 @@ class AnthropicChatModel(InferenceAPIModel):
     def __init__(self, num_threads: int, prompt_history_dir: Path = None):
         self.num_threads = num_threads
         self.prompt_history_dir = prompt_history_dir
-        self.client = anthropic.Anthropic()
+        self.client = anthropic.AsyncAnthropic()
         self.available_requests = asyncio.BoundedSemaphore(int(self.num_threads))
 
     async def __call__(
@@ -65,7 +65,7 @@ class AnthropicChatModel(InferenceAPIModel):
         assert len(model_ids) == 1, "Anthropic implementation only supports one model at a time."
         model_id = model_ids[0]
         prompt_messages = prompt.anthropic_format()
-        system_message = next((msg["content"] for msg in prompt_messages if msg["role"] == "system"), None)
+        system_message = next((msg["content"] for msg in prompt_messages if msg["role"] == "system"), anthropic.NOT_GIVEN)
         prompt_messages = [msg for msg in prompt_messages if msg["role"] != "system"]
         prompt_string = prompt.anthropic_format_string()
         prompt_file = self.create_prompt_history_file(prompt_string, model_id, self.prompt_history_dir)
@@ -78,8 +78,7 @@ class AnthropicChatModel(InferenceAPIModel):
             try:
                 async with self.available_requests:
                     api_start = time.time()
-                    response = await asyncio.to_thread(
-                        self.client.messages.create,
+                    response = await self.client.messages.create(
                         model=model_id,
                         max_tokens=kwargs.get("max_tokens_to_sample", 2000),
                         temperature=kwargs.get("temperature", 0.0),
@@ -88,7 +87,7 @@ class AnthropicChatModel(InferenceAPIModel):
                     )
                     api_duration = time.time() - api_start
             except Exception as e:
-                error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
+                error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()} Prompt: {prompt} "
                 LOGGER.warn(f"Encountered API error: {error_info}.\nRetrying now. (Attempt {i})")
                 await asyncio.sleep(1.5**i)
             else:

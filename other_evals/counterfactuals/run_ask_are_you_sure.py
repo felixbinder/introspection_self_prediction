@@ -7,6 +7,7 @@ from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
 from tqdm import tqdm
+from evals.apis.inference.api import InferenceAPI
 
 from evals.locations import EXP_DIR
 from evals.utils import setup_environment
@@ -14,7 +15,7 @@ from other_evals.counterfactuals.api_utils import (
     ChatMessageV2,
     InferenceConfig,
     ModelCallerV2,
-    UniversalCallerV2,
+    RepoCompatCaller,
     display_conversation,
     raise_should_not_happen,
 )
@@ -361,7 +362,8 @@ async def run_single_are_you_sure(
     )
 
     print(f"Running are you sure with model {object_model}")
-    caller = UniversalCallerV2().with_file_cache(cache_path)
+    inference_api = InferenceAPI()
+    caller = RepoCompatCaller(api=inference_api).with_file_cache(cache_path=cache_path)
     # Open one of the bias files
     potential_data = mmlu_test(questions_per_task=None).shuffle(seed="42")
     assert potential_data.length > 0, "No data found"

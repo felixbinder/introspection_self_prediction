@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import Literal, Sequence
 
-import fire
 import pandas as pd
 from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
 from tqdm import tqdm
+from evals.apis.inference.api import InferenceAPI
 
 from evals.locations import EXP_DIR
 from evals.utils import setup_environment
@@ -14,7 +14,7 @@ from other_evals.counterfactuals.api_utils import (
     ChatMessageV2,
     InferenceConfig,
     ModelCallerV2,
-    UniversalCallerV2,
+    RepoCompatCaller,
     display_conversation,
     dump_conversations,
     raise_should_not_happen,
@@ -246,7 +246,7 @@ async def run_multiple_models(
         "gpt-3.5-turbo-1106",
     ],
     bias_on_wrong_answer_only: bool = False,
-    number_samples: int = 10_000,
+    number_samples: int = 100,
 ) -> None:
     # Dumps results to xxx
     results: Slist[tuple[str, Slist[AskIfAffectedSecondRound]]] = Slist()
@@ -310,9 +310,11 @@ async def run_single_ask_if_affected(
     object_model: str,
     meta_model: str,
     bias_on_wrong_answer_only: bool = False,
-    cache_path: str | Path = "cache.jsonl",
+    cache_path: Path | str = "cache.jsonl",
     number_samples: int = 500,
 ) -> Slist[AskIfAffectedSecondRound]:
+    inference_api = InferenceAPI()
+    caller = RepoCompatCaller(api=inference_api).with_file_cache(cache_path=cache_path)
     object_config = InferenceConfig(
         model=object_model,
         temperature=0,
@@ -321,8 +323,7 @@ async def run_single_ask_if_affected(
     )
 
     model_specific_folder = THIS_EXP_FOLDER / Path(object_model)
-    print(f"Running counterfactuals with model {object_model}")
-    caller = UniversalCallerV2().with_file_cache(cache_path=cache_path)
+    print(f"Running ask if affecgted by bias with model {object_model}")
     # Open one of the bias files
     potential_data = (
         mmlu_test(questions_per_task=None)
@@ -391,7 +392,17 @@ async def run_single_ask_if_affected(
     return balanced_ground_truth_data
 
 
+async def test_main():
+    await run_single_ask_if_affected(
+        object_model="gpt-3.5-turbo-1106",
+        meta_model="claude-3-sonnet-20240229",
+        number_samples=100,
+    )
+
+
 if __name__ == "__main__":
     setup_environment()
+    import asyncio
 
-    fire.Fire(run_multiple_models)
+    # fire.Fire(run_multiple_models)
+    asyncio.run(test_main())

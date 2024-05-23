@@ -482,7 +482,7 @@ class StudyRunner:
         other_evals_limit = self.args.n_meta_val
         other_evals_path = Path(EXP_DIR / self.args.study_name) / 'other_evals'
         run_other_sweeps_from_sweep(
-            eval_dict=other_evals_dict,
+            eval_list=other_evals_dict,
             object_and_meta=object_and_meta,
             limit=other_evals_limit,
             study_folder=other_evals_path,
