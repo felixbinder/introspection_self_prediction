@@ -25,6 +25,7 @@ from other_evals.counterfactuals.datasets.base_example import (
 )
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
@@ -288,15 +289,13 @@ async def run_multiple_models(
 ) -> None:
     # Dumps results to xxx
     results: Slist[tuple[str, Slist[AreYouSureMetaResult]]] = Slist()
+    api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/counterfactuals_ask_if_affected")
 
     for model in models:
-        model_specific_folder = THIS_EXP_FOLDER / Path(model)
         results.append(
             (
                 model,
-                await run_single_are_you_sure(
-                    model, number_samples=number_samples, cache_path=model_specific_folder, meta_model=model
-                ),
+                await run_single_are_you_sure(model, number_samples=number_samples, meta_model=model, api=api),
             )
         )
 
@@ -345,9 +344,10 @@ async def run_multiple_models(
 async def run_single_are_you_sure(
     object_model: str,
     meta_model: str,
-    cache_path: str | Path,
+    api: CachedInferenceAPI,
     number_samples: int = 500,
 ) -> Slist[AreYouSureMetaResult]:
+
     object_config = InferenceConfig(
         model=object_model,
         temperature=0,
@@ -362,8 +362,7 @@ async def run_single_are_you_sure(
     )
 
     print(f"Running are you sure with model {object_model}")
-    inference_api = InferenceAPI()
-    caller = RepoCompatCaller(api=inference_api).with_file_cache(cache_path=cache_path)
+    caller = RepoCompatCaller(api=api)
     # Open one of the bias files
     potential_data = mmlu_test(questions_per_task=None).shuffle(seed="42")
     assert potential_data.length > 0, "No data found"

@@ -1,6 +1,6 @@
+import asyncio
 from pathlib import Path
 from typing import Literal, Sequence
-import fire
 from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
@@ -13,14 +13,15 @@ from other_evals.counterfactuals.api_utils import (
     ModelCallerV2,
     RepoCompatCaller,
     display_conversation,
-    dump_conversations,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 
 from evals.utils import setup_environment
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
+from other_evals.counterfactuals.run_predict_answer import run_counterfactual_asking
 
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -182,14 +183,13 @@ chosen_model = "claude-3-opus-20240229"
 
 
 async def run_single_ask_if_correct_answer(
-    cache_path: str | Path = "cache.jsonl",
+    api: CachedInferenceAPI,
     meta_model: str = chosen_model,
     number_samples: int = 2_000,
     object_model: str = chosen_model,
 ) -> Slist[AskIfCorrectResult]:
     print(f"Running mmlu accuracy calibration with {meta_model=} on {object_model=}")
-    inference_api = InferenceAPI()
-    caller = RepoCompatCaller(api=inference_api).with_file_cache(cache_path=cache_path)
+    caller = RepoCompatCaller(api=api)
     # Open one of the bias files
     potential_data = (
         # openbook.openbook_train()
@@ -240,7 +240,7 @@ async def run_single_ask_if_correct_answer(
     acc_incorrect = object_incorrect.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
     print(f"Accuracy: {acc}, {acc_correct=}, {acc_incorrect=}")
 
-    dump_conversations(path="exp/results.txt", messages=results.map(lambda x: x.meta_new_history))
+    # dump_conversations(path="exp/results.txt", messages=results.map(lambda x: x.meta_new_history))
     return balanced_data
     # dump_conversations(
     #     path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
@@ -283,6 +283,7 @@ if __name__ == "__main__":
     # model = "gpt-4-0125-preview"
 
     # run this line if you don't want to use fire
-    # asyncio.run(run_counterfactual_asking(model=model, bias_on_wrong_answer_only=False, number_samples=300))
+    api = CachedInferenceAPI(api=InferenceAPI(), cache_path=Path("exp/cache"))
+    asyncio.run(run_counterfactual_asking(bias_on_wrong_answer_only=False, number_samples=300))
 
-    fire.Fire(run_single_ask_if_correct_answer)
+    # fire.Fire(run_single_ask_if_correct_answer)

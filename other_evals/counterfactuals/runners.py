@@ -6,8 +6,10 @@ from git import Sequence
 import pandas as pd
 
 from slist import Slist
+from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
 from evals.utils import setup_environment
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
 from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci
 from other_evals.counterfactuals.run_ask_are_you_sure import run_single_are_you_sure
@@ -22,27 +24,40 @@ class OtherEvalRunner(ABC):
         eval_name: str,
         meta_model: str,
         object_model: str,
-        cache_path: str | Path,
+        api: CachedInferenceAPI,
         limit: int = 100,
     ) -> Sequence[OtherEvalCSVFormat]: ...
 
-    """TODO: Maybe inject in the inference api here, if we are going to run things in parallel, so that we can rate limit properly.
-    Can also add an extension to the inferenceapi to attach the cache
-    """
-    ...
 
 
 class AskIfAffectedRunner(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, cache_path: str | Path, limit: int = 100
+        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it was affected by the bias. Y/N answers"""
 
         result = await run_single_ask_if_affected(
             object_model=object_model,
             meta_model=meta_model,
-            cache_path=cache_path,
+            api=api,
+            number_samples=limit,
+        )
+        formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
+        return formatted
+    
+
+class AskWhatAnswerWithoutBiasRunner(OtherEvalRunner):
+    @staticmethod
+    async def run(
+        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+    ) -> Sequence[OtherEvalCSVFormat]:
+        """Ask the model what answer it would have given w/o the bias. A,B,C,D answers"""
+
+        result = await run_single_ask_if_affected(
+            object_model=object_model,
+            meta_model=meta_model,
+            api=api,
             number_samples=limit,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
@@ -52,13 +67,13 @@ class AskIfAffectedRunner(OtherEvalRunner):
 class AreYouSureRunner(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, cache_path: str | Path, limit: int = 100
+        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it would change its prediction if we ask 'ask you sure'. Y/N answers"""
         result = await run_single_are_you_sure(
             object_model=object_model,
             meta_model=meta_model,
-            cache_path=cache_path,
+            api=api,
             number_samples=limit,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
@@ -68,13 +83,13 @@ class AreYouSureRunner(OtherEvalRunner):
 class WillYouBeCorrectMMLU(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, cache_path: str | Path, limit: int = 100
+        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it is going to get the correct answer. Y/N answers"""
         result = await run_single_ask_if_correct_answer(
             object_model=object_model,
             meta_model=meta_model,
-            cache_path=cache_path,
+            api=api,
             number_samples=limit,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
@@ -87,6 +102,7 @@ EVAL_NAME_TO_RUNNER: dict[str, Type[OtherEvalRunner]] = {
     "ask_if_affected": AskIfAffectedRunner,
     "will_you_be_correct_mmlu": WillYouBeCorrectMMLU,
 }
+all_evals: list[str] = list(EVAL_NAME_TO_RUNNER.keys())
 runner_to_eval_name = {v: k for k, v in EVAL_NAME_TO_RUNNER.items()}
 assert len(EVAL_NAME_TO_RUNNER) == len(
     runner_to_eval_name
@@ -98,11 +114,11 @@ async def run_from_commands(
     object_and_meta: Sequence[tuple[str, str]],
     limit: int,
     study_folder: str | Path,
+    api: CachedInferenceAPI,
 ) -> Slist[OtherEvalCSVFormat]:
     """Run the appropriate evaluation based on the dictionary"""
     # coorountines_to_run: Slist[Awaitable[Sequence[OtherEvalCSVFormat]]] = Slist()
     gathered = Slist()
-    cache_path = Path(study_folder) / "model_cache.jsonl"
     for object_model, meta_model in object_and_meta:
         for runner in evals_to_run:
             eval_name = runner_to_eval_name[runner]
@@ -111,8 +127,8 @@ async def run_from_commands(
                 eval_name=eval_name,
                 meta_model=meta_model,
                 object_model=object_model,
-                cache_path=cache_path,
                 limit=limit,
+                api=api,
             )
             gathered.append(result)
 
@@ -137,7 +153,7 @@ def eval_list_to_runner(eval_list: list[str]) -> Sequence[Type[OtherEvalRunner]]
     return runners
 
 
-def run_other_sweeps_from_sweep(
+def sweep_over_evals(
     eval_list: list[str], object_and_meta: Sequence[tuple[str, str]], limit: int, study_folder: str | Path
 ) -> None:
     """
@@ -146,9 +162,12 @@ def run_other_sweeps_from_sweep(
     # Entry point for sweeping
     evals_to_run = eval_list_to_runner(eval_list)
     # the sweep ain't a async function so we use asyncio.run
+    api = InferenceAPI(anthropic_num_threads=20)
+    inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
+    
     all_results = asyncio.run(
         run_from_commands(
-            evals_to_run=evals_to_run, object_and_meta=object_and_meta, limit=limit, study_folder=study_folder
+            evals_to_run=evals_to_run, object_and_meta=object_and_meta, limit=limit, study_folder=study_folder, api=inference_api
         )
     )
     grouped_by_eval = all_results.group_by(lambda x: x.eval_name)
@@ -164,8 +183,13 @@ def run_other_sweeps_from_sweep(
         df.to_csv(Path(study_folder) / f"{eval_name}_results.csv", index=False)
 
 
-def main():
-    eval_list = ["ask_if_are_you_sure_changed", "ask_if_affected", "will_you_be_correct_mmlu"]
+def test_main():
+    setup_environment()
+    # What evals to run?
+    # See the keys in the EVAL_NAME_TO_RUNNER
+    eval_list = all_evals
+    print(f"Running evals: {eval_list}")
+    # What models to run?
     models = Slist(
         [
             "gpt-3.5-turbo",
@@ -174,14 +198,14 @@ def main():
             # "gpt-4o",
         ]
     )
-    setup_environment()
+    # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
     limit = 300
-    run_other_sweeps_from_sweep(
+    sweep_over_evals(
         eval_list=eval_list, object_and_meta=object_and_meta_models, limit=limit, study_folder=study_folder
     )
 
 
 if __name__ == "__main__":
-    main()
+    test_main()

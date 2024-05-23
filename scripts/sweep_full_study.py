@@ -48,7 +48,7 @@ from slist import Slist
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
-from other_evals.counterfactuals.runners import run_other_sweeps_from_sweep
+from other_evals.counterfactuals.runners import sweep_over_evals
 
 
 def json_string(arg_value):
@@ -481,7 +481,7 @@ class StudyRunner:
         }
         other_evals_limit = self.args.n_meta_val
         other_evals_path = Path(EXP_DIR / self.args.study_name) / 'other_evals'
-        run_other_sweeps_from_sweep(
+        sweep_over_evals(
             eval_list=other_evals_dict,
             object_and_meta=object_and_meta,
             limit=other_evals_limit,

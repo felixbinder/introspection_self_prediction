@@ -17,6 +17,7 @@ from evals.apis.inference.api import InferenceAPI
 from evals.data_models.hashable import deterministic_hash
 from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import ChatMessage, MessageRole, Prompt
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +140,10 @@ class ModelCallerV2(ABC):
 
 
 class RepoCompatCaller(ModelCallerV2):
-    def __init__(self, api: InferenceAPI):
+    def __init__(self, api: InferenceAPI | CachedInferenceAPI):
         # this is just a wrapper around the repo's existing inference api so that we get compat with gemini, hugging face etc
         # technically we can just use the api directly but james has not refactored all these scripts to do that
-        self.api: InferenceAPI = api
+        self.api: InferenceAPI | CachedInferenceAPI = api
 
     async def call(
         self,

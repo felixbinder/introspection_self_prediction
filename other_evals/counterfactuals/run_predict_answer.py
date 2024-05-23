@@ -2,7 +2,6 @@ import re
 from typing import Optional, Sequence, assert_never
 import fire
 from grugstream import Observable
-import pandas as pd
 from pydantic import BaseModel
 from slist import Slist
 from tqdm import tqdm
@@ -13,6 +12,7 @@ from other_evals.counterfactuals.api_utils import (
     ModelCallerV2,
     UniversalCallerV2,
     display_conversation,
+    dump_conversations,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
@@ -330,21 +330,21 @@ async def run_counterfactual_asking(
     second_round_extracted_answer = second_round_results.filter(lambda x: x.second_round_parsed is not None)
     print(f"After filtering out {second_round_results.length - second_round_extracted_answer.length} missing answers")
 
-    second_round_dicts = second_round_extracted_answer.map(second_round_to_json)
+    # second_round_dicts = second_round_extracted_answer.map(second_round_to_json)
     # make a df
-    second_round_df = pd.DataFrame(second_round_dicts)
-    second_round_df.to_csv("second_round_results.csv", index=False)
+    # second_round_df = pd.DataFrame(second_round_dicts)
+    # second_round_df.to_csv("second_round_results.csv", index=False)
 
     affected_ground_truth, unaffected_ground_truth = second_round_extracted_answer.split_by(
         lambda x: x.first_round.switched_answer
     )
 
-    # dump_conversations(
-    #     path="exp/affected_ground_truth.txt", messages=affected_ground_truth.map(lambda x: x.final_history)
-    # )
-    # dump_conversations(
-    #     path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
-    # )
+    dump_conversations(
+        path="exp/affected_ground_truth.txt", messages=affected_ground_truth.map(lambda x: x.final_history)
+    )
+    dump_conversations(
+        path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
+    )
 
     # smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
     # print(f"Balancing ground truths to have same number of samples: {smallest_length}")

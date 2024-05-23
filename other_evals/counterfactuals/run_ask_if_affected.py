@@ -16,7 +16,6 @@ from other_evals.counterfactuals.api_utils import (
     ModelCallerV2,
     RepoCompatCaller,
     display_conversation,
-    dump_conversations,
     raise_should_not_happen,
 )
 from other_evals.counterfactuals.datasets.base_example import (
@@ -25,6 +24,7 @@ from other_evals.counterfactuals.datasets.base_example import (
 )
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
@@ -249,6 +249,7 @@ async def run_multiple_models(
     number_samples: int = 100,
 ) -> None:
     # Dumps results to xxx
+    api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
     results: Slist[tuple[str, Slist[AskIfAffectedSecondRound]]] = Slist()
     for object_model in models:
         meta_model = object_model
@@ -260,6 +261,7 @@ async def run_multiple_models(
                     meta_model=meta_model,
                     bias_on_wrong_answer_only=bias_on_wrong_answer_only,
                     number_samples=number_samples,
+                    api=api,
                 ),
             )
         )
@@ -309,12 +311,11 @@ async def run_multiple_models(
 async def run_single_ask_if_affected(
     object_model: str,
     meta_model: str,
+    api: CachedInferenceAPI,
     bias_on_wrong_answer_only: bool = False,
-    cache_path: Path | str = "cache.jsonl",
     number_samples: int = 500,
 ) -> Slist[AskIfAffectedSecondRound]:
-    inference_api = InferenceAPI()
-    caller = RepoCompatCaller(api=inference_api).with_file_cache(cache_path=cache_path)
+    caller = RepoCompatCaller(api=api)
     object_config = InferenceConfig(
         model=object_model,
         temperature=0,
@@ -322,7 +323,6 @@ async def run_single_ask_if_affected(
         top_p=0.0,
     )
 
-    model_specific_folder = THIS_EXP_FOLDER / Path(object_model)
     print(f"Running ask if affecgted by bias with model {object_model}")
     # Open one of the bias files
     potential_data = (
@@ -373,14 +373,14 @@ async def run_single_ask_if_affected(
         lambda x: x.first_round.switched_answer
     )
 
-    dump_conversations(
-        path=model_specific_folder / Path("affected_ground_truth.txt"),
-        messages=affected_ground_truth.map(lambda x: x.final_history),
-    )
-    dump_conversations(
-        path=model_specific_folder / Path("unaffected_ground_truth.txt"),
-        messages=unaffected_ground_truth.map(lambda x: x.final_history),
-    )
+    # dump_conversations(
+    #     path=model_specific_folder / Path("affected_ground_truth.txt"),
+    #     messages=affected_ground_truth.map(lambda x: x.final_history),
+    # )
+    # dump_conversations(
+    #     path=model_specific_folder / Path("unaffected_ground_truth.txt"),
+    #     messages=unaffected_ground_truth.map(lambda x: x.final_history),
+    # )
 
     smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
     print(f"Balancing ground truths to have same number of samples: {smallest_length}")
@@ -393,10 +393,13 @@ async def run_single_ask_if_affected(
 
 
 async def test_main():
+    inference_api = InferenceAPI()
+    cached = CachedInferenceAPI(api=inference_api, cache_path="cached_dir")
     await run_single_ask_if_affected(
         object_model="gpt-3.5-turbo-1106",
         meta_model="claude-3-sonnet-20240229",
         number_samples=100,
+        api=cached,
     )
 
 
