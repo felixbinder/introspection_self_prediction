@@ -114,7 +114,6 @@ async def run_from_commands(
     evals_to_run: Sequence[Type[OtherEvalRunner]],
     object_and_meta: Sequence[tuple[str, str]],
     limit: int,
-    study_folder: str | Path,
     api: CachedInferenceAPI,
 ) -> Slist[OtherEvalCSVFormat]:
     """Run the appropriate evaluation based on the dictionary"""
@@ -140,7 +139,7 @@ async def run_from_commands(
     return flattened
 
 
-def eval_list_to_runner(eval_list: list[str]) -> Sequence[Type[OtherEvalRunner]]:
+def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunner]]:
     runners = []
     for eval_str in eval_list:
         maybe_eval_runner = EVAL_NAME_TO_RUNNER.get(eval_str, None)
@@ -154,12 +153,21 @@ def eval_list_to_runner(eval_list: list[str]) -> Sequence[Type[OtherEvalRunner]]
     return runners
 
 
-def sweep_over_evals(
-    eval_list: list[str], object_and_meta: Sequence[tuple[str, str]], limit: int, study_folder: str | Path
+def run_sweep_over_other_evals(
+    object_and_meta: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
+    eval_list: Sequence[str] = ["AreYouAffectedByBias"],
+    limit: int = 100,
+    study_folder: str | Path = "exp/other_evals",
+    show_plot: bool = False,
 ) -> None:
     """
-    ["asked_if_are_you_sure_changed", "ask_if_affected"],
+    object_and_meta: a list of tuples of object and meta models
+    eval_list: a list of evaluation names. See the keys in the EVAL_NAME_TO_RUNNER. 
+    e.g. ['AreYouAffectedByBias', 'WhatAnswerWithoutBias', 'WillYouBeCorrect', 'ChangeAnswerAreYouSure']
+    limit: the number of samples to run
+    study_folder: the folder where the results will be saved
     """
+    setup_environment()
     # Entry point for sweeping
     evals_to_run = eval_list_to_runner(eval_list)
     # the sweep ain't a async function so we use asyncio.run
@@ -171,25 +179,26 @@ def sweep_over_evals(
             evals_to_run=evals_to_run,
             object_and_meta=object_and_meta,
             limit=limit,
-            study_folder=study_folder,
             api=inference_api,
         )
     )
     grouped_by_eval = all_results.group_by(lambda x: x.eval_name)
     for eval_name, results_list in grouped_by_eval:
         df = pd.DataFrame(results_list.map(lambda x: x.model_dump()))
-        plot_heatmap_with_ci(
-            data=df,
-            value_col="meta_predicted_correctly",
-            object_col="object_model",
-            meta_col="meta_model",
-            title=f"{eval_name} Percentage of Meta Response Predicted Correctly with 95% CI",
-        )
-        df.to_csv(Path(study_folder) / f"{eval_name}_results.csv", index=False)
+        if show_plot:
+            plot_heatmap_with_ci(
+                data=df,
+                value_col="meta_predicted_correctly",
+                object_col="object_model",
+                meta_col="meta_model",
+                title=f"{eval_name} Percentage of Meta Response Predicted Correctly with 95% CI",
+            )
+        result_path = Path(study_folder) / f"{eval_name}_results.csv"
+        print(f"Saving {eval_name} to {result_path}")
+        df.to_csv(result_path, index=False)
 
 
 def test_main():
-    setup_environment()
     # What evals to run?
     # See the keys in the EVAL_NAME_TO_RUNNER
     eval_list = all_evals
@@ -206,9 +215,9 @@ def test_main():
     # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 300
-    sweep_over_evals(
-        eval_list=eval_list, object_and_meta=object_and_meta_models, limit=limit, study_folder=study_folder
+    limit = 1_000
+    run_sweep_over_other_evals(
+        eval_list=eval_list, object_and_meta=object_and_meta_models, limit=limit, study_folder=study_folder, show_plot=True
     )
 
 
