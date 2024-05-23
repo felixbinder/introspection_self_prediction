@@ -1,5 +1,4 @@
-import re
-from typing import Optional, Sequence, assert_never
+from typing import Sequence, assert_never
 import fire
 from grugstream import Observable
 from pydantic import BaseModel
@@ -11,7 +10,6 @@ from other_evals.counterfactuals.api_utils import (
     InferenceConfig,
     ModelCallerV2,
     RepoCompatCaller,
-    UniversalCallerV2,
     display_conversation,
     dump_conversations,
 )
@@ -135,7 +133,6 @@ class AskWhatAnswerResult(BaseModel):
     @property
     def first_round_switched_answer(self) -> bool:
         return self.first_round.switched_answer
-    
 
     def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
         object_parsed = self.first_round.parsed_unbiased_answer
@@ -155,7 +152,6 @@ class AskWhatAnswerResult(BaseModel):
             meta_predicted_correctly=self.predicted_counterfactual_answer_correctly(),
             eval_name=eval_name,
         )
-
 
 
 async def ask_first_round(
@@ -230,11 +226,9 @@ async def ask_second_round(
 # meta_model = "gpt-3.5-turbo-1106"
 # meta_model = "claude-3-sonnet-20240229"
 # meta_model = "gpt-3.5-turbo-1106"
-meta_model = "gpt-3.5-turbo-1106"
 # object_level_model = "claude-3-sonnet-20240229"
 # object_level_model =  "gpt-3.5-turbo-1106"
 # object_level_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9FgW32xp"
-object_level_model = "gpt-3.5-turbo-1106"
 
 
 def second_round_to_json(second_round: AskWhatAnswerResult) -> dict:
@@ -281,9 +275,9 @@ def second_round_to_json(second_round: AskWhatAnswerResult) -> dict:
 
 async def run_single_what_answer_without_bias(
     api: CachedInferenceAPI,
-    meta_model: str = meta_model,
-    number_samples: int = 10_000,
-    object_model: str = object_level_model,
+    meta_model: str,
+    object_model: str,
+    number_samples: int = 10000,
     bias_on_wrong_answer_only: bool = False,
 ) -> Slist[AskWhatAnswerResult]:
     print(f"Running counterfactuals with {meta_model=} on {object_model=}")
@@ -302,7 +296,7 @@ async def run_single_what_answer_without_bias(
 
     # Call the model
     object_level_config = InferenceConfig(
-        model=object_level_model,
+        model=object_model,
         temperature=0,
         max_tokens=1,
         top_p=0.0,

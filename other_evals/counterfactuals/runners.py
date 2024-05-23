@@ -30,8 +30,7 @@ class OtherEvalRunner(ABC):
     ) -> Sequence[OtherEvalCSVFormat]: ...
 
 
-
-class AskIfAffectedRunner(OtherEvalRunner):
+class AreYouAffectedByBias(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -46,9 +45,9 @@ class AskIfAffectedRunner(OtherEvalRunner):
         )
         formatted: Slist[OtherEvalCSVFormat] = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
-    
 
-class AskWhatAnswerWithoutBiasRunner(OtherEvalRunner):
+
+class WhatAnswerWithoutBias(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -65,7 +64,7 @@ class AskWhatAnswerWithoutBiasRunner(OtherEvalRunner):
         return formatted
 
 
-class AreYouSureRunner(OtherEvalRunner):
+class ChangeAnswerAreYouSure(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -81,7 +80,7 @@ class AreYouSureRunner(OtherEvalRunner):
         return formatted
 
 
-class WillYouBeCorrectMMLU(OtherEvalRunner):
+class WillYouBeCorrect(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -99,10 +98,10 @@ class WillYouBeCorrectMMLU(OtherEvalRunner):
 
 
 EVAL_NAME_TO_RUNNER: dict[str, Type[OtherEvalRunner]] = {
-    "are_you_sure_changed_answer": AreYouSureRunner,
-    "are_you_affected_by_bias": AskIfAffectedRunner,
-    "what_answer_without_bias": AskWhatAnswerWithoutBiasRunner,
-    "will_you_be_correct_mmlu": WillYouBeCorrectMMLU,
+    "ChangeAnswerAreYouSure": ChangeAnswerAreYouSure,
+    "AreYouAffectedByBias": AreYouAffectedByBias,
+    "WhatAnswerWithoutBias": WhatAnswerWithoutBias,
+    "WillYouBeCorrect": WillYouBeCorrect,
 }
 all_evals: list[str] = list(EVAL_NAME_TO_RUNNER.keys())
 runner_to_eval_name = {v: k for k, v in EVAL_NAME_TO_RUNNER.items()}
@@ -166,10 +165,14 @@ def sweep_over_evals(
     # the sweep ain't a async function so we use asyncio.run
     api = InferenceAPI(anthropic_num_threads=20)
     inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
-    
+
     all_results = asyncio.run(
         run_from_commands(
-            evals_to_run=evals_to_run, object_and_meta=object_and_meta, limit=limit, study_folder=study_folder, api=inference_api
+            evals_to_run=evals_to_run,
+            object_and_meta=object_and_meta,
+            limit=limit,
+            study_folder=study_folder,
+            api=inference_api,
         )
     )
     grouped_by_eval = all_results.group_by(lambda x: x.eval_name)

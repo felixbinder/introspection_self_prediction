@@ -143,7 +143,7 @@ class RepoCompatCaller(ModelCallerV2):
     def __init__(self, api: InferenceAPI | CachedInferenceAPI):
         """
         Wrapper around the repo's existing inference api so that we get compat with gemini, hugging face etc
-        Technically we can just use the api directly in other eval scripts 
+        Technically we can just use the api directly in other eval scripts
         but james has not refactored all these scripts to do that
         """
         self.api: InferenceAPI | CachedInferenceAPI = api
