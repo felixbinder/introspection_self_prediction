@@ -46,7 +46,7 @@ from typing import Dict
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
-from other_evals.counterfactuals.runners import run_sweep_over_other_evals
+from other_evals.counterfactuals.runners import eval_list_to_runner, run_sweep_over_other_evals
 
 
 def json_string(arg_value):
@@ -98,9 +98,10 @@ class StudyRunner:
                 setattr(self.args, arg, {})
 
         ### Other evals is just a list of strings
-        other_evals = eval(self.args.other_evals)
+        other_evals: list[str] = eval(self.args.other_evals)
         assert isinstance(other_evals, list), "other_evals must be a list of strings"
-        self.args.other_evals = other_evals
+        other_evals_types = eval_list_to_runner(other_evals)
+        self.args.other_evals = other_evals_types
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")

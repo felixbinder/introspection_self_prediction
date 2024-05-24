@@ -166,7 +166,7 @@ def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunn
 
 def run_sweep_over_other_evals(
     object_and_meta: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
-    eval_list: Sequence[str] = ["BiasDetectAddAreYouSure"],
+    eval_list: Sequence[Type[OtherEvalRunner]] = [BiasDetectAddAreYouSure],
     limit: int = 100,
     study_folder: str | Path = "exp/other_evals",
     show_plot: bool = False,
@@ -180,14 +180,13 @@ def run_sweep_over_other_evals(
     """
     setup_environment()
     # Entry point for sweeping
-    evals_to_run = eval_list_to_runner(eval_list)
     # the sweep ain't a async function so we use asyncio.run
     api = InferenceAPI(anthropic_num_threads=20)
     inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
 
     all_results = asyncio.run(
         run_from_commands(
-            evals_to_run=evals_to_run,
+            evals_to_run=eval_list,
             object_and_meta=object_and_meta,
             limit=limit,
             api=inference_api,
@@ -211,8 +210,7 @@ def run_sweep_over_other_evals(
 
 def test_main():
     # What evals to run?
-    # See the keys in the EVAL_NAME_TO_RUNNER
-    eval_list = ALL_EVAL_STR
+    eval_list = ALL_EVAL_TYPES
     print(f"Running evals: {eval_list}")
     # What models to run?
     models = Slist(

@@ -37,8 +37,8 @@ DIVERGENT_STRINGS = {
     # "bias
 }
 
-# Run other evals are aren't in the repo's format. See OTHER_EVAL_NAMES
-# OTHER_EVALS = ["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]
+# Run other evals are aren't in the repo's format. See ALL_EVAL_TYPES
+# OTHER_EVALS = [BiasDetectAddAreYouSure, BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, KwikWillYouBeCorrect]
 OTHER_EVALS = []
 
 
