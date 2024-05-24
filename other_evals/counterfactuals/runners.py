@@ -29,8 +29,12 @@ class OtherEvalRunner(ABC):
         limit: int = 100,
     ) -> Sequence[OtherEvalCSVFormat]: ...
 
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__
 
-class AreYouAffectedByBias(OtherEvalRunner):
+
+class BiasDetectAreYouAffected(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -47,7 +51,7 @@ class AreYouAffectedByBias(OtherEvalRunner):
         return formatted
 
 
-class WhatAnswerWithoutBias(OtherEvalRunner):
+class BiasDetectWhatAnswerWithout(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -64,7 +68,7 @@ class WhatAnswerWithoutBias(OtherEvalRunner):
         return formatted
 
 
-class ChangeAnswerAreYouSure(OtherEvalRunner):
+class BiasDetectAddAreYouSure(OtherEvalRunner):
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -80,7 +84,9 @@ class ChangeAnswerAreYouSure(OtherEvalRunner):
         return formatted
 
 
-class WillYouBeCorrect(OtherEvalRunner):
+class KwikWillYouBeCorrect(OtherEvalRunner):
+    """Kwik stands for Know What I Know"""
+
     @staticmethod
     async def run(
         eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
@@ -97,13 +103,18 @@ class WillYouBeCorrect(OtherEvalRunner):
         return formatted
 
 
-OTHER_EVAL_NAMES: dict[str, Type[OtherEvalRunner]] = {
-    "ChangeAnswerAreYouSure": ChangeAnswerAreYouSure,
-    "AreYouAffectedByBias": AreYouAffectedByBias,
-    "WhatAnswerWithoutBias": WhatAnswerWithoutBias,
-    "WillYouBeCorrect": WillYouBeCorrect,
-}
-all_evals: list[str] = list(OTHER_EVAL_NAMES.keys())
+ALL_EVAL_TYPES: Sequence[Type[OtherEvalRunner]] = [
+    BiasDetectAddAreYouSure,
+    BiasDetectAreYouAffected,
+    BiasDetectWhatAnswerWithout,
+    KwikWillYouBeCorrect,
+]
+ALL_EVAL_STR: Sequence[str] = [eval_name.name() for eval_name in ALL_EVAL_TYPES]
+OTHER_EVAL_NAMES: dict[str, Type[OtherEvalRunner]] = {eval_name.name(): eval_name for eval_name in ALL_EVAL_TYPES}
+assert len(ALL_EVAL_TYPES) == len(
+    OTHER_EVAL_NAMES
+), f"Got {len(ALL_EVAL_TYPES)} eval types but {len(OTHER_EVAL_NAMES)} names"
+
 runner_to_eval_name = {v: k for k, v in OTHER_EVAL_NAMES.items()}
 assert len(OTHER_EVAL_NAMES) == len(
     runner_to_eval_name
@@ -121,7 +132,7 @@ async def run_from_commands(
     gathered = Slist()
     for object_model, meta_model in object_and_meta:
         for runner in evals_to_run:
-            eval_name = runner_to_eval_name[runner]
+            eval_name = runner.name()
             # coorountines_to_run.append(runner.run(meta_model=meta_model, object_model=object_model, cache_path=cache_path, limit=limit))
             result = await runner.run(
                 eval_name=eval_name,
@@ -147,7 +158,7 @@ def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunn
             runners.append(maybe_eval_runner)
         else:
             raise ValueError(
-                f"Could not find runner for {eval_str}, is it present in OTHER_EVAL_NAMES? Available keys: {OTHER_EVAL_NAMES.keys()}"
+                f"Could not find runner for {eval_str}, is it present in ALL_EVAL_TYPES?. Available evals: {ALL_EVAL_STR}"
             )
 
     return runners
@@ -155,15 +166,15 @@ def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunn
 
 def run_sweep_over_other_evals(
     object_and_meta: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
-    eval_list: Sequence[str] = ["AreYouAffectedByBias"],
+    eval_list: Sequence[str] = ["BiasDetectAddAreYouSure"],
     limit: int = 100,
     study_folder: str | Path = "exp/other_evals",
     show_plot: bool = False,
 ) -> None:
     """
     object_and_meta: a list of tuples of object and meta models
-    eval_list: a list of evaluation names. See the keys in OTHER_EVAL_NAMES. 
-    e.g. ['AreYouAffectedByBias', 'WhatAnswerWithoutBias', 'WillYouBeCorrect', 'ChangeAnswerAreYouSure']
+    eval_list: a list of evaluation names. See the keys in OTHER_EVAL_NAMES.
+    e.g. ["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]
     limit: the number of samples to run
     study_folder: the folder where the results will be saved
     """
@@ -201,7 +212,7 @@ def run_sweep_over_other_evals(
 def test_main():
     # What evals to run?
     # See the keys in the EVAL_NAME_TO_RUNNER
-    eval_list = all_evals
+    eval_list = ALL_EVAL_STR
     print(f"Running evals: {eval_list}")
     # What models to run?
     models = Slist(
@@ -217,7 +228,11 @@ def test_main():
     study_folder = EXP_DIR / "other_evals"
     limit = 1_000
     run_sweep_over_other_evals(
-        eval_list=eval_list, object_and_meta=object_and_meta_models, limit=limit, study_folder=study_folder, show_plot=True
+        eval_list=eval_list,
+        object_and_meta=object_and_meta_models,
+        limit=limit,
+        study_folder=study_folder,
+        show_plot=True,
     )
 
 

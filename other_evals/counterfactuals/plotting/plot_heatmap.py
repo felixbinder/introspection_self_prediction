@@ -4,9 +4,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def load_csv_and_plot_heatmap(
-    csv_path: str | Path
-) -> None:
+
+def load_csv_and_plot_heatmap(csv_path: str | Path) -> None:
     """
     Load a CSV file and plot a heatmap with the mean values and 95% confidence intervals.
 
