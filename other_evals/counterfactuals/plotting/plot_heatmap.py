@@ -47,7 +47,7 @@ def plot_heatmap_with_ci(
 
     # Create a seaborn heatmap with annotations for 95% CI
     plt.figure(figsize=(12, 8))
-    ax = sns.heatmap(heatmap_data, annot=True, cmap="coolwarm", fmt=".1f", cbar=False)
+    ax = sns.heatmap(heatmap_data, annot=True, cmap="coolwarm", fmt=".1f", cbar=False, annot_kws={"fontsize": 16})
 
     # Annotate the heatmap with 95% CI slightly below the main percentage value
     for i in range(len(heatmap_data.index)):
@@ -64,7 +64,7 @@ def plot_heatmap_with_ci(
                 color="white",
                 ha="center",
                 va="center",
-                fontsize=10,
+                fontsize=16,
             )
 
     plt.title(title)
