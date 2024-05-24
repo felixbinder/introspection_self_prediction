@@ -64,7 +64,7 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
             number_samples=limit,
         )
         formatted: Slist[OtherEvalCSVFormat] = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
-        
+
         return formatted
 
     @classmethod
@@ -76,7 +76,7 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
     ) -> Sequence[FinetuneConversation]:
         # Get the finetuning messages for the particular evaluation
         # TODO: MAKE SURE WE FINETUNE ON A DIFFERENT DATASET!!
-        result =  await finetune_samples_ask_if_affected(
+        result = await finetune_samples_ask_if_affected(
             object_model=object_model,
             api=api,
             number_samples=limit,
@@ -200,6 +200,7 @@ async def run_from_commands(
     flattened: Slist[OtherEvalCSVFormat] = gathered.flatten_list()
     return flattened
 
+
 def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunner]]:
     runners = []
     for eval_str in eval_list:
@@ -261,20 +262,22 @@ def run_sweep_over_other_evals(
 def test_main():
     # What evals to run?
     eval_list = ALL_EVAL_TYPES
-    print(f"Running evals: {eval_list}")
+    print(f"Running evals: {[e.name() for e in eval_list]}")
     # What models to run?
     models = Slist(
         [
             "gpt-3.5-turbo",
             # "claude-3-sonnet-20240229",
-            "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9PutAYsj",
+            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T" # all response properites
+            "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",  # ask if affected
+            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9PutAYsj",
             # "gpt-4o",
         ]
     )
     # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 1_000
+    limit = 5_000
     run_sweep_over_other_evals(
         eval_list=eval_list,
         object_and_meta=object_and_meta_models,

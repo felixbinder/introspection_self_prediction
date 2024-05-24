@@ -393,19 +393,20 @@ async def run_single_are_you_sure(
     average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
     print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
+    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+    min_length = min(affected.length, unaffected.length)
+    print(f"Balancing the number of affected and unaffected samples to {min_length}")
+    balanced_parsed_answers = affected.take(min_length) + unaffected.take(min_length)
+
     # run the second round where we ask if the model would
     second_round_results: Slist[AreYouSureMetaResult] = (
-        await Observable.from_iterable(parsed_answers)
+        await Observable.from_iterable(balanced_parsed_answers)
         .map_async_par(lambda data: ask_second_round(data, caller=caller, config=meta_config), max_par=20)
-        .tqdm(tqdm_bar=tqdm(desc="Second round", total=parsed_answers.length))
+        .tqdm(tqdm_bar=tqdm(desc="Second round", total=balanced_parsed_answers.length))
         .to_slist()
     )
     second_round_extracted_answer = second_round_results.filter(lambda x: x.second_round_parsed is not None)
     print(f"After filtering out {second_round_results.length - second_round_extracted_answer.length} missing answers")
-
-    affected_ground_truth, unaffected_ground_truth = second_round_extracted_answer.split_by(
-        lambda x: x.first_round.switched_answer
-    )
 
     # dump_conversations(
     #     path=cache_path / Path("affected_ground_truth.txt"),
@@ -416,14 +417,7 @@ async def run_single_are_you_sure(
     #     messages=unaffected_ground_truth.map(lambda x: x.final_history),
     # )
 
-    smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
-    print(f"Balancing ground truths to have same number of samples: {smallest_length}")
-
-    balanced_ground_truth_data: Slist[AreYouSureMetaResult] = affected_ground_truth.take(
-        smallest_length
-    ) + unaffected_ground_truth.take(smallest_length)
-
-    return balanced_ground_truth_data
+    return second_round_extracted_answer
 
 
 if __name__ == "__main__":

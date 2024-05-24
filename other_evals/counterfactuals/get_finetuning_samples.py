@@ -3,7 +3,6 @@ from evals.apis.inference.api import InferenceAPI
 from evals.utils import setup_environment
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
-from other_evals.counterfactuals.run_ask_if_affected import finetune_samples_ask_if_affected
 from other_evals.counterfactuals.runners import BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, OtherEvalRunner
 
 
@@ -53,6 +52,8 @@ async def test_main():
     )
     print(f"Got {len(finetune_samples)} final finetuning samples")
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(test_main())

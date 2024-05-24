@@ -380,17 +380,20 @@ async def run_single_what_answer_without_bias(
 
     # Get the average % of parsed answers that match the bias
     parsed_answers = results.filter(lambda x: x.both_successful)
-    print(
-        f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
-    )
-    average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
-    print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
+    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+    smallest_length = min(affected.length, unaffected.length)
+    balanced_data = affected.take(smallest_length) + unaffected.take(smallest_length)
+    # print(
+    #     f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
+    # )
+    # average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
+    # print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
     # run the second round where we ask if the model would
     second_round_results: Slist[AskWhatAnswerResult] = (
-        await Observable.from_iterable(parsed_answers)
+        await Observable.from_iterable(balanced_data)
         .map_async_par(lambda data: ask_second_round(data, caller=caller, config=meta_level_config), max_par=20)
-        .tqdm(tqdm_bar=tqdm(desc="Second round", total=parsed_answers.length))
+        .tqdm(tqdm_bar=tqdm(desc="Second round", total=balanced_data.length))
         .to_slist()
     )
     second_round_extracted_answer = second_round_results.filter(lambda x: x.second_round_parsed is not None)
@@ -401,24 +404,7 @@ async def run_single_what_answer_without_bias(
     # second_round_df = pd.DataFrame(second_round_dicts)
     # second_round_df.to_csv("second_round_results.csv", index=False)
 
-    affected_ground_truth, unaffected_ground_truth = second_round_extracted_answer.split_by(
-        lambda x: x.first_round.switched_answer
-    )
-
-    # dump_conversations(
-    #     path="exp/affected_ground_truth.txt", messages=affected_ground_truth.map(lambda x: x.final_history)
-    # )
-    # dump_conversations(
-    #     path="exp/unaffected_ground_truth.txt", messages=unaffected_ground_truth.map(lambda x: x.final_history)
-    # )
-
-    smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
-    # print(f"Balancing ground truths to have same number of samples: {smallest_length}")
-
-    balanced_ground_truth_data = affected_ground_truth.take(smallest_length) + unaffected_ground_truth.take(
-        smallest_length
-    )
-    return balanced_ground_truth_data
+    return second_round_results
 
     # affected_ground_truth_accuracy = average_with_95_ci(
     #     affected_ground_truth.map(lambda x: x.predicted_counterfactual_answer_correctly())

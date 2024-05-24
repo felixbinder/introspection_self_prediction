@@ -380,19 +380,20 @@ async def run_single_ask_if_affected(
         top_p=0.0,
     )
 
+    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+    min_length = min(affected.length, unaffected.length)
+    print(f"Balancing ground truths to have same number of samples: {min_length}")
+    balanced_data = affected.take(min_length) + unaffected.take(min_length)
+
     # run the second round where we ask if the model would
     second_round_results: Slist[AskIfAffectedSecondRound] = (
-        await Observable.from_iterable(parsed_answers)
+        await Observable.from_iterable(balanced_data)
         .map_async_par(lambda data: ask_second_round(data, caller=caller, meta_config=meta_config), max_par=20)
-        .tqdm(tqdm_bar=tqdm(desc="Second round", total=parsed_answers.length))
+        .tqdm(tqdm_bar=tqdm(desc="Second round", total=balanced_data.length))
         .to_slist()
     )
     second_round_extracted_answer = second_round_results.filter(lambda x: x.second_round_parsed is not None)
     print(f"After filtering out {second_round_results.length - second_round_extracted_answer.length} missing answers")
-
-    affected_ground_truth, unaffected_ground_truth = second_round_extracted_answer.split_by(
-        lambda x: x.first_round.switched_answer
-    )
 
     # dump_conversations(
     #     path=model_specific_folder / Path("affected_ground_truth.txt"),
@@ -403,14 +404,7 @@ async def run_single_ask_if_affected(
     #     messages=unaffected_ground_truth.map(lambda x: x.final_history),
     # )
 
-    smallest_length = min(affected_ground_truth.length, unaffected_ground_truth.length)
-    print(f"Balancing ground truths to have same number of samples: {smallest_length}")
-
-    balanced_ground_truth_data: Slist[AskIfAffectedSecondRound] = affected_ground_truth.take(
-        smallest_length
-    ) + unaffected_ground_truth.take(smallest_length)
-
-    return balanced_ground_truth_data
+    return second_round_extracted_answer
 
 
 async def finetune_samples_ask_if_affected(
