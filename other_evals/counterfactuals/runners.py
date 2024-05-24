@@ -35,9 +35,9 @@ class OtherEvalRunner(ABC):
         # A heatmap can be viewed with the plot_heatmap_with_ci function
         raise NotImplementedError
 
-    @staticmethod
-    @abstractmethod
+    @classmethod
     async def get_finetuning(
+        cls,
         object_model: str,
         api: CachedInferenceAPI,
         limit: int = 100,
@@ -64,21 +64,25 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
             number_samples=limit,
         )
         formatted: Slist[OtherEvalCSVFormat] = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
+        
         return formatted
 
-    @staticmethod
+    @classmethod
     async def get_finetuning(
+        cls,
         object_model: str,
         api: CachedInferenceAPI,
         limit: int = 100,
     ) -> Sequence[FinetuneConversation]:
         # Get the finetuning messages for the particular evaluation
         # TODO: MAKE SURE WE FINETUNE ON A DIFFERENT DATASET!!
-        return await finetune_samples_ask_if_affected(
+        result =  await finetune_samples_ask_if_affected(
             object_model=object_model,
             api=api,
             number_samples=limit,
         )
+        print(f"Got {len(result)} finetuning samples for {cls.name()}")
+        return result
 
 
 class BiasDetectWhatAnswerWithout(OtherEvalRunner):
@@ -97,19 +101,22 @@ class BiasDetectWhatAnswerWithout(OtherEvalRunner):
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
 
-    @staticmethod
+    @classmethod
     async def get_finetuning(
+        cls,
         object_model: str,
         api: CachedInferenceAPI,
         limit: int = 100,
     ) -> Sequence[FinetuneConversation]:
         # Get the finetuning messages for the particular evaluation
         # TODO: MAKE SURE WE FINETUNE ON A DIFFERENT DATASET!!
-        return await finetune_samples_what_answer_without_bias(
+        result = await finetune_samples_what_answer_without_bias(
             object_model=object_model,
             api=api,
             number_samples=limit,
         )
+        print(f"Got {len(result)} finetuning samples for {cls.name()}")
+        return result
 
 
 class BiasDetectAddAreYouSure(OtherEvalRunner):
@@ -192,7 +199,6 @@ async def run_from_commands(
     # we get a list of lists, so we flatten it
     flattened: Slist[OtherEvalCSVFormat] = gathered.flatten_list()
     return flattened
-
 
 def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunner]]:
     runners = []

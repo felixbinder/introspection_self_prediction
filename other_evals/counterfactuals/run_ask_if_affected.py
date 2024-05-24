@@ -444,6 +444,7 @@ async def finetune_samples_ask_if_affected(
         .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_config), max_par=20)
         .flatten_optional()
         .tqdm(tqdm_bar=tqdm(desc="First round", total=dataset_data.length))
+        .filter(lambda x: x.both_successful)
         # .take(100)
         .to_slist()
     )
