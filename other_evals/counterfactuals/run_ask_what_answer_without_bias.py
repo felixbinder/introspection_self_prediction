@@ -18,7 +18,7 @@ from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from evals.utils import setup_environment
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, OtherEvalCSVFormat
 
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -215,6 +215,27 @@ async def ask_second_round(
     )
 
 
+def first_round_to_finetune_sample(single_data: FirstRoundAsking) -> FinetuneConversation:
+    history = single_data.biased_new_history
+    counterfactual_question = (
+        ask_if_answer_changes(single_data.test_data.biased_option)
+        .shuffle(seed=single_data.test_data.original_question_hash)
+        .first_or_raise()
+    )
+
+    should_respond_with = single_data.parsed_unbiased_answer
+    assert should_respond_with is not None
+    new_question = list(history) + [
+        ChatMessageV2(
+            role="user",
+            content=counterfactual_question + round_2_answer_format,
+        ),
+        ChatMessageV2(role="assistant", content=should_respond_with),
+    ]
+    messages = [m.to_finetune() for m in new_question]
+    return FinetuneConversation(messages=messages)
+
+
 # FINETUNED_ON_CLAUDE = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9HWNzLoE"
 # FINETUNED_ON_GPT_35 = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9JghBEzp"
 
@@ -271,8 +292,47 @@ def second_round_to_json(second_round: AskWhatAnswerResult) -> dict:
         "biased_towards": biased_towards,
     }
 
-async def finetune_samples_what_answer_without_bias():
-    ...
+
+async def finetune_samples_what_answer_without_bias(
+    object_model: str,
+    api: CachedInferenceAPI,
+    bias_on_wrong_answer_only: bool = False,
+    number_samples: int = 500,
+) -> Slist[FinetuneConversation]:
+    print(f"Getting finetune samples with {object_model=}")
+    caller = RepoCompatCaller(api=api)
+    # Open one of the bias files
+    potential_data = (
+        # openbook.openbook_train()
+        mmlu_test(questions_per_task=None)
+        # truthful_qa.eval()
+        .shuffle(seed="42").filter(lambda x: x.biased_ans != x.ground_truth if bias_on_wrong_answer_only else True)
+    )
+    assert potential_data.length > 0, "No data found"
+    dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
+        CounterfactualTestData.from_data_example
+    )
+
+    # Call the model
+    object_level_config = InferenceConfig(
+        model=object_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+
+    results: Slist[FirstRoundAsking] = (
+        await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
+        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_level_config), max_par=20)
+        .flatten_optional()
+        .tqdm(tqdm_bar=tqdm(desc="What answer without bias first round", total=dataset_data.length))
+        .to_slist()
+    )
+    did_switch, did_not_switch = results.split_by(lambda x: x.switched_answer)
+    min_length = min(did_switch.length, did_not_switch.length)
+    balanced_data = did_switch.take(min_length) + did_not_switch.take(min_length)
+    return balanced_data.map(first_round_to_finetune_sample)
+
 
 async def run_single_what_answer_without_bias(
     api: CachedInferenceAPI,

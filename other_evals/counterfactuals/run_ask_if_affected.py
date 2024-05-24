@@ -124,6 +124,7 @@ class FirstRoundAsking(BaseModel):
         assert self.both_successful
         return self.parsed_biased_answer != self.parsed_unbiased_answer
 
+
 class AskIfAffectedSecondRound(BaseModel):
     first_round: FirstRoundAsking
     second_round_message: list[ChatMessageV2]
@@ -233,6 +234,7 @@ async def ask_second_round(
         meta_config=meta_config,
     )
 
+
 def first_round_to_finetune_message(single_data: FirstRoundAsking) -> FinetuneConversation:
     # Similar to ask_second_round, but we create a history with the correct answer
     history = single_data.biased_new_history
@@ -251,9 +253,6 @@ def first_round_to_finetune_message(single_data: FirstRoundAsking) -> FinetuneCo
     ]
     finetune_messages = [FinetuneMessage(role=msg.role, content=msg.content) for msg in new_question]
     return FinetuneConversation(messages=finetune_messages)
-
-    
-    
 
 
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
@@ -449,11 +448,7 @@ async def finetune_samples_ask_if_affected(
         .to_slist()
     )
 
-    return results.map(
-        first_round_to_finetune_message
-    )
-
-
+    return results.map(first_round_to_finetune_message)
 
 
 async def test_main():

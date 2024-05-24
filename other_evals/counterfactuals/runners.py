@@ -10,12 +10,15 @@ from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
 from evals.utils import setup_environment
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, FinetuneMessage, OtherEvalCSVFormat
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, OtherEvalCSVFormat
 from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci
 from other_evals.counterfactuals.run_ask_are_you_sure import run_single_are_you_sure
 from other_evals.counterfactuals.run_ask_if_affected import finetune_samples_ask_if_affected, run_single_ask_if_affected
 from other_evals.counterfactuals.run_ask_if_gives_correct_answer import run_single_ask_if_correct_answer
-from other_evals.counterfactuals.run_ask_what_answer_without_bias import run_single_what_answer_without_bias
+from other_evals.counterfactuals.run_ask_what_answer_without_bias import (
+    finetune_samples_what_answer_without_bias,
+    run_single_what_answer_without_bias,
+)
 
 
 class OtherEvalRunner(ABC):
@@ -62,7 +65,6 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
         )
         formatted: Slist[OtherEvalCSVFormat] = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
-    
 
     @staticmethod
     async def get_finetuning(
@@ -94,21 +96,20 @@ class BiasDetectWhatAnswerWithout(OtherEvalRunner):
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
-    
+
     @staticmethod
     async def get_finetuning(
         object_model: str,
         api: CachedInferenceAPI,
         limit: int = 100,
     ) -> Sequence[FinetuneConversation]:
-        ...
         # Get the finetuning messages for the particular evaluation
         # TODO: MAKE SURE WE FINETUNE ON A DIFFERENT DATASET!!
-        # return await finetune_samples_ask_if_affected(
-        #     object_model=object_model,
-        #     api=api,
-        #     number_samples=limit,
-        # )
+        return await finetune_samples_what_answer_without_bias(
+            object_model=object_model,
+            api=api,
+            number_samples=limit,
+        )
 
 
 class BiasDetectAddAreYouSure(OtherEvalRunner):

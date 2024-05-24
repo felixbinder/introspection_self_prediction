@@ -16,6 +16,7 @@ class FinetuneMessage(BaseModel):
     role: str
     content: str
 
+
 class FinetuneConversation(BaseModel):
     # Each conversation has multiple messages between the user and the model
     messages: list[FinetuneMessage]

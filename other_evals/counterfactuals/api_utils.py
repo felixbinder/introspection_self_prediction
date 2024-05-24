@@ -58,7 +58,7 @@ class ChatMessageV2(BaseModel):
 
     def pretty_str(self) -> str:
         return f"{self.role}: {self.content}"
-    
+
     def to_finetune(self) -> FinetuneMessage:
         # currently exactly the same
         return FinetuneMessage(
