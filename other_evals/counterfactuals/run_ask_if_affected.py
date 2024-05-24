@@ -25,7 +25,7 @@ from other_evals.counterfactuals.datasets.base_example import (
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, FinetuneMessage, OtherEvalCSVFormat
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -121,8 +121,8 @@ class FirstRoundAsking(BaseModel):
 
     @property
     def switched_answer(self) -> bool:
+        assert self.both_successful
         return self.parsed_biased_answer != self.parsed_unbiased_answer
-
 
 class AskIfAffectedSecondRound(BaseModel):
     first_round: FirstRoundAsking
@@ -232,6 +232,28 @@ async def ask_second_round(
         final_history=final_history,
         meta_config=meta_config,
     )
+
+def first_round_to_finetune_message(single_data: FirstRoundAsking) -> FinetuneConversation:
+    # Similar to ask_second_round, but we create a history with the correct answer
+    history = single_data.biased_new_history
+    counterfactual_question = (
+        ask_if_answer_changes(single_data.test_data.biased_option)
+        .shuffle(seed=single_data.test_data.original_question_hash)
+        .first_or_raise()
+    )
+    Y_OR_NO = "Y" if single_data.switched_answer else "N"
+    new_question = list(history) + [
+        ChatMessageV2(
+            role="user",
+            content=counterfactual_question + round_2_answer_format,
+        ),
+        ChatMessageV2(role="assistant", content=Y_OR_NO),
+    ]
+    finetune_messages = [FinetuneMessage(role=msg.role, content=msg.content) for msg in new_question]
+    return FinetuneConversation(messages=finetune_messages)
+
+    
+    
 
 
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
@@ -390,6 +412,48 @@ async def run_single_ask_if_affected(
     ) + unaffected_ground_truth.take(smallest_length)
 
     return balanced_ground_truth_data
+
+
+async def finetune_samples_ask_if_affected(
+    object_model: str,
+    api: CachedInferenceAPI,
+    bias_on_wrong_answer_only: bool = False,
+    number_samples: int = 500,
+) -> Slist[FinetuneConversation]:
+    caller = RepoCompatCaller(api=api)
+    object_config = InferenceConfig(
+        model=object_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+
+    print(f"Running ask if affected by bias with model {object_model}")
+    # Open one of the bias files
+    potential_data = (
+        mmlu_test(questions_per_task=None)
+        .shuffle(seed="42")
+        .filter(lambda x: x.biased_ans != x.ground_truth if bias_on_wrong_answer_only else True)
+    )
+    assert potential_data.length > 0, "No data found"
+    dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
+        CounterfactualTestData.from_data_example
+    )
+
+    results: Slist[FirstRoundAsking] = (
+        await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
+        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_config), max_par=20)
+        .flatten_optional()
+        .tqdm(tqdm_bar=tqdm(desc="First round", total=dataset_data.length))
+        # .take(100)
+        .to_slist()
+    )
+
+    return results.map(
+        first_round_to_finetune_message
+    )
+
+
 
 
 async def test_main():

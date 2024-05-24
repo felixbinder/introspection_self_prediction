@@ -8,8 +8,9 @@ from evals.data_models.messages import Prompt
 
 
 class CachedInferenceAPI:
+    # Wraps the InferenceAPI class to cache responses easily
     def __init__(self, api: InferenceAPI, cache_path: Path | str):
-        self.api = api
+        self.api: InferenceAPI = api
         self.cache_manager = CacheManager(Path(cache_path))
 
     async def __call__(

@@ -271,6 +271,8 @@ def second_round_to_json(second_round: AskWhatAnswerResult) -> dict:
         "biased_towards": biased_towards,
     }
 
+async def finetune_samples_what_answer_without_bias():
+    ...
 
 async def run_single_what_answer_without_bias(
     api: CachedInferenceAPI,

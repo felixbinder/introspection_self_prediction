@@ -18,6 +18,7 @@ from evals.data_models.hashable import deterministic_hash
 from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import ChatMessage, MessageRole, Prompt
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneMessage
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,13 @@ class ChatMessageV2(BaseModel):
 
     def pretty_str(self) -> str:
         return f"{self.role}: {self.content}"
+    
+    def to_finetune(self) -> FinetuneMessage:
+        # currently exactly the same
+        return FinetuneMessage(
+            role=self.role,
+            content=self.content,
+        )
 
 
 def display_conversation(messages: Sequence[ChatMessageV2]) -> str:
