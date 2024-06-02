@@ -261,7 +261,8 @@ def run_sweep_over_other_evals(
 
 def test_main():
     # What evals to run?
-    eval_list = ALL_EVAL_TYPES
+    # eval_list = ALL_EVAL_TYPES
+    eval_list = [BiasDetectAddAreYouSure]
     print(f"Running evals: {[e.name() for e in eval_list]}")
     # What models to run?
     models = Slist(
@@ -277,7 +278,7 @@ def test_main():
     # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 5_000
+    limit = 1_000
     run_sweep_over_other_evals(
         eval_list=eval_list,
         object_and_meta=object_and_meta_models,
