@@ -22,6 +22,7 @@ from other_evals.counterfactuals.datasets.base_example import (
     DataExampleBase,
     MultipleChoiceAnswer,
 )
+from other_evals.counterfactuals.datasets.load_arc import arc_all
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
@@ -410,9 +411,9 @@ async def run_single_ask_if_affected(
 async def finetune_samples_ask_if_affected(
     object_model: str,
     api: CachedInferenceAPI,
-    bias_on_wrong_answer_only: bool = False,
     number_samples: int = 500,
 ) -> Slist[FinetuneConversation]:
+    # uses arc data, we'll test on mmlu
     caller = RepoCompatCaller(api=api)
     object_config = InferenceConfig(
         model=object_model,
@@ -422,12 +423,9 @@ async def finetune_samples_ask_if_affected(
     )
 
     print(f"Running ask if affected by bias with model {object_model}")
+
     # Open one of the bias files
-    potential_data = (
-        mmlu_test(questions_per_task=None)
-        .shuffle(seed="42")
-        .filter(lambda x: x.biased_ans != x.ground_truth if bias_on_wrong_answer_only else True)
-    )
+    potential_data = arc_all().shuffle(seed="42")
     assert potential_data.length > 0, "No data found"
     dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
         CounterfactualTestData.from_data_example

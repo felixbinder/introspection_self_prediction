@@ -1,6 +1,7 @@
 from pathlib import Path
 from evals.apis.inference.api import InferenceAPI
 from evals.utils import setup_environment
+from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
 from other_evals.counterfactuals.runners import BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, OtherEvalRunner
@@ -51,6 +52,7 @@ async def test_main():
         api=inference_api,
     )
     print(f"Got {len(finetune_samples)} final finetuning samples")
+    write_jsonl_file_from_basemodel("test_finetune_samples.jsonl", finetune_samples)
 
 
 if __name__ == "__main__":

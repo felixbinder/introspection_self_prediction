@@ -13,6 +13,7 @@ from other_evals.counterfactuals.api_utils import (
     display_conversation,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
+from other_evals.counterfactuals.datasets.load_arc import arc_all
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 
 from evals.utils import setup_environment
@@ -304,7 +305,8 @@ async def finetune_samples_what_answer_without_bias(
     # Open one of the bias files
     potential_data = (
         # openbook.openbook_train()
-        mmlu_test(questions_per_task=None)
+        # mmlu_test(questions_per_task=None)
+        arc_all()
         # truthful_qa.eval()
         .shuffle(seed="42").filter(lambda x: x.biased_ans != x.ground_truth if bias_on_wrong_answer_only else True)
     )

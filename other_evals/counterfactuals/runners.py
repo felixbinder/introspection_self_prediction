@@ -43,7 +43,7 @@ class OtherEvalRunner(ABC):
         limit: int = 100,
     ) -> Sequence[FinetuneConversation]:
         # Get the finetuning messages for the particular evaluation
-        raise NotImplementedError
+        raise NotImplementedError(f"get_finetuning not implemented for {cls.name()}")
 
     @classmethod
     def name(cls) -> str:
@@ -75,7 +75,6 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
         limit: int = 100,
     ) -> Sequence[FinetuneConversation]:
         # Get the finetuning messages for the particular evaluation
-        # TODO: MAKE SURE WE FINETUNE ON A DIFFERENT DATASET!!
         result = await finetune_samples_ask_if_affected(
             object_model=object_model,
             api=api,
