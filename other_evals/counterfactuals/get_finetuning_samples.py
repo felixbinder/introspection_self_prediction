@@ -4,7 +4,7 @@ from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
-from other_evals.counterfactuals.runners import BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, OtherEvalRunner
+from other_evals.counterfactuals.runners import ALL_EVAL_TYPES, OtherEvalRunner
 
 
 from git import Sequence
@@ -45,7 +45,7 @@ async def test_main():
     study_folder = "exp/finetuning"
     inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
     finetune_samples = await get_finetuning_samples(
-        evals_to_run=[BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout],
+        evals_to_run=ALL_EVAL_TYPES,
         object_model="gpt-3.5-turbo",
         try_n_samples=500,
         take_n_samples=50,
