@@ -15,12 +15,13 @@ from other_evals.counterfactuals.api_utils import (
     display_conversation,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
+from other_evals.counterfactuals.datasets.load_arc import arc_all
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 
 from evals.utils import setup_environment
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, FinetuneMessage, OtherEvalCSVFormat
 
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -158,6 +159,36 @@ async def ask_first_round(
     )
 
 
+async def make_finetune_sample(
+    data: DataExampleBase,
+    caller: ModelCallerV2,
+    object_config: InferenceConfig,
+) -> FinetuneConversation | None:
+    unbiased_question = [
+        ChatMessageV2(role="user", content=data.get_parsed_input() + round_1_answer_format),
+    ]
+
+    object_response = await caller.call(unbiased_question, config=object_config)
+    if object_response.raw_responses.__len__() != 1:
+        print(f"Unbiased response has {object_response.raw_responses.__len__()} responses")
+        print(f"{data.get_parsed_input()}")
+        return None
+    parsed_object = extract_answer_non_cot(object_response.single_response)
+    if parsed_object is None:
+        return None
+    meta_question = get_meta_question().shuffle(seed=data.get_parsed_input()).first_or_raise()
+    label = "Y" if parsed_object == data.ground_truth else "N"
+    meta_messages = [
+        ChatMessageV2(
+            role="user",
+            content=data.get_parsed_input() + f"\n{meta_question}",
+        ),
+        ChatMessageV2(role="assistant", content=label),
+    ]
+    messages_finetune = [FinetuneMessage(role=r.role, content=r.content) for r in meta_messages]
+    return FinetuneConversation(messages=messages_finetune)
+
+
 # FINETUNED_ON_CLAUDE = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9HWNzLoE"
 # FINETUNED_ON_GPT_35 = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9JghBEzp"
 
@@ -179,6 +210,50 @@ chosen_model = "claude-3-opus-20240229"
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n" # 1 hop
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9EXL6W9A" # trained on felix's everything
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T" # trained on felix's everything, reproduction
+
+
+async def kwik_finetune_samples(
+    api: CachedInferenceAPI,
+    number_samples: int = 100,
+    object_model: str = chosen_model,
+) -> Slist[FinetuneConversation]:
+    caller = RepoCompatCaller(api=api)
+    # Open one of the bias files
+    potential_data = (
+        # openbook.openbook_train()
+        arc_all()
+        # truthful_qa.eval()
+    ).take(number_samples)
+    assert potential_data.length > 0, "No data found"
+
+    # Call the model
+    object_level_config = InferenceConfig(
+        model=object_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+    results: Slist[FinetuneConversation] = (
+        await Observable.from_iterable(potential_data)  # Using a package to easily stream and parallelize
+        .map_async_par(
+            lambda data: make_finetune_sample(data, caller=caller, object_config=object_level_config),
+            max_par=20,
+        )
+        .flatten_optional()
+        .tqdm(tqdm_bar=tqdm(desc="First round using", total=potential_data.length))
+        # .take(100)
+        .to_slist()
+    )
+    accuracy = results.map(lambda x: 1 if x.messages[-1].content == "Y" else 0).average_or_raise()
+    print(f"Accuracy for kwik: {accuracy}")
+
+    object_correct, object_incorrect = results.split_by(lambda x: x.last_message_content == "Y")
+    minimum_both = min(object_correct.length, object_incorrect.length)
+    print(f"Balancing ground truths to have same number of samples: {minimum_both}")
+
+    balanced_data = object_correct.take(minimum_both) + object_incorrect.take(minimum_both)
+    # dump_conversations(path="exp/results.txt", messages=results.map(lambda x: x.meta_new_history))
+    return balanced_data
 
 
 async def run_single_ask_if_correct_answer(

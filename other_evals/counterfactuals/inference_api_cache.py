@@ -6,11 +6,6 @@ from evals.data_models.cache import LLMCache
 from evals.data_models.inference import LLMParams, LLMResponse
 from evals.data_models.messages import Prompt
 
-from evals.data_models.cache import LLMCache
-from evals.data_models.inference import LLMParams, LLMResponse
-from evals.data_models.messages import Prompt
-from pathlib import Path
-
 
 class CachedInferenceAPI:
     # Wraps the InferenceAPI class to cache responses easily

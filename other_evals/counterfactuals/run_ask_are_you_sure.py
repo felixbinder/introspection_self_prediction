@@ -23,10 +23,11 @@ from other_evals.counterfactuals.datasets.base_example import (
     DataExampleBase,
     MultipleChoiceAnswer,
 )
+from other_evals.counterfactuals.datasets.load_arc import arc_all
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, FinetuneMessage, OtherEvalCSVFormat
 from other_evals.counterfactuals.stat_utils import average_with_95_ci
 
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
@@ -273,6 +274,23 @@ async def ask_second_round(
     )
 
 
+def to_second_round_finetune(single_data: FirstRoundAsking) -> FinetuneConversation:
+    history = single_data.unbiased_new_history
+    counterfactual_question = (
+        ask_if_answer_changes().shuffle(seed=single_data.test_data.original_question_hash).first_or_raise()
+    )
+    new_question = list(history) + [
+        ChatMessageV2(
+            role="user",
+            content=counterfactual_question + round_2_answer_format,
+        ),
+    ]
+    answer = "Y" if single_data.switched_answer else "N"
+    final_are_you_sure_history = new_question + [ChatMessageV2(role="assistant", content=answer)]
+    messages = [FinetuneMessage(role=r.role, content=r.content) for r in final_are_you_sure_history]
+    return FinetuneConversation(messages=messages)
+
+
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
 
 
@@ -339,6 +357,53 @@ async def run_multiple_models(
     csv_path = THIS_EXP_FOLDER / Path("results.csv")
     df.to_csv(csv_path, index=False)
     print(f"Results saved to {csv_path}")
+
+
+async def are_you_sure_finetune_samples(
+    object_model: str,
+    api: CachedInferenceAPI,
+    number_samples: int = 500,
+) -> Slist[FinetuneConversation]:
+    object_config = InferenceConfig(
+        model=object_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+
+    print(f"Getting are you sure training  with model {object_model}")
+    caller = RepoCompatCaller(api=api)
+    # Open one of the bias files
+    potential_data = arc_all().shuffle(seed="42")
+    assert potential_data.length > 0, "No data found"
+    dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
+        CounterfactualTestData.from_data_example
+    )
+
+    results: Slist[FirstRoundAsking] = (
+        await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
+        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_config), max_par=20)
+        .flatten_optional()
+        .tqdm(tqdm_bar=tqdm(desc="First round", total=dataset_data.length))
+        # .take(100)
+        .to_slist()
+    )
+
+    # Get the average % of parsed answers that match the bias
+    parsed_answers: Slist[FirstRoundAsking] = results.filter(lambda x: x.both_successful)
+
+    print(
+        f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
+    )
+    average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
+    print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
+
+    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+    min_length = min(affected.length, unaffected.length)
+    print(f"Balancing the number of affected and unaffected samples to {min_length}")
+    balanced_parsed_answers = affected.take(min_length) + unaffected.take(min_length)
+
+    return balanced_parsed_answers.map(to_second_round_finetune)
 
 
 async def run_single_are_you_sure(

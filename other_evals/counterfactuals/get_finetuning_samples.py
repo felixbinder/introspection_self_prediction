@@ -1,7 +1,7 @@
 from pathlib import Path
 from evals.apis.inference.api import InferenceAPI
 from evals.utils import setup_environment
-from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
+from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
 from other_evals.counterfactuals.runners import BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, OtherEvalRunner
@@ -20,7 +20,7 @@ async def get_finetuning_samples(
     api: CachedInferenceAPI,
     # Not all samples are successsful, and its not always a 50/50 balanced dataset. Because we balance, often you get 20% of the samples you ask for.
     try_n_samples: int = 500,
-    # If set, we want ~ same number of samples per eval to run
+    # The maximum amount of samples to take from each eval.
     take_n_samples: int | None = 50,
 ) -> Slist[FinetuneConversation]:
     """Run the appropriate evaluation based on the dictionary"""
