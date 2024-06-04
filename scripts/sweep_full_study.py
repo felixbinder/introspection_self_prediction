@@ -42,10 +42,7 @@ import subprocess
 from functools import partial
 from multiprocessing import Manager, Pool, managers
 from pathlib import Path
-from typing import Dict, Type
-
-from git import Sequence
-
+from typing import Dict, Type, Sequence
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
@@ -425,9 +422,7 @@ class StudyRunner:
                     # Not all samples will be succcessful, so some other evals are represented more than others
                     # we could limit this by setting take_n_samples to e.g. 10% of self.args.n_object_train
                     take_n_samples=None,
-                    # We cache per prompt and inference config, so we can cache this across studies to save time
-                    cache_path=EXP_DIR / "other_evals_finetuning_cache",
-                    # cache_path=EXP_DIR / self.args.study_name,
+                    cache_path=EXP_DIR / self.args.study_name,
                 )
                 additional_samples[model_config] = other_eval_train_samples
 
