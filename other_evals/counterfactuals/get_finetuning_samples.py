@@ -42,6 +42,30 @@ async def get_finetuning_samples(
     flattened: Slist[FinetuneConversation] = gathered.flatten_list()
     return flattened
 
+def get_other_evals_finetuning_samples(
+    evals_to_run: Sequence[Type[OtherEvalRunner]],
+    object_model: str,
+    # Not all samples are successsful, and its not always a 50/50 balanced dataset. Because we balance, often you get 20% of the samples you ask for.
+    try_n_samples: int = 500,
+    # The maximum amount of samples to take from each eval.
+    take_n_samples: int | None = 50,
+    study_folder: str | Path = "exp/other_evals",
+) -> Slist[FinetuneConversation]:
+    # entry point from finetuning where we create the inferenceapi ourselves
+    # sync function because the entry point is sync
+    setup_environment()
+    api = InferenceAPI(anthropic_num_threads=10)
+    inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
+    cooroutine=  get_finetuning_samples(
+        evals_to_run=evals_to_run,
+        object_model=object_model,
+        api=inference_api,
+        try_n_samples=try_n_samples,
+        take_n_samples=take_n_samples,
+    )
+    return asyncio.run(cooroutine)
+
+    
 
 def add_new_samples_to_existing_jsonl(
     existing_jsonl: Path,

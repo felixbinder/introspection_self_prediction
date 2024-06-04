@@ -41,12 +41,16 @@ import subprocess
 from functools import partial
 from multiprocessing import Manager, Pool, managers
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Type
+
+from git import Sequence
 
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
-from other_evals.counterfactuals.runners import eval_list_to_runner, run_sweep_over_other_evals
+from other_evals.counterfactuals.get_finetuning_samples import add_new_samples_to_existing_jsonl, get_other_evals_finetuning_samples
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
+from other_evals.counterfactuals.runners import OtherEvalRunner, eval_list_to_runner, run_sweep_over_other_evals
 
 
 def json_string(arg_value):
@@ -103,6 +107,11 @@ class StudyRunner:
         other_evals_types = eval_list_to_runner(other_evals)
         self.args.other_evals = other_evals_types
 
+        other_evals_val: list[str] = eval(self.args.other_evals_val)
+        assert isinstance(other_evals_val, list), "other_evals_val must be a list of strings"
+        other_evals_val_types = eval_list_to_runner(other_evals_val)
+        self.args.other_evals_val = other_evals_val_types
+
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")
         parser.add_argument("--study_name", type=str, help="The name of the study. Defines the output directory.")
@@ -120,7 +129,13 @@ class StudyRunner:
         parser.add_argument(
             "--other_evals",
             type=str,
-            help="List of other evals to run. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
+            help="List of other evals to train on. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
+            default="[]",
+        )
+        parser.add_argument(
+            "--other_evals_val",
+            type=str,
+            help="List of other evals to evaluate on. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
             default="[]",
         )
         parser.add_argument("--prompt_configs", type=str, help="Comma-separated list of prompt configurations.")
@@ -393,6 +408,46 @@ class StudyRunner:
             run_finetuning_dataset_creation(state=self.state, state_lock=self.state_lock, command=command)
         print(f"Created {len(finetuning_dataset_creation_commands)} finetuning datasets.")
 
+
+        #### Add other evals to the finetuning dataset ####
+        maybe_other_evals_train: list[Type[OtherEvalRunner]] = self.args.other_evals
+        # model -> [samples]
+        additional_samples: dict[str, Sequence[FinetuneConversation]] = {}
+        if maybe_other_evals_train:
+            # Generate other evals samples
+            for model in self.args.model_configs:
+                other_eval_train_samples = get_other_evals_finetuning_samples(
+                    evals_to_run=maybe_other_evals_train,
+                    object_model=model,
+                    try_n_samples=self.args.n_object_train,
+                    # Not all samples will be succcessful, so some other evals are represented more than others
+                    # we could limit this by setting take_n_samples to e.g. 10% of self.args.n_object_train
+                    take_n_samples=None,
+                    study_folder=EXP_DIR / self.args.study_name,
+                )
+                additional_samples[model] = other_eval_train_samples
+
+            # Now add the samples to the existing jsonl files
+            for model in self.args.model_configs:
+                existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
+                assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
+                new_jsonl: Path = existing_jsonl # not idempotent
+                model_samples = additional_samples[model]
+                # Because we are adding to the same jsonl file, its not idempotent and we need to check if the samples are already there
+                if model not in self.state["finetuning_dataset_other_evals"]:
+                    with self.state_lock:
+                        self.state["finetuning_dataset_other_evals"].update(
+                            self.turn_nested_dictionary_into_multiprocessing_dict({model: {"status": "incomplete"}})
+                        )
+                    add_new_samples_to_existing_jsonl(
+                        existing_jsonl=existing_jsonl,
+                        new_jsonl=new_jsonl,
+                        new_samples=model_samples,
+                    )
+                    with self.state_lock:
+                        self.state["finetuning_dataset_other_evals"][model].update({"status": "complete"})
+
+
         #### run finetuning ####
         finetuning_commands = []
         for model in self.args.model_configs:
@@ -480,8 +535,9 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
-        if self.args.other_evals:
-            print(f"Running other evals... {self.args.other_evals}")
+        maybe_other_evals_val: list[Type[OtherEvalRunner]] = self.args.other_evals_val
+        if maybe_other_evals_val:
+            print(f"Running evaluation on other evals... {maybe_other_evals_val}")
             object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
             meta_level_models: list[str] = (
                 self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
@@ -495,7 +551,7 @@ class StudyRunner:
             # TODO: Possibly run all sweeps in parallel, but need to silence tqdm output
             # Creates csv files for each eval in the other_evals_list, which you can view the heatmap of with the function plot_heatmap_with_ci
             run_sweep_over_other_evals(
-                eval_list=self.args.other_evals,
+                eval_list=maybe_other_evals_val,
                 object_and_meta=object_and_meta,
                 limit=other_evals_limit,
                 study_folder=other_evals_path,
