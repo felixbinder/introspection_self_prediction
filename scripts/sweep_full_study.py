@@ -431,6 +431,9 @@ class StudyRunner:
                 )
                 additional_samples[model_config] = other_eval_train_samples
 
+            if "finetuning_dataset_other_evals" not in self.state:
+                with self.state_lock:
+                    self.state["finetuning_dataset_other_evals"] = self.manager.dict()
             # Now add the samples to the existing jsonl files
             for model in self.args.model_configs:
                 existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
