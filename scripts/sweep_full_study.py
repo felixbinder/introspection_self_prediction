@@ -26,7 +26,7 @@ python -m scripts.sweep_full_study
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
 --other_evals='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
---other_evals_val='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
+--val_other_evals='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
 --prompt_configs='minimal'
 --n_object_train=1000
 --n_object_val=250
@@ -109,10 +109,10 @@ class StudyRunner:
         other_evals_types = eval_list_to_runner(other_evals)
         self.args.other_evals = other_evals_types
 
-        other_evals_val: list[str] = eval(self.args.other_evals_val)
-        assert isinstance(other_evals_val, list), "other_evals_val must be a list of strings"
-        other_evals_val_types = eval_list_to_runner(other_evals_val)
-        self.args.other_evals_val = other_evals_val_types
+        val_other_evals: list[str] = eval(self.args.val_other_evals)
+        assert isinstance(val_other_evals, list), "val_other_evals must be a list of strings"
+        other_evals_val_types = eval_list_to_runner(val_other_evals)
+        self.args.val_other_evals = other_evals_val_types
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")
@@ -542,7 +542,7 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
-        maybe_other_evals_val: list[Type[OtherEvalRunner]] = self.args.other_evals_val
+        maybe_other_evals_val: list[Type[OtherEvalRunner]] = self.args.val_other_evals
         if maybe_other_evals_val:
             print(f"Running evaluation on other evals... {maybe_other_evals_val}")
             object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
