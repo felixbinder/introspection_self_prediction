@@ -26,6 +26,7 @@ python -m scripts.sweep_full_study
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
 --other_evals='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
+--other_evals_val='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
 --prompt_configs='minimal'
 --n_object_train=1000
 --n_object_val=250
@@ -48,9 +49,10 @@ from git import Sequence
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
-from other_evals.counterfactuals.get_finetuning_samples import add_new_samples_to_existing_jsonl, get_other_evals_finetuning_samples
+from other_evals.counterfactuals.get_finetuning_samples import add_new_samples_to_existing_jsonl_and_shuffle, get_other_evals_finetuning_samples
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
 from other_evals.counterfactuals.runners import OtherEvalRunner, eval_list_to_runner, run_sweep_over_other_evals
+from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
 
 
 def json_string(arg_value):
@@ -411,21 +413,24 @@ class StudyRunner:
 
         #### Add other evals to the finetuning dataset ####
         maybe_other_evals_train: list[Type[OtherEvalRunner]] = self.args.other_evals
-        # model -> [samples]
+        # map of model name -> [samples]
         additional_samples: dict[str, Sequence[FinetuneConversation]] = {}
         if maybe_other_evals_train:
             # Generate other evals samples
-            for model in self.args.model_configs:
+            for model_config in self.args.model_configs:
+                model_id = read_model_id_from_model_config(model_config)
                 other_eval_train_samples = get_other_evals_finetuning_samples(
                     evals_to_run=maybe_other_evals_train,
-                    object_model=model,
+                    object_model=model_id,
                     try_n_samples=self.args.n_object_train,
                     # Not all samples will be succcessful, so some other evals are represented more than others
                     # we could limit this by setting take_n_samples to e.g. 10% of self.args.n_object_train
                     take_n_samples=None,
-                    study_folder=EXP_DIR / self.args.study_name,
+                    # We cache per prompt and inference config, so we can cache this across studies to save time
+                    cache_path=EXP_DIR / "other_evals_finetuning_cache",
+                    # cache_path=EXP_DIR / self.args.study_name,
                 )
-                additional_samples[model] = other_eval_train_samples
+                additional_samples[model_config] = other_eval_train_samples
 
             # Now add the samples to the existing jsonl files
             for model in self.args.model_configs:
@@ -433,13 +438,13 @@ class StudyRunner:
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
                 new_jsonl: Path = existing_jsonl # not idempotent
                 model_samples = additional_samples[model]
-                # Because we are adding to the same jsonl file, its not idempotent and we need to check if the samples are already there
+                # Because we are adding to the same jsonl file, its not idempotent and we need to track if we've done this already
                 if model not in self.state["finetuning_dataset_other_evals"]:
                     with self.state_lock:
                         self.state["finetuning_dataset_other_evals"].update(
                             self.turn_nested_dictionary_into_multiprocessing_dict({model: {"status": "incomplete"}})
                         )
-                    add_new_samples_to_existing_jsonl(
+                    add_new_samples_to_existing_jsonl_and_shuffle(
                         existing_jsonl=existing_jsonl,
                         new_jsonl=new_jsonl,
                         new_samples=model_samples,
@@ -538,10 +543,13 @@ class StudyRunner:
         maybe_other_evals_val: list[Type[OtherEvalRunner]] = self.args.other_evals_val
         if maybe_other_evals_val:
             print(f"Running evaluation on other evals... {maybe_other_evals_val}")
-            object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
-            meta_level_models: list[str] = (
+            object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
+            object_level_models = [read_model_id_from_model_config(c) for c in object_level_configs]
+            meta_level_configs: list[str] = (
                 self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
             )
+            meta_level_models = [read_model_id_from_model_config(c) for c in meta_level_configs]
+
             object_and_meta = [
                 (object_model, meta_model) for object_model in object_level_models for meta_model in meta_level_models
             ]

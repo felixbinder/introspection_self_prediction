@@ -13,6 +13,7 @@ from other_evals.counterfactuals.runners import ALL_EVAL_TYPES, OtherEvalRunner
 
 from git import Sequence
 from slist import Slist
+import asyncio
 
 
 from typing import Type
@@ -42,6 +43,7 @@ async def get_finetuning_samples(
     flattened: Slist[FinetuneConversation] = gathered.flatten_list()
     return flattened
 
+
 def get_other_evals_finetuning_samples(
     evals_to_run: Sequence[Type[OtherEvalRunner]],
     object_model: str,
@@ -49,14 +51,14 @@ def get_other_evals_finetuning_samples(
     try_n_samples: int = 500,
     # The maximum amount of samples to take from each eval.
     take_n_samples: int | None = 50,
-    study_folder: str | Path = "exp/other_evals",
+    cache_path: str | Path = "exp/other_evals",
 ) -> Slist[FinetuneConversation]:
     # entry point from finetuning where we create the inferenceapi ourselves
     # sync function because the entry point is sync
     setup_environment()
-    api = InferenceAPI(anthropic_num_threads=10)
-    inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
-    cooroutine=  get_finetuning_samples(
+    api = InferenceAPI(anthropic_num_threads=40)
+    inference_api = CachedInferenceAPI(api=api, cache_path=cache_path)
+    cooroutine = get_finetuning_samples(
         evals_to_run=evals_to_run,
         object_model=object_model,
         api=inference_api,
@@ -65,15 +67,18 @@ def get_other_evals_finetuning_samples(
     )
     return asyncio.run(cooroutine)
 
-    
 
-def add_new_samples_to_existing_jsonl(
+def add_new_samples_to_existing_jsonl_and_shuffle(
     existing_jsonl: Path,
     new_jsonl: Path,
     new_samples: Sequence[FinetuneConversation],
 ) -> None:
-    existing_samples = read_jsonl_file_into_basemodel(existing_jsonl, basemodel=FinetuneConversation)
-    existing_samples.extend(new_samples)
+    existing_samples = (
+        read_jsonl_file_into_basemodel(existing_jsonl, basemodel=FinetuneConversation)
+        .add(Slist(new_samples))
+        .shuffle("42")
+    )
+
     write_jsonl_file_from_basemodel(new_jsonl, basemodels=existing_samples)
 
 
