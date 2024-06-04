@@ -46,7 +46,10 @@ from typing import Dict, Type, Sequence
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
-from other_evals.counterfactuals.get_finetuning_samples import add_new_samples_to_existing_jsonl_and_shuffle, get_other_evals_finetuning_samples
+from other_evals.counterfactuals.get_finetuning_samples import (
+    add_new_samples_to_existing_jsonl_and_shuffle,
+    get_other_evals_finetuning_samples,
+)
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
 from other_evals.counterfactuals.runners import OtherEvalRunner, eval_list_to_runner, run_sweep_over_other_evals
 from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
@@ -103,7 +106,6 @@ class StudyRunner:
                 setattr(self.args, arg, json_string(getattr(self.args, arg)))
             else:
                 setattr(self.args, arg, {})
-
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")
@@ -401,7 +403,6 @@ class StudyRunner:
             run_finetuning_dataset_creation(state=self.state, state_lock=self.state_lock, command=command)
         print(f"Created {len(finetuning_dataset_creation_commands)} finetuning datasets.")
 
-
         #### Add other evals to the finetuning dataset ####
         # map of model name -> [samples]
         additional_samples: dict[str, Sequence[FinetuneConversation]] = {}
@@ -426,7 +427,7 @@ class StudyRunner:
             for model in self.args.model_configs:
                 existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
-                new_jsonl: Path = existing_jsonl # not idempotent
+                new_jsonl: Path = existing_jsonl  # not idempotent
                 model_samples = additional_samples[model]
                 # Because we are adding to the same jsonl file, its not idempotent and we need to track if we've done this already
                 if model not in self.state["finetuning_dataset_other_evals"]:
@@ -441,7 +442,6 @@ class StudyRunner:
                     )
                     with self.state_lock:
                         self.state["finetuning_dataset_other_evals"][model].update({"status": "complete"})
-
 
         #### run finetuning ####
         finetuning_commands = []
@@ -530,11 +530,10 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
-        
         if self.validated_val_other_evals:
             print(f"Running evaluation on other evals... {self.validated_val_other_evals}")
             object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
-            
+
             meta_level_configs: list[str] = (
                 self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
             )
@@ -667,6 +666,7 @@ def run_meta_val_command(command, state, state_lock):
             state["meta_val_runs"][command].update({"status": "failed"})
         print(f"Failed to run {command}: {e}")
         raise e
+
 
 def validate_other_evals(other_evals_arg: str) -> Sequence[Type[OtherEvalRunner]]:
     ### Other evals is just a list of strings
