@@ -226,7 +226,7 @@ if __name__ == "__main__":
     object_and_meta_models = [(object_model, meta_model) for object_model in models for meta_model in models]
     if OTHER_EVALS:
         run_sweep_over_other_evals(
-            object_and_meta=object_and_meta_models,
+            object_and_meta_configs=object_and_meta_models,
             eval_list=OTHER_EVALS,
             limit=N_EVAL,
             show_plot=True,

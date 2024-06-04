@@ -18,6 +18,8 @@ import asyncio
 
 from typing import Type
 
+from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
+
 
 async def get_finetuning_samples(
     evals_to_run: Sequence[Type[OtherEvalRunner]],
@@ -46,7 +48,7 @@ async def get_finetuning_samples(
 
 def get_other_evals_finetuning_samples(
     evals_to_run: Sequence[Type[OtherEvalRunner]],
-    object_model: str,
+    object_model_config: str,
     # Not all samples are successsful, and its not always a 50/50 balanced dataset. Because we balance, often you get 20% of the samples you ask for.
     try_n_samples: int = 500,
     # The maximum amount of samples to take from each eval.
@@ -57,10 +59,11 @@ def get_other_evals_finetuning_samples(
     # sync function because the entry point is sync
     setup_environment()
     api = InferenceAPI(anthropic_num_threads=40)
+    model_id = read_model_id_from_model_config(object_model_config)
     inference_api = CachedInferenceAPI(api=api, cache_path=cache_path)
     cooroutine = get_finetuning_samples(
         evals_to_run=evals_to_run,
-        object_model=object_model,
+        object_model=model_id,
         api=inference_api,
         try_n_samples=try_n_samples,
         take_n_samples=take_n_samples,

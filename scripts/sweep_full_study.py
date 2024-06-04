@@ -418,10 +418,9 @@ class StudyRunner:
         if maybe_other_evals_train:
             # Generate other evals samples
             for model_config in self.args.model_configs:
-                model_id = read_model_id_from_model_config(model_config)
                 other_eval_train_samples = get_other_evals_finetuning_samples(
                     evals_to_run=maybe_other_evals_train,
-                    object_model=model_id,
+                    object_model_config=model_config,
                     try_n_samples=self.args.n_object_train,
                     # Not all samples will be succcessful, so some other evals are represented more than others
                     # we could limit this by setting take_n_samples to e.g. 10% of self.args.n_object_train
@@ -544,14 +543,13 @@ class StudyRunner:
         if maybe_other_evals_val:
             print(f"Running evaluation on other evals... {maybe_other_evals_val}")
             object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
-            object_level_models = [read_model_id_from_model_config(c) for c in object_level_configs]
+            
             meta_level_configs: list[str] = (
                 self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
             )
-            meta_level_models = [read_model_id_from_model_config(c) for c in meta_level_configs]
 
             object_and_meta = [
-                (object_model, meta_model) for object_model in object_level_models for meta_model in meta_level_models
+                (object_model, meta_model) for object_model in object_level_configs for meta_model in meta_level_configs
             ]
 
             other_evals_limit: int = self.args.n_meta_val
@@ -560,7 +558,7 @@ class StudyRunner:
             # Creates csv files for each eval in the other_evals_list, which you can view the heatmap of with the function plot_heatmap_with_ci
             run_sweep_over_other_evals(
                 eval_list=maybe_other_evals_val,
-                object_and_meta=object_and_meta,
+                object_and_meta_configs=object_and_meta,
                 limit=other_evals_limit,
                 study_folder=other_evals_path,
             )
