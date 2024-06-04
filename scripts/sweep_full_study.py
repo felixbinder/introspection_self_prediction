@@ -77,6 +77,10 @@ class StudyRunner:
         self.manager = Manager()
         self.state = self.manager.dict()
         self.state_lock = self.manager.Lock()
+        # We validate the other evals here, so that we raise an error if the user tries to run an eval that doesn't exist
+        # We don't overwrite self.args.other_evals because we want to keep the original string for the state file
+        self.validated_other_evals = validate_other_evals(self.args.other_evals)
+        self.validated_val_other_evals = validate_other_evals(self.args.val_other_evals)
         self.load_or_create_state_file()
         atexit.register(self.write_state_file)
 
@@ -100,16 +104,6 @@ class StudyRunner:
             else:
                 setattr(self.args, arg, {})
 
-        ### Other evals is just a list of strings
-        other_evals: list[str] = eval(self.args.other_evals)
-        assert isinstance(other_evals, list), "other_evals must be a list of strings"
-        other_evals_types = eval_list_to_runner(other_evals)
-        self.args.other_evals = other_evals_types
-
-        val_other_evals: list[str] = eval(self.args.val_other_evals)
-        assert isinstance(val_other_evals, list), "val_other_evals must be a list of strings"
-        other_evals_val_types = eval_list_to_runner(val_other_evals)
-        self.args.val_other_evals = other_evals_val_types
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")
@@ -132,7 +126,7 @@ class StudyRunner:
             default="[]",
         )
         parser.add_argument(
-            "--other_evals_val",
+            "--val_other_evals",
             type=str,
             help="List of other evals to evaluate on. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
             default="[]",
@@ -409,14 +403,13 @@ class StudyRunner:
 
 
         #### Add other evals to the finetuning dataset ####
-        maybe_other_evals_train: list[Type[OtherEvalRunner]] = self.args.other_evals
         # map of model name -> [samples]
         additional_samples: dict[str, Sequence[FinetuneConversation]] = {}
-        if maybe_other_evals_train:
+        if self.validated_other_evals:
             # Generate other evals samples
             for model_config in self.args.model_configs:
                 other_eval_train_samples = get_other_evals_finetuning_samples(
-                    evals_to_run=maybe_other_evals_train,
+                    evals_to_run=self.validated_other_evals,
                     object_model_config=model_config,
                     try_n_samples=self.args.n_object_train,
                     # Not all samples will be succcessful, so some other evals are represented more than others
@@ -537,9 +530,9 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
-        maybe_other_evals_val: list[Type[OtherEvalRunner]] = self.args.val_other_evals
-        if maybe_other_evals_val:
-            print(f"Running evaluation on other evals... {maybe_other_evals_val}")
+        
+        if self.validated_val_other_evals:
+            print(f"Running evaluation on other evals... {self.validated_val_other_evals}")
             object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
             
             meta_level_configs: list[str] = (
@@ -555,7 +548,7 @@ class StudyRunner:
             # TODO: Possibly run all sweeps in parallel, but need to silence tqdm output
             # Creates csv files for each eval in the other_evals_list, which you can view the heatmap of with the function plot_heatmap_with_ci
             run_sweep_over_other_evals(
-                eval_list=maybe_other_evals_val,
+                eval_list=self.validated_val_other_evals,
                 object_and_meta_configs=object_and_meta,
                 limit=other_evals_limit,
                 study_folder=other_evals_path,
@@ -674,6 +667,13 @@ def run_meta_val_command(command, state, state_lock):
             state["meta_val_runs"][command].update({"status": "failed"})
         print(f"Failed to run {command}: {e}")
         raise e
+
+def validate_other_evals(other_evals_arg: str) -> Sequence[Type[OtherEvalRunner]]:
+    ### Other evals is just a list of strings
+    other_evals: list[str] = eval(other_evals_arg)
+    assert isinstance(other_evals, list), f"{other_evals_arg} is not a list"
+    other_evals_types = eval_list_to_runner(other_evals)
+    return other_evals_types
 
 
 def run_command(command, state, state_lock):
