@@ -52,7 +52,7 @@ def get_other_evals_finetuning_samples(
     # Not all samples are successsful, and its not always a 50/50 balanced dataset. Because we balance, often you get 20% of the samples you ask for.
     try_n_samples: int = 500,
     # The maximum amount of samples to take from each eval.
-    take_n_samples: int | None = 50,
+    limit_per_eval: int | None = 50,
     cache_path: str | Path = "exp/other_evals",
 ) -> Slist[FinetuneConversation]:
     # entry point from finetuning where we create the inferenceapi ourselves
@@ -66,7 +66,7 @@ def get_other_evals_finetuning_samples(
         object_model=model_id,
         api=inference_api,
         try_n_samples=try_n_samples,
-        take_n_samples=take_n_samples,
+        take_n_samples=limit_per_eval,
     )
     return asyncio.run(cooroutine)
 

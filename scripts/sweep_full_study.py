@@ -414,8 +414,8 @@ class StudyRunner:
                     object_model_config=model_config,
                     try_n_samples=self.args.n_object_train,
                     # Not all samples will be succcessful, so some other evals are represented more than others
-                    # we could limit this by setting take_n_samples to e.g. 10% of self.args.n_object_train
-                    take_n_samples=None,
+                    # we set a limit to ensure we don't have too many samples of one particular other eval
+                    limit_per_eval=self.args.n_finetuning,
                     cache_path=EXP_DIR / self.args.study_name,
                 )
                 additional_samples[model_config] = other_eval_train_samples
