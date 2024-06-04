@@ -255,7 +255,7 @@ class StudyRunner:
         )
 
     def run_study(self):
-        pool = Pool(4)  # create a pool of worker processes
+        pool = Pool()  # create a pool of worker processes
 
         ### run object level completions on train ####
         object_train_commands = []
@@ -392,13 +392,6 @@ class StudyRunner:
         for command in finetuning_dataset_creation_commands:
             run_finetuning_dataset_creation(state=self.state, state_lock=self.state_lock, command=command)
         print(f"Created {len(finetuning_dataset_creation_commands)} finetuning datasets.")
-
-
-        ## Uhhh the other evals data here.
-        object_models_dataset_paths: list[Path] = []
-        for model in self.args.model_configs:
-            ...
-
 
         #### run finetuning ####
         finetuning_commands = []
