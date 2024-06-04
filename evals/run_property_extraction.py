@@ -122,6 +122,9 @@ async def run_dataset(filename: str, property_name: str, dataset_runner: Dataset
         full_df[f"{property_name}_complete"] = False
     df = full_df[~(full_df[f"{property_name}_complete"])]
 
+    # remove repetive responses to prevent problems with the OpenAI API & Gemini having a stroke
+    df = remove_repetive_responses(df)
+
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
@@ -221,6 +224,28 @@ def try_function(function, row):
         LOGGER.error(f"Error running function {function.__name__} on row {row}")
         LOGGER.error(e)
         return np.nan
+
+
+def remove_repetive_responses(df):
+    """
+    Sometimes models repeat the same word over and over. To prevent the OpenAI API, we truncate the responses/identity
+    """
+
+    # find responses that repeat the same word
+    def is_repetitive(response):
+        return len(set(response.split())) == 1 and len(response.split()) > 10
+
+    repetitive_mask = df["response"].apply(is_repetitive)
+    # truncate the responses
+    df.loc[repetitive_mask, "response"] = df.loc[repetitive_mask, "response"].apply(
+        lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"
+    )
+    df.loc[repetitive_mask, "identity"] = df.loc[repetitive_mask, "identity"].apply(
+        lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"
+    )
+    if len(df[repetitive_mask]) > 0:
+        LOGGER.warn(f"Truncated {len(df[repetitive_mask])} repetive responses")
+    return df
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config_property_extraction")
