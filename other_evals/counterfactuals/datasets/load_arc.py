@@ -2,7 +2,6 @@ from pathlib import Path
 from string import ascii_uppercase
 
 from pydantic import BaseModel
-from slist import Slist
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
@@ -75,7 +74,3 @@ def arc_challenge_train() -> list[ArcExample]:
 def arc_challenge_test() -> list[ArcExample]:
     path = Path("other_evals/counterfactuals/datasets/arc_challenge/ARC-Challenge-Test.jsonl")
     return read_jsonl_file_into_basemodel(path, ArcExample)
-
-
-def arc_all() -> Slist[ArcExample]:
-    return Slist(arc_easy_train() + arc_easy_test() + arc_challenge_train() + arc_challenge_test())

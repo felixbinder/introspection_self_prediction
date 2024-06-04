@@ -72,7 +72,7 @@ class DataExampleBase(BaseModel, ABC):
         output = []
         for idx, option_text in enumerate(options):
             indicator = ascii_uppercase[idx]
-            output.append(f"({indicator}): {option_text}")
+            output.append(f"{indicator}: {option_text}")
 
         return "\n".join(output)
 
