@@ -15,7 +15,7 @@ from other_evals.counterfactuals.api_utils import (
     display_conversation,
 )
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
-from other_evals.counterfactuals.datasets.load_arc import arc_all
+from other_evals.counterfactuals.datasets.all_train import all_non_mmlu
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 
 from evals.utils import setup_environment
@@ -221,7 +221,7 @@ async def kwik_finetune_samples(
     # Open one of the bias files
     potential_data = (
         # openbook.openbook_train()
-        arc_all()
+        all_non_mmlu()
         # truthful_qa.eval()
     ).take(number_samples)
     assert potential_data.length > 0, "No data found"

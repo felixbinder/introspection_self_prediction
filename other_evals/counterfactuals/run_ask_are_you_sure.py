@@ -23,7 +23,7 @@ from other_evals.counterfactuals.datasets.base_example import (
     DataExampleBase,
     MultipleChoiceAnswer,
 )
-from other_evals.counterfactuals.datasets.load_arc import arc_all
+from other_evals.counterfactuals.datasets.all_train import all_non_mmlu
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
@@ -374,7 +374,7 @@ async def are_you_sure_finetune_samples(
     print(f"Getting are you sure training  with model {object_model}")
     caller = RepoCompatCaller(api=api)
     # Open one of the bias files
-    potential_data = arc_all().shuffle(seed="42")
+    potential_data = all_non_mmlu().shuffle(seed="42")
     assert potential_data.length > 0, "No data found"
     dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
         CounterfactualTestData.from_data_example

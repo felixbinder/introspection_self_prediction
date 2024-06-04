@@ -22,7 +22,7 @@ from other_evals.counterfactuals.datasets.base_example import (
     DataExampleBase,
     MultipleChoiceAnswer,
 )
-from other_evals.counterfactuals.datasets.load_arc import arc_all
+from other_evals.counterfactuals.datasets.all_train import all_non_mmlu
 from other_evals.counterfactuals.datasets.load_mmlu import mmlu_test
 from other_evals.counterfactuals.extract_answers import extract_answer_non_cot, extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
@@ -425,7 +425,7 @@ async def finetune_samples_ask_if_affected(
     print(f"Running ask if affected by bias with model {object_model}")
 
     # Open one of the bias files
-    potential_data = arc_all().shuffle(seed="42")
+    potential_data = all_non_mmlu().shuffle(seed="42")
     assert potential_data.length > 0, "No data found"
     dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
         CounterfactualTestData.from_data_example
@@ -440,8 +440,12 @@ async def finetune_samples_ask_if_affected(
         # .take(100)
         .to_slist()
     )
+    affected, unaffected = results.split_by(lambda x: x.switched_answer)
+    min_length = min(affected.length, unaffected.length)
+    print(f"Balancing ground truths to have same number of samples: {min_length}")
+    balanced_data = affected.take(min_length) + unaffected.take(min_length)
 
-    return results.map(first_round_to_finetune_message)
+    return balanced_data.map(first_round_to_finetune_message)
 
 
 async def test_main():

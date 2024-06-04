@@ -295,16 +295,21 @@ def run_sweep_over_other_evals(
 
 def test_main():
     # What evals to run?
-    # eval_list = ALL_EVAL_TYPES
-    eval_list = [BiasDetectAddAreYouSure]
+    eval_list = ALL_EVAL_TYPES
+    # eval_list = [BiasDetectAddAreYouSure]
     print(f"Running evals: {[e.name() for e in eval_list]}")
     # What models to run?
     models = Slist(
         [
-            "gpt-3.5-turbo",
+            # "gpt-3.5-turbo",
+            "gpt-3.5-turbo-0125",
+            "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN", # baseline scrambled
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WOKeIsb", # 12,000 samples gpt-3.5
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WE1NjvJ",  # gpt-3.5 on gpt-3.5, on arc other evals, 3600 samples
             # "claude-3-sonnet-20240229",
             # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T" # all response properites
-            "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",  # ask if affected
+            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",  # ask if affected
             # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9PutAYsj",
             # "gpt-4o",
         ]
@@ -312,7 +317,7 @@ def test_main():
     # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 1_000
+    limit = 2000
     run_sweep_over_other_evals(
         eval_list=eval_list,
         object_and_meta=object_and_meta_models,
