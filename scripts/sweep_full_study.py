@@ -52,7 +52,6 @@ from other_evals.counterfactuals.get_finetuning_samples import (
 )
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
 from other_evals.counterfactuals.runners import OtherEvalRunner, eval_list_to_runner, run_sweep_over_other_evals
-from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
 
 
 def json_string(arg_value):
@@ -258,11 +257,9 @@ class StudyRunner:
         command = f"python -m evals.run_meta_level study_name={self.args.study_name} language_model={model} task={task} response_property={response_property} task.set={set} prompt=meta_level/{prompt} limit={limit} strings_path={strings_path} {overrides}"
         return command
 
-    def get_finetuning_command(self, model, ft_study, notes, overrides=""):
+    def get_finetuning_command(self, model, ft_study, notes, train_path: Path, overrides=""):
         override_str = " ".join(overrides)
-        return (
-            f"python -m evals.run_finetuning study_name={ft_study} language_model={model} notes={notes} {override_str}"
-        )
+        return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
         pool = Pool()  # create a pool of worker processes
@@ -420,28 +417,18 @@ class StudyRunner:
                 )
                 additional_samples[model_config] = other_eval_train_samples
 
-            if "finetuning_dataset_other_evals" not in self.state:
-                with self.state_lock:
-                    self.state["finetuning_dataset_other_evals"] = self.manager.dict()
             # Now add the samples to the existing jsonl files
             for model in self.args.model_configs:
                 existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
-                new_jsonl: Path = existing_jsonl  # not idempotent
+                new_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "combined_train_dataset.jsonl"
                 model_samples = additional_samples[model]
-                # Because we are adding to the same jsonl file, its not idempotent and we need to track if we've done this already
-                if model not in self.state["finetuning_dataset_other_evals"]:
-                    with self.state_lock:
-                        self.state["finetuning_dataset_other_evals"].update(
-                            self.turn_nested_dictionary_into_multiprocessing_dict({model: {"status": "incomplete"}})
-                        )
-                    add_new_samples_to_existing_jsonl_and_shuffle(
-                        existing_jsonl=existing_jsonl,
-                        new_jsonl=new_jsonl,
-                        new_samples=model_samples,
-                    )
-                    with self.state_lock:
-                        self.state["finetuning_dataset_other_evals"][model].update({"status": "complete"})
+                # idempotent so we don't need state check of whether we've done this before
+                add_new_samples_to_existing_jsonl_and_shuffle(
+                    existing_jsonl=existing_jsonl,
+                    new_jsonl=new_jsonl,
+                    new_samples=model_samples,
+                )
 
         #### run finetuning ####
         finetuning_commands = []
@@ -450,8 +437,16 @@ class StudyRunner:
                 print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
                 continue
             for ft_study in finetuning_study_names:
+                ft_study_path = f"{self.args.study_name}/{ft_study}"
+                # Pass the correct train path, depending on whether we are have other evals or not
+                finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+                train_path = (
+                    finetuned_folder_path / "combined_train_dataset.jsonl"
+                    if self.validated_other_evals
+                    else finetuned_folder_path / "train_dataset.jsonl"
+                )
                 command = self.get_finetuning_command(
-                    model, f"{self.args.study_name}/{ft_study}", "sweep", self.args.finetuning_overrides
+                    model, ft_study_path, notes="sweep", train_path=train_path, overrides=self.args.finetuning_overrides
                 )
                 if command not in self.state["finetuning_runs"]:
                     with self.state_lock:

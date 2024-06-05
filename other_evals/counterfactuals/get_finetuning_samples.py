@@ -81,9 +81,6 @@ def add_new_samples_to_existing_jsonl_and_shuffle(
         .add(Slist(new_samples))
         .shuffle("42")
     )
-
-    existing_samples = read_jsonl_file_into_basemodel(existing_jsonl, basemodel=FinetuneConversation)
-    existing_samples.extend(new_samples)
     write_jsonl_file_from_basemodel(new_jsonl, basemodels=existing_samples)
 
 
