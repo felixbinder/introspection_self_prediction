@@ -49,7 +49,7 @@ def main(cfg: DictConfig) -> str:
     data_path = Path(cfg.train_path)
     val_data_path = Path(cfg.study_dir) / "val_dataset.jsonl"
     if not data_path.exists():
-        raise FileNotFoundError(f"Data file not found at {data_path}")    
+        raise FileNotFoundError(f"Data file not found at {data_path}")
     if not val_data_path.exists():
         val_data_path = None
         LOGGER.warning(f"Validation file not found at {val_data_path}. Continuing without validation.")
