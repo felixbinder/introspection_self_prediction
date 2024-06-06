@@ -233,6 +233,7 @@ def remove_repetive_responses(df):
 
     # find responses that repeat the same word
     def is_repetitive(response):
+        response = str(response)
         return len(set(response.split())) == 1 and len(response.split()) > 10
 
     repetitive_mask = df["response"].apply(is_repetitive)
