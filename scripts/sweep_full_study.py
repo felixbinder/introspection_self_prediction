@@ -401,9 +401,9 @@ class StudyRunner:
         print(f"Created {len(finetuning_dataset_creation_commands)} finetuning datasets.")
 
         #### Add other evals to the finetuning dataset ####
-        # map of model name -> [samples]
-        additional_samples: dict[str, Sequence[FinetuneConversation]] = {}
         if self.validated_other_evals:
+            # tuple[model_config, list[FinetuneConversation]
+            additional_samples: list[tuple[str, list[FinetuneConversation]]] = []
             # Generate other evals samples
             for model_config in self.args.model_configs:
                 other_eval_train_samples = get_other_evals_finetuning_samples(
@@ -415,14 +415,13 @@ class StudyRunner:
                     limit_per_eval=self.args.n_finetuning,
                     cache_path=EXP_DIR / self.args.study_name,
                 )
-                additional_samples[model_config] = other_eval_train_samples
+                additional_samples.append((model_config, other_eval_train_samples))
 
             # Now add the samples to the existing jsonl files
-            for model in self.args.model_configs:
+            for model, model_samples in additional_samples:
                 existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
                 new_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "combined_train_dataset.jsonl"
-                model_samples = additional_samples[model]
                 # idempotent so we don't need state check of whether we've done this before
                 add_new_samples_to_existing_jsonl_and_shuffle(
                     existing_jsonl=existing_jsonl,
