@@ -126,7 +126,7 @@ COMPLIANCE_CHECKS_GROUPS = {  # which groups of compliance checks to apply?
     "sympathetic": ["not_sympathetic"],
     "single_character": ["not_single_character"],
     "single_word": ["not_single_word", "sorry"],
-    "multiple_choice": ["is_multiple_choice_answer"],
+    "multiple_choice": ["not_multiple_choice_answer"],
 }
 
 
