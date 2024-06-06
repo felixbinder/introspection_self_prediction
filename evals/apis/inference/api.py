@@ -176,7 +176,7 @@ class InferenceAPI:
             # trick to double rate limit for most recent model only
             if model_ids.endswith("-0613"):
                 model_ids = [model_ids, model_ids.replace("-0613", "")]
-                print(f"doubling rate limit for most recent model {model_ids}")
+                # print(f"doubling rate limit for most recent model {model_ids}")
             elif model_ids.endswith("-0914"):
                 model_ids = [model_ids, model_ids.replace("-0914", "")]
             else:

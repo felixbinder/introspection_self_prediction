@@ -26,3 +26,14 @@ def extract_yes_or_no(
     if cleaned_response == "n":
         return "N"
     return None
+
+
+def extract_true_or_false(
+    response: str,
+) -> bool | None:
+    cleaned_response = response.strip().replace("\n", " ").lower()
+    if cleaned_response == "true":
+        return True
+    if cleaned_response == "false":
+        return False
+    return None
