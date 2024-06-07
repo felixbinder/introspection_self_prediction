@@ -17,7 +17,7 @@ from other_evals.counterfactuals.api_utils import (
     dump_conversations,
 )
 from other_evals.counterfactuals.datasets.load_harmbench import HarmbenchAttacks, HarmbenchRow, load_harmbench_attack
-from other_evals.counterfactuals.extract_answers import extract_true_or_false, extract_yes_or_no
+from other_evals.counterfactuals.extract_answers import extract_yes_or_no
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 
 
