@@ -47,7 +47,7 @@ def main(cfg: DictConfig) -> str:
     # try to find the data files
     # defaults to cfg.study_dir / "train_dataset.jsonl"
     data_path = Path(cfg.train_path)
-    val_data_path = Path(cfg.study_dir) / "val_dataset.jsonl"
+    val_data_path = Path(cfg.val_path)
     if not data_path.exists():
         raise FileNotFoundError(f"Data file not found at {data_path}")
     if not val_data_path.exists():

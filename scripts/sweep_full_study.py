@@ -261,9 +261,9 @@ class StudyRunner:
         command = f"python -m evals.run_meta_level study_name={self.args.study_name} language_model={model} task={task} response_property={response_property} task.set={set} prompt=meta_level/{prompt} limit={limit} strings_path={strings_path} {overrides}"
         return command
 
-    def get_finetuning_command(self, model, ft_study, notes, train_path: Path, overrides=""):
+    def get_finetuning_command(self, model, ft_study, notes, val_path: Path, train_path: Path, overrides=""):
         override_str = " ".join(overrides)
-        return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} language_model={model} notes={notes} {override_str}"
+        return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
         pool = Pool()  # create a pool of worker processes
@@ -413,7 +413,7 @@ class StudyRunner:
                     # Not all samples will be succcessful, so some other evals are represented more than others
                     # we set a limit to ensure we don't have too many samples of one particular other eval
                     limit_per_eval=self.args.n_finetuning,
-                    cache_path=EXP_DIR / self.args.study_name,
+                    cache_path=EXP_DIR / self.args.study_name / "other_evals_cache",
                 )
                 additional_samples.append((model_config, other_eval_train_samples))
 
@@ -421,11 +421,13 @@ class StudyRunner:
             for model, model_samples in additional_samples:
                 existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
-                new_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "combined_train_dataset.jsonl"
+                new_jsonl: Path = (
+                    EXP_DIR / "finetuning" / self.args.study_name / model / "other_evals_combined_train_dataset.jsonl"
+                )
                 # idempotent so we don't need state check of whether we've done this before
                 add_new_samples_to_existing_jsonl_and_shuffle(
-                    existing_jsonl=existing_jsonl,
-                    new_jsonl=new_jsonl,
+                    existing_jsonl_path=existing_jsonl,
+                    new_jsonl_path=new_jsonl,
                     new_samples=model_samples,
                 )
 
@@ -441,17 +443,24 @@ class StudyRunner:
                     # Pass the correct train path, depending on whether we are have other evals or not
                     finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
                     train_path = (
-                        finetuned_folder_path / "combined_train_dataset.jsonl"
+                        finetuned_folder_path / "other_evals_combined_train_dataset.jsonl"
                         if self.validated_other_evals
                         else finetuned_folder_path / "train_dataset.jsonl"
                     )
+                    # currently not adding other evals to the val dataset
+                    val_path = finetuned_folder_path / "val_dataset.jsonl"
                     command = self.get_finetuning_command(
-                        model, ft_study_path, notes="sweep", train_path=train_path, overrides=self.args.finetuning_overrides
+                        model,
+                        ft_study_path,
+                        notes="sweep",
+                        val_path=val_path,
+                        train_path=train_path,
+                        overrides=self.args.finetuning_overrides,
                     )
                     if command not in self.state["finetuning_runs"]:
                         self.state["finetuning_runs"].update(
-                                self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
-                            )
+                            self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
+                        )
                     elif self.state["finetuning_runs"][command]["status"] == "complete":
                         print(f"Skipping {command} because it is already complete.")
                         continue
@@ -553,6 +562,7 @@ class StudyRunner:
                 object_and_meta_configs=object_and_meta,
                 limit=other_evals_limit,
                 study_folder=other_evals_path,
+                cache_path=EXP_DIR / self.args.study_name / "other_evals_cache",
             )
 
         pool.close()  # close the pool of worker processes

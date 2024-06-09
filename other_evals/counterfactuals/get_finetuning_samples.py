@@ -4,6 +4,7 @@ import openai
 from evals.apis.finetuning.run import FineTuneHyperParams, FineTuneParams, run_finetune
 from evals.apis.finetuning.syncer import WandbSyncer
 from evals.apis.inference.api import InferenceAPI
+from evals.locations import EXP_DIR
 from evals.utils import load_secrets, setup_environment
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
@@ -53,7 +54,7 @@ def get_other_evals_finetuning_samples(
     try_n_samples: int = 500,
     # The maximum amount of samples to take from each eval.
     limit_per_eval: int | None = 50,
-    cache_path: str | Path = "exp/other_evals",
+    cache_path: str | Path = EXP_DIR / "other_evals" / "cache",
 ) -> Slist[FinetuneConversation]:
     # entry point from finetuning where we create the inferenceapi ourselves
     # sync function because the entry point is sync
@@ -72,16 +73,16 @@ def get_other_evals_finetuning_samples(
 
 
 def add_new_samples_to_existing_jsonl_and_shuffle(
-    existing_jsonl: Path,
-    new_jsonl: Path,
+    existing_jsonl_path: Path,
+    new_jsonl_path: Path,
     new_samples: Sequence[FinetuneConversation],
 ) -> None:
     existing_samples = (
-        read_jsonl_file_into_basemodel(existing_jsonl, basemodel=FinetuneConversation)
+        read_jsonl_file_into_basemodel(existing_jsonl_path, basemodel=FinetuneConversation)
         .add(Slist(new_samples))
         .shuffle("42")
     )
-    write_jsonl_file_from_basemodel(new_jsonl, basemodels=existing_samples)
+    write_jsonl_file_from_basemodel(new_jsonl_path, basemodels=existing_samples)
 
 
 async def test_main():

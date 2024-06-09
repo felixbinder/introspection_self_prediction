@@ -255,6 +255,7 @@ def run_sweep_over_other_evals(
     eval_list: Sequence[Type[OtherEvalRunner]] = [BiasDetectAddAreYouSure],
     limit: int = 100,
     study_folder: str | Path = "exp/other_evals",
+    cache_path: str | Path = "exp/other_evals/cache",
     show_plot: bool = False,
 ) -> None:
     """
@@ -272,7 +273,7 @@ def run_sweep_over_other_evals(
     # Entry point for sweeping
     # the sweep ain't a async function so we use asyncio.run
     api = InferenceAPI(anthropic_num_threads=20)
-    inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
+    inference_api = CachedInferenceAPI(api=api, cache_path=cache_path)
 
     all_results = asyncio.run(
         run_from_commands(
