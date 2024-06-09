@@ -431,28 +431,28 @@ class StudyRunner:
 
         #### run finetuning ####
         finetuning_commands = []
-        for model in self.args.model_configs:
-            if model in self.args.skip_finetuning_for_models:
-                print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
-                continue
-            for ft_study in finetuning_study_names:
-                ft_study_path = f"{self.args.study_name}/{ft_study}"
-                # Pass the correct train path, depending on whether we are have other evals or not
-                finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
-                train_path = (
-                    finetuned_folder_path / "combined_train_dataset.jsonl"
-                    if self.validated_other_evals
-                    else finetuned_folder_path / "train_dataset.jsonl"
-                )
-                command = self.get_finetuning_command(
-                    model, ft_study_path, notes="sweep", train_path=train_path, overrides=self.args.finetuning_overrides
-                )
-                if command not in self.state["finetuning_runs"]:
-                    with self.state_lock:
+        with self.state_lock:
+            for model in self.args.model_configs:
+                if model in self.args.skip_finetuning_for_models:
+                    print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
+                    continue
+                for ft_study in finetuning_study_names:
+                    ft_study_path = f"{self.args.study_name}/{ft_study}"
+                    # Pass the correct train path, depending on whether we are have other evals or not
+                    finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+                    train_path = (
+                        finetuned_folder_path / "combined_train_dataset.jsonl"
+                        if self.validated_other_evals
+                        else finetuned_folder_path / "train_dataset.jsonl"
+                    )
+                    command = self.get_finetuning_command(
+                        model, ft_study_path, notes="sweep", train_path=train_path, overrides=self.args.finetuning_overrides
+                    )
+                    if command not in self.state["finetuning_runs"]:
                         self.state["finetuning_runs"].update(
-                            self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
-                        )
-                    if self.state["finetuning_runs"][command]["status"] == "complete":
+                                self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
+                            )
+                    elif self.state["finetuning_runs"][command]["status"] == "complete":
                         print(f"Skipping {command} because it is already complete.")
                         continue
                     if self.args.skip_finetuning:
