@@ -26,6 +26,7 @@ python -m scripts.sweep_full_study
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
 --other_evals='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
+--val_other_evals='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
 --prompt_configs='minimal'
 --n_object_train=1000
 --n_object_val=250
@@ -41,12 +42,18 @@ import subprocess
 from functools import partial
 from multiprocessing import Manager, Pool, managers
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Sequence, Type
 
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash
+from other_evals.counterfactuals.get_finetuning_samples import (
+    add_new_samples_to_existing_jsonl_and_shuffle,
+    get_other_evals_finetuning_samples,
+)
+from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
 from other_evals.counterfactuals.runners import (
+    OtherEvalRunner,
     eval_list_to_runner,
     run_sweep_over_other_evals,
 )
@@ -77,6 +84,10 @@ class StudyRunner:
         self.manager = Manager()
         self.state = self.manager.dict()
         self.state_lock = self.manager.Lock()
+        # We validate the other evals here, so that we raise an error if the user tries to run an eval that doesn't exist
+        # We don't overwrite self.args.other_evals because we want to keep the original string for the state file
+        self.validated_other_evals = validate_other_evals(self.args.other_evals)
+        self.validated_val_other_evals = validate_other_evals(self.args.val_other_evals)
         self.load_or_create_state_file()
         atexit.register(self.write_state_file)
 
@@ -100,12 +111,6 @@ class StudyRunner:
             else:
                 setattr(self.args, arg, {})
 
-        ### Other evals is just a list of strings
-        other_evals: list[str] = eval(self.args.other_evals)
-        assert isinstance(other_evals, list), "other_evals must be a list of strings"
-        other_evals_types = eval_list_to_runner(other_evals)
-        self.args.other_evals = other_evals_types
-
     def parse_arguments(self):
         parser = argparse.ArgumentParser(description="Run a full study sweeping over the following configs.")
         parser.add_argument("--study_name", type=str, help="The name of the study. Defines the output directory.")
@@ -123,7 +128,13 @@ class StudyRunner:
         parser.add_argument(
             "--other_evals",
             type=str,
-            help="List of other evals to run. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
+            help="List of other evals to train on. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
+            default="[]",
+        )
+        parser.add_argument(
+            "--val_other_evals",
+            type=str,
+            help="List of other evals to evaluate on. e.g. ['BiasDetectAddAreYouSure']. See ALL_EVAL_TYPES",
             default="[]",
         )
         parser.add_argument("--prompt_configs", type=str, help="Comma-separated list of prompt configurations.")
@@ -251,11 +262,9 @@ class StudyRunner:
         command = f"python -m evals.run_meta_level study_name={self.args.study_name} language_model={model} task={task} response_property={response_property} task.set={set} prompt=meta_level/{prompt} limit={limit} strings_path={strings_path} {overrides}"
         return command
 
-    def get_finetuning_command(self, model, ft_study, notes, overrides=""):
+    def get_finetuning_command(self, model, ft_study, notes, val_path: Path, train_path: Path, overrides=""):
         override_str = " ".join(overrides)
-        return (
-            f"python -m evals.run_finetuning study_name={ft_study} language_model={model} notes={notes} {override_str}"
-        )
+        return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
         pool = Pool()  # create a pool of worker processes
@@ -394,6 +403,50 @@ class StudyRunner:
             run_finetuning_dataset_creation(state=self.state, state_lock=self.state_lock, command=command)
         print(f"Created {len(finetuning_dataset_creation_commands)} finetuning datasets.")
 
+        #### Add other evals to the finetuning dataset ####
+        if self.validated_other_evals:
+            # tuple[model_config, list[FinetuneConversation]
+            additional_samples: list[tuple[str, list[FinetuneConversation]]] = []
+            # Generate other evals samples
+            for model_config in self.args.model_configs:
+                other_eval_train_samples = get_other_evals_finetuning_samples(
+                    evals_to_run=self.validated_other_evals,
+                    object_model_config=model_config,
+                    try_n_samples=self.args.n_object_train,
+                    # Not all samples will be succcessful, so some other evals are represented more than others
+                    # we set a limit to ensure we don't have too many samples of one particular other eval
+                    limit_per_eval=self.args.n_finetuning,
+                    cache_path=EXP_DIR / self.args.study_name / "other_evals_cache",
+                )
+                additional_samples.append((model_config, other_eval_train_samples))
+
+            # Now add the samples to the existing jsonl files
+            for model, model_samples in additional_samples:
+                existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
+                assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
+                new_jsonl: Path = (
+                    EXP_DIR / "finetuning" / self.args.study_name / model / "other_evals_combined_train_dataset.jsonl"
+                )
+                # idempotent so we don't need state check of whether we've done this before
+                add_new_samples_to_existing_jsonl_and_shuffle(
+                    existing_jsonl_path=existing_jsonl,
+                    new_jsonl_path=new_jsonl,
+                    new_samples=model_samples,
+                )
+
+        # finetune_models = finetune_models.split(",")
+        # finetune_formats = list(set([MODEL_TO_FAMILY_MAP[model] for model in finetune_models]))
+        # filename = fname + f"-format_{ft_format}"
+        # if not filename.endswith(".jsonl"):
+        #     filename += ".jsonl"
+
+        # if ft_format == "openai":
+        #     prompt = prompt.openai_finetuning_format()
+        # elif ft_format == "gemini":
+        #     prompt = prompt.gemini_finetuning_format()
+        # else:
+        #     raise ValueError(f"Format {ft_format} not supported.")
+
         #### run finetuning ####
         finetuning_commands = []
         with self.state_lock:
@@ -402,8 +455,23 @@ class StudyRunner:
                     print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
                     continue
                 for ft_study in finetuning_study_names:
+                    ft_study_path = f"{self.args.study_name}/{ft_study}"
+                    # Pass the correct train path, depending on whether we are have other evals or not
+                    finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+                    train_path = (
+                        finetuned_folder_path / "other_evals_combined_train_dataset.jsonl"
+                        if self.validated_other_evals
+                        else finetuned_folder_path / "train_dataset.jsonl"
+                    )
+                    # currently not adding other evals to the val dataset
+                    val_path = finetuned_folder_path / "val_dataset.jsonl"
                     command = self.get_finetuning_command(
-                        model, f"{self.args.study_name}/{ft_study}", "sweep", self.args.finetuning_overrides
+                        model,
+                        ft_study_path,
+                        notes="sweep",
+                        val_path=val_path,
+                        train_path=train_path,
+                        overrides=self.args.finetuning_overrides,
                     )
                     if command not in self.state["finetuning_runs"]:
                         self.state["finetuning_runs"].update(
@@ -489,14 +557,16 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
-        if self.args.other_evals:
-            print(f"Running other evals... {self.args.other_evals}")
-            object_level_models: list[str] = self.args.model_configs + self.args.val_only_model_configs
-            meta_level_models: list[str] = (
+        if self.validated_val_other_evals:
+            print(f"Running evaluation on other evals... {self.validated_val_other_evals}")
+            object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
+
+            meta_level_configs: list[str] = (
                 self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
             )
+
             object_and_meta = [
-                (object_model, meta_model) for object_model in object_level_models for meta_model in meta_level_models
+                (object_model, meta_model) for object_model in object_level_configs for meta_model in meta_level_configs
             ]
 
             other_evals_limit: int = self.args.n_meta_val
@@ -504,10 +574,11 @@ class StudyRunner:
             # TODO: Possibly run all sweeps in parallel, but need to silence tqdm output
             # Creates csv files for each eval in the other_evals_list, which you can view the heatmap of with the function plot_heatmap_with_ci
             run_sweep_over_other_evals(
-                eval_list=self.args.other_evals,
-                object_and_meta=object_and_meta,
+                eval_list=self.validated_val_other_evals,
+                object_and_meta_configs=object_and_meta,
                 limit=other_evals_limit,
                 study_folder=other_evals_path,
+                cache_path=EXP_DIR / self.args.study_name / "other_evals_cache",
             )
 
         pool.close()  # close the pool of worker processes
@@ -623,6 +694,14 @@ def run_meta_val_command(command, state, state_lock):
             state["meta_val_runs"][command].update({"status": "failed"})
         print(f"Failed to run {command}: {e}")
         raise e
+
+
+def validate_other_evals(other_evals_arg: str) -> Sequence[Type[OtherEvalRunner]]:
+    ### Other evals is just a list of strings
+    other_evals: list[str] = eval(other_evals_arg)
+    assert isinstance(other_evals, list), f"{other_evals_arg} is not a list"
+    other_evals_types = eval_list_to_runner(other_evals)
+    return other_evals_types
 
 
 def run_command(command, state, state_lock):

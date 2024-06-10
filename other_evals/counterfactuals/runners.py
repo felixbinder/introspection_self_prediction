@@ -22,6 +22,7 @@ from other_evals.counterfactuals.run_ask_what_answer_without_bias import (
     finetune_samples_what_answer_without_bias,
     run_single_what_answer_without_bias,
 )
+from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
 
 
 class OtherEvalRunner(ABC):
@@ -250,10 +251,11 @@ def eval_list_to_runner(eval_list: Sequence[str]) -> Sequence[Type[OtherEvalRunn
 
 
 def run_sweep_over_other_evals(
-    object_and_meta: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
+    object_and_meta_configs: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
     eval_list: Sequence[Type[OtherEvalRunner]] = [BiasDetectAddAreYouSure],
     limit: int = 100,
     study_folder: str | Path = "exp/other_evals",
+    cache_path: str | Path = "exp/other_evals/cache",
     show_plot: bool = False,
 ) -> None:
     """
@@ -263,16 +265,20 @@ def run_sweep_over_other_evals(
     limit: the number of samples to run
     study_folder: the folder where the results will be saved
     """
+    object_and_meta_ids = [
+        (read_model_id_from_model_config(object_config), read_model_id_from_model_config(meta_config))
+        for object_config, meta_config in object_and_meta_configs
+    ]
     setup_environment()
     # Entry point for sweeping
     # the sweep ain't a async function so we use asyncio.run
     api = InferenceAPI(anthropic_num_threads=20)
-    inference_api = CachedInferenceAPI(api=api, cache_path=Path(study_folder) / "cache")
+    inference_api = CachedInferenceAPI(api=api, cache_path=cache_path)
 
     all_results = asyncio.run(
         run_from_commands(
             evals_to_run=eval_list,
-            object_and_meta=object_and_meta,
+            object_and_meta=object_and_meta_ids,
             limit=limit,
             api=inference_api,
         )
@@ -303,6 +309,8 @@ def test_main():
         [
             # "gpt-3.5-turbo",
             "gpt-3.5-turbo-0125",
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
+            "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
             "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN", # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WOKeIsb", # 12,000 samples gpt-3.5
@@ -320,7 +328,7 @@ def test_main():
     limit = 2000
     run_sweep_over_other_evals(
         eval_list=eval_list,
-        object_and_meta=object_and_meta_models,
+        object_and_meta_configs=object_and_meta_models,
         limit=limit,
         study_folder=study_folder,
         show_plot=True,

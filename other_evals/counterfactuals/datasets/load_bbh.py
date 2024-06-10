@@ -9,7 +9,6 @@ import slist
 from other_evals.counterfactuals.datasets.base_example import DataExampleBase, MultipleChoiceAnswer
 
 
-
 class MilesBBHRawData(DataExampleBase):
     # tracking_shuffled_objects_three_objects doesn't have the Optional fields
     idx: Optional[int] = None

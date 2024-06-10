@@ -10,7 +10,8 @@ hydra:
 
 study_dir: ${experiment_folder_location:/finetuning/${study_name}} # the folder of the study which contains multiple experiments
 exp_dir: ${study_dir}/${sanitize:${language_model.model}_${epochs}_epochs}
-
+train_path: ${study_dir}/train_dataset.jsonl
+val_path: ${study_dir}/val_dataset.jsonl
 study_name: ??? # the name of the study
 
 defaults:

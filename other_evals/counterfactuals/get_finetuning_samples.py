@@ -4,6 +4,7 @@ import openai
 from evals.apis.finetuning.run import FineTuneHyperParams, FineTuneParams, run_finetune
 from evals.apis.finetuning.syncer import WandbSyncer
 from evals.apis.inference.api import InferenceAPI
+from evals.locations import EXP_DIR
 from evals.utils import load_secrets, setup_environment
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
@@ -13,9 +14,12 @@ from other_evals.counterfactuals.runners import ALL_EVAL_TYPES, OtherEvalRunner
 
 from git import Sequence
 from slist import Slist
+import asyncio
 
 
 from typing import Type
+
+from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
 
 
 async def get_finetuning_samples(
@@ -43,14 +47,42 @@ async def get_finetuning_samples(
     return flattened
 
 
-def add_new_samples_to_existing_jsonl(
-    existing_jsonl: Path,
-    new_jsonl: Path,
+def get_other_evals_finetuning_samples(
+    evals_to_run: Sequence[Type[OtherEvalRunner]],
+    object_model_config: str,
+    # Not all samples are successsful, and its not always a 50/50 balanced dataset. Because we balance, often you get 20% of the samples you ask for.
+    try_n_samples: int = 500,
+    # The maximum amount of samples to take from each eval.
+    limit_per_eval: int | None = 50,
+    cache_path: str | Path = EXP_DIR / "other_evals" / "cache",
+) -> Slist[FinetuneConversation]:
+    # entry point from finetuning where we create the inferenceapi ourselves
+    # sync function because the entry point is sync
+    setup_environment()
+    api = InferenceAPI(anthropic_num_threads=40)
+    model_id = read_model_id_from_model_config(object_model_config)
+    inference_api = CachedInferenceAPI(api=api, cache_path=cache_path)
+    cooroutine = get_finetuning_samples(
+        evals_to_run=evals_to_run,
+        object_model=model_id,
+        api=inference_api,
+        try_n_samples=try_n_samples,
+        take_n_samples=limit_per_eval,
+    )
+    return asyncio.run(cooroutine)
+
+
+def add_new_samples_to_existing_jsonl_and_shuffle(
+    existing_jsonl_path: Path,
+    new_jsonl_path: Path,
     new_samples: Sequence[FinetuneConversation],
 ) -> None:
-    existing_samples = read_jsonl_file_into_basemodel(existing_jsonl, basemodel=FinetuneConversation)
-    existing_samples.extend(new_samples)
-    write_jsonl_file_from_basemodel(new_jsonl, basemodels=existing_samples)
+    existing_samples = (
+        read_jsonl_file_into_basemodel(existing_jsonl_path, basemodel=FinetuneConversation)
+        .add(Slist(new_samples))
+        .shuffle("42")
+    )
+    write_jsonl_file_from_basemodel(new_jsonl_path, basemodels=existing_samples)
 
 
 async def test_main():
