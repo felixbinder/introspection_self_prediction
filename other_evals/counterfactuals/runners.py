@@ -258,6 +258,27 @@ def run_sweep_over_other_evals(
     cache_path: str | Path = "exp/other_evals/cache",
     show_plot: bool = False,
 ) -> None:
+    object_and_meta_ids = [
+        (read_model_id_from_model_config(object_config), read_model_id_from_model_config(meta_config))
+        for object_config, meta_config in object_and_meta_configs
+    ]
+    return run_sweep_over_other_evals_ids(
+        object_and_meta_ids=object_and_meta_ids,
+        eval_list=eval_list,
+        limit=limit,
+        study_folder=study_folder,
+        cache_path=cache_path,
+        show_plot=show_plot,
+    )
+
+def run_sweep_over_other_evals_ids(
+    object_and_meta_ids: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
+    eval_list: Sequence[Type[OtherEvalRunner]] = [BiasDetectAddAreYouSure],
+    limit: int = 100,
+    study_folder: str | Path = "exp/other_evals",
+    cache_path: str | Path = "exp/other_evals/cache",
+    show_plot: bool = False,
+) -> None:
     """
     object_and_meta: a list of tuples of object and meta models
     eval_list: a list of evaluation names. See the keys in OTHER_EVAL_NAMES.
@@ -265,10 +286,6 @@ def run_sweep_over_other_evals(
     limit: the number of samples to run
     study_folder: the folder where the results will be saved
     """
-    object_and_meta_ids = [
-        (read_model_id_from_model_config(object_config), read_model_id_from_model_config(meta_config))
-        for object_config, meta_config in object_and_meta_configs
-    ]
     setup_environment()
     # Entry point for sweeping
     # the sweep ain't a async function so we use asyncio.run
@@ -308,10 +325,16 @@ def test_main():
     models = Slist(
         [
             # "gpt-3.5-turbo",
-            "gpt-3.5-turbo-0125",
+            # "gpt-3.5-turbo-0125",
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH", # non mmlu sweep
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d",  # mmlu sweep
+            # "gpt-3.5-turbo-1106",
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
+            "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9YHdMAcl", # leave out are you sure
+            # "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP" # gpt-4 on gpt -4 
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
-            "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
-            "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN", # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WOKeIsb", # 12,000 samples gpt-3.5
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WE1NjvJ",  # gpt-3.5 on gpt-3.5, on arc other evals, 3600 samples
@@ -325,10 +348,10 @@ def test_main():
     # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 2000
-    run_sweep_over_other_evals(
+    limit = 1800
+    run_sweep_over_other_evals_ids(
         eval_list=eval_list,
-        object_and_meta_configs=object_and_meta_models,
+        object_and_meta_ids=object_and_meta_models,
         limit=limit,
         study_folder=study_folder,
         show_plot=True,
