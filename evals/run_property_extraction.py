@@ -241,9 +241,10 @@ def remove_repetive_responses(df):
     df.loc[repetitive_mask, "response"] = df.loc[repetitive_mask, "response"].apply(
         lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"
     )
-    df.loc[repetitive_mask, "identity"] = df.loc[repetitive_mask, "identity"].apply(
-        lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"
-    )
+    if "identity"  in df.columns:
+        df.loc[repetitive_mask, "identity"] = df.loc[repetitive_mask, "identity"].apply(
+            lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"
+        )
     if len(df[repetitive_mask]) > 0:
         LOGGER.warn(f"Truncated {len(df[repetitive_mask])} repetive responses")
     return df

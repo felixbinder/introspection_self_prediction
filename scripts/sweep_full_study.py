@@ -266,7 +266,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        pool = Pool()  # create a pool of worker processes
+        pool = Pool(2)  # create a pool of worker processes
 
         #### run object level completions on train ####
         object_train_commands = []
