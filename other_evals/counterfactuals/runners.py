@@ -9,6 +9,7 @@ from slist import Slist
 from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
 from evals.utils import setup_environment
+from other_evals.counterfactuals.api_utils import RepoCompatCaller
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, OtherEvalCSVFormat
 from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci
@@ -23,6 +24,7 @@ from other_evals.counterfactuals.run_ask_what_answer_without_bias import (
     run_single_what_answer_without_bias,
 )
 from other_evals.counterfactuals.yaml_compat_utils import read_model_id_from_model_config
+from other_evals.model_generated.run_are_you_giving_deontological import run_single_ask_deontology
 
 
 class OtherEvalRunner(ABC):
@@ -187,6 +189,24 @@ class KwikWillYouBeCorrect(OtherEvalRunner):
         )
         print(f"Got {len(result)} finetuning samples for {cls.name()}")
         return result
+    
+
+class WillYouGiveDeontology(OtherEvalRunner):
+    @staticmethod
+    async def run(
+        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+    ) -> Sequence[OtherEvalCSVFormat]:
+        """Ask the model if it is going to get the correct answer. Y/N answers"""
+        result = await run_single_ask_deontology(
+            object_model=object_model,
+            meta_model=meta_model,
+            caller=RepoCompatCaller(api=api),
+            number_samples=limit,
+        )
+        formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
+
+        return formatted
+    
 
 
 ALL_EVAL_TYPES: Sequence[Type[OtherEvalRunner]] = [
@@ -301,7 +321,7 @@ def run_sweep_over_other_evals(
 
 def test_main():
     # What evals to run?
-    eval_list = ALL_EVAL_TYPES
+    eval_list = [WillYouGiveDeontology]
     # eval_list = [BiasDetectAddAreYouSure]
     print(f"Running evals: {[e.name() for e in eval_list]}")
     # What models to run?
