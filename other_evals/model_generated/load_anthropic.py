@@ -20,6 +20,15 @@ class ModelWrittenEval(BaseModel):
                 return "B"
             case _:
                 raise ValueError("Invalid value for answer_matching_behavior")
+            
+    def letter_matching_behavior_y_n(self) -> Literal["Y", "N"]:
+        match self.answer_matching_behavior:
+            case " Yes":
+                return "Y"
+            case " No":
+                return "N"
+            case _:
+                raise ValueError("Invalid value for answer_matching_behavior")
 
 
 def load_deontology() -> Slist[ModelWrittenEval]:
