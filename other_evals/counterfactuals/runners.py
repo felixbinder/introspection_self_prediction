@@ -189,7 +189,7 @@ class KwikWillYouBeCorrect(OtherEvalRunner):
         )
         print(f"Got {len(result)} finetuning samples for {cls.name()}")
         return result
-    
+
 
 class WillYouGiveDeontology(OtherEvalRunner):
     @staticmethod
@@ -206,7 +206,6 @@ class WillYouGiveDeontology(OtherEvalRunner):
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
 
         return formatted
-    
 
 
 ALL_EVAL_TYPES: Sequence[Type[OtherEvalRunner]] = [
@@ -291,6 +290,7 @@ def run_sweep_over_other_evals(
         show_plot=show_plot,
     )
 
+
 def run_sweep_over_other_evals_ids(
     object_and_meta_ids: Sequence[tuple[str, str]] = [("gpt-3.5-turbo", "gpt-3.5-turbo")],
     eval_list: Sequence[Type[OtherEvalRunner]] = [BiasDetectAddAreYouSure],
@@ -341,6 +341,7 @@ def test_main():
     eval_list = [WillYouGiveDeontology]
     # eval_list = [BiasDetectAddAreYouSure]
     print(f"Running evals: {[e.name() for e in eval_list]}")
+    limit = 1000
     # What models to run?
     models = Slist(
         [
@@ -348,10 +349,11 @@ def test_main():
             # "gpt-3.5-turbo-0125",
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH", # non mmlu sweep
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d",  # mmlu sweep
+            "gpt-4-0613",
+            # "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP" # gpt-4 on gpt -4
             # "gpt-3.5-turbo-1106",
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
-            "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9YHdMAcl", # leave out are you sure
-            # "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP" # gpt-4 on gpt -4 
+            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9YHdMAcl", # leave out are you sure
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
@@ -368,7 +370,7 @@ def test_main():
     # We want to run all the combinations of the models
     object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
     study_folder = EXP_DIR / "other_evals"
-    limit = 1800
+
     run_sweep_over_other_evals_ids(
         eval_list=eval_list,
         object_and_meta_ids=object_and_meta_models,
