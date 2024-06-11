@@ -37,3 +37,14 @@ def extract_true_or_false(
     if cleaned_response == "false":
         return False
     return None
+
+
+def extract_a_or_b(
+    response: str,
+) -> Literal["A", "B"] | None:
+    cleaned_response = response.strip().upper()
+    if cleaned_response == "A":
+        return "A"
+    if cleaned_response == "B":
+        return "B"
+    return None

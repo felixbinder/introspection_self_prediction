@@ -2,7 +2,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Self, Sequence, Type, TypeVar, Union
+from typing import NoReturn, Self, Sequence, Type, TypeVar, Union
 
 import anthropic
 import anyio
@@ -23,7 +23,7 @@ from other_evals.counterfactuals.other_eval_csv_format import FinetuneMessage
 logger = logging.getLogger(__name__)
 
 
-def raise_should_not_happen() -> None:
+def raise_should_not_happen() -> NoReturn:
     raise ValueError("Should not happen")
 
 
