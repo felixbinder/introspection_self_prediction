@@ -230,7 +230,7 @@ def filter_file_for_finetuning(data_path: Path, limit=None):
     data = load_jsonl(data_path)
     if limit is not None:
         random.seed(25)
-        data = random.sample(data, limit)
+        data = random.sample(data, min(len(data), limit))
     new_data = [{"messages": d["messages"]} for d in data]
     new_data_path = data_path.parent / "temp_filtered.jsonl"
     with open(new_data_path, "w") as f:

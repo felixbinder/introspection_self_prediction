@@ -12,6 +12,7 @@ from evals.apis.finetuning.syncer import WandbSyncer
 from evals.locations import CONF_DIR
 from evals.utils import (
     COMPLETION_MODELS,
+    GEMINI_MODELS,
     GPT_CHAT_MODELS,
     get_current_git_hash,
     load_secrets,
@@ -50,14 +51,13 @@ def main(cfg: DictConfig) -> str:
         seed=cfg.seed,
     )
 
-    # model_family = MODEL_TO_FAMILY_MAP[cfg.language_model.model]
     # try to find the data files
-    # TODO: update train_dataset.jsonl
-    # data_path = Path(cfg.study_dir) / f"train_dataset-format_{model_family}.jsonl"
-    # val_data_path = Path(cfg.study_dir) / f"val_dataset-format_{model_family}.jsonl"
     # defaults to cfg.study_dir / "train_dataset.jsonl"
     data_path = Path(cfg.train_path)
     val_data_path = Path(cfg.val_path)
+    if cfg.language_model.model in GEMINI_MODELS:
+        assert "-format_gemini" in str(data_path), "Path should be pointing at gemini formatted dataset."
+        assert "-format_gemini" in str(val_data_path), "Path should be pointing at gemini formatted dataset."
     if not data_path.exists():
         raise FileNotFoundError(f"Data file not found at {data_path}")
     if not val_data_path.exists():

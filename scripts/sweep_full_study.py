@@ -44,9 +44,10 @@ from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict, Sequence, Type
 
+from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
-from evals.utils import get_current_git_hash
+from evals.utils import GEMINI_MODELS, MODEL_TO_FAMILY_MAP, get_current_git_hash
 from other_evals.counterfactuals.get_finetuning_samples import (
     add_new_samples_to_existing_jsonl_and_shuffle,
     get_other_evals_finetuning_samples,
@@ -381,6 +382,7 @@ class StudyRunner:
         )  # we need the name of the subfolder
 
         finetune_models = list(set(self.args.model_configs) - set(self.args.skip_finetuning_for_models))
+        should_create_gemini_dataset = len(GEMINI_MODELS & set(finetune_models)) > 0
         finetune_models = "\\'" + ",".join(finetune_models) + "\\'"
         finetuning_dataset_creation_commands = []
         with self.state_lock:
@@ -433,19 +435,8 @@ class StudyRunner:
                     new_jsonl_path=new_jsonl,
                     new_samples=model_samples,
                 )
-
-        # finetune_models = finetune_models.split(",")
-        # finetune_formats = list(set([MODEL_TO_FAMILY_MAP[model] for model in finetune_models]))
-        # filename = fname + f"-format_{ft_format}"
-        # if not filename.endswith(".jsonl"):
-        #     filename += ".jsonl"
-
-        # if ft_format == "openai":
-        #     prompt = prompt.openai_finetuning_format()
-        # elif ft_format == "gemini":
-        #     prompt = prompt.gemini_finetuning_format()
-        # else:
-        #     raise ValueError(f"Format {ft_format} not supported.")
+                if should_create_gemini_dataset:
+                    create_gemini_dataset_version(new_jsonl)
 
         #### run finetuning ####
         finetuning_commands = []
@@ -456,15 +447,20 @@ class StudyRunner:
                     continue
                 for ft_study in finetuning_study_names:
                     ft_study_path = f"{self.args.study_name}/{ft_study}"
-                    # Pass the correct train path, depending on whether we are have other evals or not
                     finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+
+                    ft_format = "-format_gemini" if MODEL_TO_FAMILY_MAP.get(model, "unknown") == "gemini" else ""
+                    default_train_fname = f"train_dataset{ft_format}.jsonl"
+                    default_val_fname = f"val_dataset{ft_format}.jsonl"
+                    other_evals_fname = f"other_evals_combined_train_dataset{ft_format}.jsonl"
+                    # Pass the correct train path, depending on whether we are have other evals or not
                     train_path = (
-                        finetuned_folder_path / "other_evals_combined_train_dataset.jsonl"
+                        finetuned_folder_path / other_evals_fname
                         if self.validated_other_evals
-                        else finetuned_folder_path / "train_dataset.jsonl"
+                        else finetuned_folder_path / default_train_fname
                     )
                     # currently not adding other evals to the val dataset
-                    val_path = finetuned_folder_path / "val_dataset.jsonl"
+                    val_path = finetuned_folder_path / default_val_fname
                     command = self.get_finetuning_command(
                         model,
                         ft_study_path,

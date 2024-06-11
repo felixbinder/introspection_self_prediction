@@ -25,7 +25,7 @@ from evals.load.lazy_object_level_llm_extraction import (
     lazy_add_response_property_to_object_level,
 )
 from evals.locations import EXP_DIR
-from evals.utils import MODEL_TO_FAMILY_MAP
+from evals.utils import GEMINI_MODELS
 
 CONFIG_PATH = "conf"
 
@@ -33,7 +33,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def generate_finetuning_jsonl(
-    main_cfg: DictConfig, path: Path, finetune_models: str, fname: str = "dataset"
+    main_cfg: DictConfig, path: Path, finetune_models: str, filename: str = "dataset.jsonl"
 ) -> tuple[Path, Path]:
     """Generate a jsonl file for finetuning.
 
@@ -47,11 +47,14 @@ def generate_finetuning_jsonl(
         Path: Path to the generated jsonl file.
     """
 
-    finetune_models = finetune_models.split(",")
-    finetune_formats = list(set([MODEL_TO_FAMILY_MAP[model] for model in finetune_models]))
+    finetune_models = set(finetune_models.split(","))
+    should_create_gemini_dataset = len(GEMINI_MODELS & finetune_models) > 0
 
     if not path.exists():
         raise FileNotFoundError(f"Path {path} does not exist.")
+
+    if not filename.endswith(".jsonl"):
+        filename += ".jsonl"
 
     # lets ensure that the config file isn't changed when we do things with hydra.
     main_cfg = copy.deepcopy(main_cfg)
@@ -62,67 +65,88 @@ def generate_finetuning_jsonl(
 
     assert len(config_files) > 0, f"No config files found in {path}"
 
-    for ft_format in finetune_formats:
-        train_filepaths = []
-        val_filepaths = []
+    train_filepaths = []
+    val_filepaths = []
 
-        for config_file in config_files:
-            cfg = load_hydra_config(config_file)
-            # Allow new fields to be added to the configuration
-            OmegaConf.set_struct(main_cfg, False)
-            # extend main_cfg with the config file
-            cfg = OmegaConf.merge(main_cfg, cfg)
-            LOGGER.info(f"Processing config {config_file}")
+    for config_file in config_files:
+        cfg = load_hydra_config(config_file)
+        # Allow new fields to be added to the configuration
+        OmegaConf.set_struct(main_cfg, False)
+        # extend main_cfg with the config file
+        cfg = OmegaConf.merge(main_cfg, cfg)
+        LOGGER.info(f"Processing config {config_file}")
 
-            # set up filenames
-            filename = fname + f"-format_{ft_format}"
-            if not filename.endswith(".jsonl"):
-                filename += ".jsonl"
-            train_filename = cfg.name + "_train_" + filename
-            val_filename = cfg.name + "_val_" + filename
+        # set up filenames
+        train_filename = cfg.name + "_train_" + filename
+        val_filename = cfg.name + "_val_" + filename
 
-            # strip / in case one snuck in
-            train_filename = train_filename.replace("/", "-")
-            val_filename = val_filename.replace("/", "-")
+        # strip / in case one snuck in
+        train_filename = train_filename.replace("/", "-")
+        val_filename = val_filename.replace("/", "-")
 
-            # do we have the file?
-            if (path / train_filename).exists():
-                LOGGER.info(f"File {filename} already exists. Overwriting.")
-                (path / train_filename).unlink()
-            if (path / val_filename).exists():
-                LOGGER.info(f"File {filename} already exists. Overwriting.")
-                (path / val_filename).unlink()
+        # do we have the file?
+        if (path / train_filename).exists():
+            LOGGER.info(f"File {filename} already exists. Overwriting.")
+            (path / train_filename).unlink()
+        if (path / val_filename).exists():
+            LOGGER.info(f"File {filename} already exists. Overwriting.")
+            (path / val_filename).unlink()
 
-            train_filepath = path / train_filename
-            val_filepath = path / val_filename
+        train_filepath = path / train_filename
+        val_filepath = path / val_filename
 
-            generate_single_config_dataset(cfg, train_filepath, val_filepath, ft_format)
+        generate_single_config_dataset(cfg, train_filepath, val_filepath)
 
-            train_filepaths.append(train_filepath)
-            val_filepaths.append(val_filepath)
+        train_filepaths.append(train_filepath)
+        val_filepaths.append(val_filepath)
 
-        # merge the files into a single one
-        with open(path / ("train_" + filename), "w") as outfile:
-            for train_filepath in train_filepaths:
-                with open(train_filepath, "r") as infile:
-                    outfile.write(infile.read())
+    # merge the files into a single one
+    merged_train_path = path / ("train_" + filename)
+    with open(merged_train_path, "w") as outfile:
+        for train_filepath in train_filepaths:
+            with open(train_filepath, "r") as infile:
+                outfile.write(infile.read())
 
-        with open(path / ("val_" + filename), "w") as outfile:
-            for val_filepath in val_filepaths:
-                with open(val_filepath, "r") as infile:
-                    outfile.write(infile.read())
+    merged_val_path = path / ("val_" + filename)
+    with open(merged_val_path, "w") as outfile:
+        for val_filepath in val_filepaths:
+            with open(val_filepath, "r") as infile:
+                outfile.write(infile.read())
 
-        if cfg.enforce_unique_strings:
-            LOGGER.info("Enforcing unique strings.")
-            enforce_unique_strings(path / ("train_" + filename))
-            enforce_unique_strings(path / ("val_" + filename))
+    if cfg.enforce_unique_strings:
+        LOGGER.info("Enforcing unique strings.")
+        enforce_unique_strings(path / ("train_" + filename))
+        enforce_unique_strings(path / ("val_" + filename))
 
-        LOGGER.info(
-            f"Generated {len(train_filepaths)} datasets and saved to {train_filepath.relative_to(EXP_DIR)} & {val_filepath.relative_to(EXP_DIR)}"
-        )
+    LOGGER.info(
+        f"Generated {len(train_filepaths)} datasets and saved to {train_filepath.relative_to(EXP_DIR)} & {val_filepath.relative_to(EXP_DIR)}"
+    )
+
+    if should_create_gemini_dataset:
+        for path in [merged_train_path, merged_val_path]:
+            create_gemini_dataset_version(path)
+        LOGGER.info("Created gemini versions of the datasets.")
+
+    return train_filepath, val_filepath
 
 
-def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_filepath: Path, ft_format: str) -> None:
+def create_gemini_dataset_version(path: Path):
+    with open(path, "r") as f:
+        data = [json.loads(x) for x in f.readlines()]
+
+    new_path = path.with_stem(path.stem + "-format_gemini")
+    new_data = []
+    for d in data:
+        prompt = Prompt(**d)
+        new_data.append(prompt.gemini_finetuning_format())
+
+    with open(new_path, "w") as f:
+        for d in new_data:
+            f.write(d)
+            f.write("\n")
+
+
+def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_filepath: Path) -> None:
     """Load the base completions and generate the messages for finetuning.
     The messages are saved directly to file.
 
@@ -218,12 +242,7 @@ def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_fi
         for i, row in tqdm.tqdm(train_df.iterrows(), total=len(train_df), desc="Generating train messages"):
             try:
                 prompt = process_prompt(row, prompt_template, cfg.response_property.name)
-                if ft_format == "openai":
-                    prompt = prompt.openai_finetuning_format()
-                elif ft_format == "gemini":
-                    prompt = prompt.gemini_finetuning_format()
-                else:
-                    raise ValueError(f"Format {ft_format} not supported.")
+                prompt = prompt.openai_finetuning_format()
                 prompt = json.loads(prompt)
                 # add in string to the prompt
                 prompt["string"] = row["string"]
@@ -235,12 +254,7 @@ def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_fi
     with open(val_filepath, "a") as f:
         for i, row in tqdm.tqdm(val_df.iterrows(), total=len(val_df), desc="Generating validation messages"):
             prompt = process_prompt(row, prompt_template, cfg.response_property.name)
-            if ft_format == "openai":
-                prompt = prompt.openai_finetuning_format()
-            elif ft_format == "gemini":
-                prompt = prompt.gemini_finetuning_format()
-            else:
-                raise ValueError(f"Format {ft_format} not supported.")
+            prompt = prompt.openai_finetuning_format()
             prompt = json.loads(prompt)
             # add in string to the prompt
             prompt["string"] = row["string"]
