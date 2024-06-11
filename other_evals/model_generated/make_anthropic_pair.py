@@ -11,6 +11,7 @@ from other_evals.counterfactuals.api_utils import (
     InferenceConfig,
     ModelCallerV2,
     UniversalCallerV2,
+    read_jsonl_file_into_basemodel,
     write_jsonl_file_from_basemodel,
 )
 from other_evals.model_generated.load_anthropic import ModelWrittenEval, load_deontology
@@ -43,6 +44,9 @@ async def create_opposite_deontology(
         answer_matching_deontology=single.letter_matching_behavior(),
     )
 
+def load_paired_deontology() -> Slist[OppositeModelWritten]:
+    path = Path("other_evals/model_generated/datasets/paired-deontology.jsonl")
+    return read_jsonl_file_into_basemodel(path, OppositeModelWritten)
 
 async def main():
     setup_environment()
