@@ -1,24 +1,19 @@
 from typing import Literal, Sequence
 
 from grugstream import Observable
-from matplotlib import pyplot as plt
-import pandas as pd
 from pydantic import BaseModel
 from slist import Slist
 from evals.apis.inference.api import InferenceAPI
-import seaborn as sns
 from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import (
     ChatMessageV2,
     InferenceConfig,
     ModelCallerV2,
     RepoCompatCaller,
-    display_conversation,
     dump_conversations,
     raise_should_not_happen,
 )
-from other_evals.counterfactuals.datasets.load_harmbench import HarmbenchAttacks, HarmbenchRow, load_harmbench_attack
-from other_evals.counterfactuals.extract_answers import extract_a_or_b, extract_yes_or_no
+from other_evals.counterfactuals.extract_answers import extract_a_or_b
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.model_generated.load_anthropic import ModelWrittenEval, load_deontology
 
@@ -26,7 +21,7 @@ from other_evals.model_generated.load_anthropic import ModelWrittenEval, load_de
 class DeontologyEvaluated(BaseModel):
     deon_row: ModelWrittenEval
     object_history: Sequence[ChatMessageV2] | None
-    object_prompt : str
+    object_prompt: str
     object_parsed_response: str | None
     object_says_deontological: bool | None
     object_config: InferenceConfig
@@ -75,6 +70,7 @@ class DeontologyWithMeta(BaseModel):
     meta_is_correct: bool | None
     meta_config: InferenceConfig
 
+
 async def meta_ask_if_gave_deontological(
     row: DeontologyEvaluated,
     api: ModelCallerV2,
@@ -98,7 +94,7 @@ Answer immediately with a single letter 'A' or 'B'."""
         )
     single_repsonse = response.single_response
     new_history = conversation + [ChatMessageV2(role="assistant", content=single_repsonse)]
-    extracted: Literal['A', 'B'] | None = extract_a_or_b(single_repsonse)
+    extracted: Literal["A", "B"] | None = extract_a_or_b(single_repsonse)
     if extracted is None:
         return DeontologyWithMeta(
             object_level=row,
@@ -109,8 +105,8 @@ Answer immediately with a single letter 'A' or 'B'."""
         )
     object_behavior: bool | None = row.object_says_deontological
     assert object_behavior is not None
-    meta_behavior = extracted == 'A'
-    meta_matches_object = object_behavior == meta_behavior
+    meta_is_deon = extracted == "A"
+    meta_matches_object = object_behavior == meta_is_deon
     return DeontologyWithMeta(
         object_level=row,
         meta_history=new_history,
@@ -118,7 +114,6 @@ Answer immediately with a single letter 'A' or 'B'."""
         meta_is_correct=meta_matches_object,
         meta_config=config,
     )
-        
 
 
 async def run_single_model_deontology(
@@ -153,6 +148,7 @@ async def run_single_model_deontology(
 
     # balance the samples
     min_length = min(is_deon.length, not_deon.length)
+    assert min_length > 0, "Need at least one sample of each type"
     balanced_object_level = is_deon.take(min_length) + not_deon.take(min_length)
     meta_results: Slist[DeontologyWithMeta] = (
         await Observable.from_iterable(balanced_object_level)
@@ -161,6 +157,8 @@ async def run_single_model_deontology(
         .to_slist()
     )
     dump_conversations("ask_if_deon_meta.jsonl", messages=meta_results.map(lambda x: x.meta_history).flatten_option())
+    valid_metaresults = meta_results.filter(lambda x: x.meta_is_correct is not None)
+    assert valid_metaresults.length > 0
     percent_correct = meta_results.map(lambda x: x.meta_is_correct).flatten_option().average_or_raise()
     print(f"Meta Model {model} is correct {percent_correct:.2%} of the time")
 
@@ -170,8 +168,10 @@ async def run_single_model_deontology(
 async def test_main():
     inference_api = InferenceAPI()
     cached = CachedInferenceAPI(api=inference_api, cache_path="exp/other_evals/harmbench_cache")
-    model = "gpt-3.5-turbo-1106"
-    number_samples = 200
+    model = "gpt-3.5-turbo-0125"
+    # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH"
+    # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
+    number_samples = 1000
 
     results = await run_single_model_deontology(model=model, api=cached, number_samples=number_samples)
     return results
