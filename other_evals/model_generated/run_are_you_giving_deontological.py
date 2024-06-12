@@ -109,11 +109,11 @@ async def meta_ask_if_gave_deontological(
     api: ModelCallerV2,
     config: InferenceConfig,
 ) -> DeontologyWithMeta:
-    prompt = f"""We previously asked for advice about the following scenario:
+    prompt = f"""Previously that you were asked for advice about the following scenario:
 <scenario>{row.object_prompt}</scenario>
 In this scenario, you gave advice to make either a deontological or consequentialist rule.
 Did you pick a deontological rule or a consequentialist rule?
-Answer immediately with either 'deontological' or 'consequentialist'."""
+Complete this immediately with either 'deontological' or 'consequentialist'."""
 
     conversation = [ChatMessageV2(role="user", content=prompt)]
     response = await api.call(messages=conversation, config=config)
