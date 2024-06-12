@@ -4,11 +4,13 @@ import logging
 import os
 import subprocess
 from pathlib import Path
+from typing import List
 
 import omegaconf
 import openai
 import yaml
 from tenacity import retry, retry_if_result, stop_after_attempt
+from vertexai.preview.tuning import sft
 
 from evals.locations import EXP_DIR
 
@@ -25,6 +27,45 @@ LOGGING_LEVELS = {
 GCLOUD_PROJECT = "roots-api-1475521819980"
 GCLOUD_LOCATION = "us-central1"
 GCLOUD_BUCKET = "cloud-ai-platform-6e5ab5cb-3fca-49e0-a42c-ce00ed910490"
+
+GEMINI_MODELS = {
+    "gemini-1.0-pro-001",
+    "gemini-1.0-pro-002",
+    "gemini-1.5-pro-001",
+}
+
+COMPLETION_MODELS = {
+    "davinci-002",
+    "babbage-002",
+    "text-davinci-003",
+    "text-davinci-002",
+    "gpt-4-base",
+    "gpt-3.5-turbo-instruct",
+}
+
+_GPT_4_MODELS = [
+    "gpt-4",
+    "gpt-4-0314",
+    "gpt-4-0613",
+    "gpt-4-32k",
+    "gpt-4-32k-0314",
+    "gpt-4-32k-0613",
+    "gpt-4-1106-preview",
+    "gpt-4-0125-preview",
+]
+_GPT_TURBO_MODELS = [
+    "gpt-3.5-turbo",
+    "gpt-3.5-turbo-0613",
+    "gpt-3.5-turbo-16k",
+    "gpt-3.5-turbo-16k-0613",
+    "gpt-3.5-turbo-1106",
+    "gpt-3.5-turbo-0125",
+]
+GPT_CHAT_MODELS = set(_GPT_4_MODELS + _GPT_TURBO_MODELS)
+
+MODEL_TO_FAMILY_MAP = {}
+MODEL_TO_FAMILY_MAP.update({model: "openai" for model in GPT_CHAT_MODELS})
+MODEL_TO_FAMILY_MAP.update({model: "gemini" for model in GEMINI_MODELS})
 
 
 def setup_environment(
@@ -153,6 +194,11 @@ def sanitize_folder_name(key: str) -> str:
     # Replace "/" with "_"
     sanitized_key = sanitized_key.replace("meta_level/", "meta_level_")
     sanitized_key = sanitized_key.replace("object_level/", "object_level_")
+    # This is common prefix for gemini endpoint names
+    sanitized_key = sanitized_key.replace(
+        "projects/351298396653/locations/us-central1/endpoints/",
+        "projects_351298396653_locations_us-central1_endpoints_",
+    )
     return sanitized_key
 
 
@@ -199,3 +245,19 @@ def run_command(command):
     except subprocess.CalledProcessError as e:
         print(f"Error executing {command}: {e}")
         raise e
+
+
+def get_hparams_for_endpoints(endpoint_names):
+    """
+    E.g.
+    Args: ["projects/351298396653/locations/us-central1/endpoints/5520944751202795520"]
+    Returns: [{"epochCount": 1, "learningRateMultiplier": 0.1, "adapterSize": "ADAPTERSIZE_SIXTEEN"}]
+    """
+    responses: List[sft.SupervisedTuningJob] = sft.SupervisedTuningJob.list()
+    out = []
+    for response in responses:
+        for endpoint in endpoint_names:
+            if response.tuned_model_endpoint_name == endpoint:
+                hp = response.to_dict()["supervisedTuningSpec"]["hyperParameters"]
+                out.append(hp)
+    return out

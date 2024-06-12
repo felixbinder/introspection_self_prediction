@@ -3,7 +3,6 @@
 import asyncio
 import csv
 import logging
-import shutil
 import traceback
 from pathlib import Path
 from string import Template

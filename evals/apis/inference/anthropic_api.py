@@ -65,7 +65,9 @@ class AnthropicChatModel(InferenceAPIModel):
         assert len(model_ids) == 1, "Anthropic implementation only supports one model at a time."
         model_id = model_ids[0]
         prompt_messages = prompt.anthropic_format()
-        system_message = next((msg["content"] for msg in prompt_messages if msg["role"] == "system"), anthropic.NOT_GIVEN)
+        system_message = next(
+            (msg["content"] for msg in prompt_messages if msg["role"] == "system"), anthropic.NOT_GIVEN
+        )
         prompt_messages = [msg for msg in prompt_messages if msg["role"] != "system"]
         prompt_string = prompt.anthropic_format_string()
         prompt_file = self.create_prompt_history_file(prompt_string, model_id, self.prompt_history_dir)

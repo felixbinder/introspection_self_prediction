@@ -1,5 +1,5 @@
 
-model: ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9XGmIcNV
+model: projects/351298396653/locations/us-central1/endpoints/5495612003298836480
 cais_path: ~
 temperature: 0.0
 top_p: 1.0

@@ -22,6 +22,7 @@ class LLMParams(HashableBaseModel):
 class StopReason(Enum):
     MAX_TOKENS = "max_tokens"
     STOP_SEQUENCE = "stop_sequence"
+    SAFETY = "safety"
     UNKNOWN = "unknown"
 
     def __str__(self):
@@ -43,6 +44,8 @@ class LLMResponse(BaseModel):
             return StopReason.MAX_TOKENS
         elif v in ["stop", "stop_sequence", "end_turn"]:
             return StopReason.STOP_SEQUENCE
+        elif v in ["safety"]:
+            return StopReason.SAFETY
         elif v in ["unknown", ""]:
             return StopReason.UNKNOWN
         raise ValueError(f"Invalid stop reason: {v}")

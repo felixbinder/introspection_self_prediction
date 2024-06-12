@@ -5,6 +5,7 @@ repos:
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
+        exclude: other_evals/
       - id: end-of-file-fixer
       - id: check-shebang-scripts-are-executable
       - id: check-yaml
@@ -19,11 +20,13 @@ repos:
     rev: 23.3.0
     hooks:
       - id: black
+        exclude: other_evals/
 
   - repo: https://github.com/pycqa/isort
     rev: 5.11.5
     hooks:
       - id: isort
+        exclude: other_evals/
         args: ["--profile", "black", "--filter-files"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -31,4 +34,5 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff
+        exclude: other_evals/
         args: [ --fix ]

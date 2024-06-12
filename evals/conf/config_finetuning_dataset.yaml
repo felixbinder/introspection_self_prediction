@@ -21,6 +21,8 @@ study_name: ?? # the name of the study
 
 dataset_folder: ?? # the name of the folder containing the dataset infos
 
+finetune_models: ${finetune_models}
+
 exp_dir: ${study_dir}
 
 train_base_dir: ?? # the folder of the object level responses to use for training. Should be generated with `task.set = train`.

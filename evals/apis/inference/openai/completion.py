@@ -7,13 +7,10 @@ from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from evals.apis.inference.openai.base import OpenAIModel
-from evals.apis.inference.openai.utils import (
-    COMPLETION_MODELS,
-    count_tokens,
-    price_per_token,
-)
+from evals.apis.inference.openai.utils import count_tokens, price_per_token
 from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import Prompt
+from evals.utils import COMPLETION_MODELS
 
 LOGGER = logging.getLogger(__name__)
 

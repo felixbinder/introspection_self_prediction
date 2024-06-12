@@ -5,7 +5,9 @@ from pathlib import Path
 from traceback import format_exc
 from typing import Any, Coroutine, Optional
 
+import google
 import vertexai
+import vertexai.preview.generative_models as generative_models
 from aiolimiter import AsyncLimiter
 from vertexai.generative_models import FinishReason, GenerativeModel
 
@@ -16,12 +18,6 @@ from evals.utils import GCLOUD_LOCATION, GCLOUD_PROJECT
 
 LOGGER = logging.getLogger(__name__)
 
-
-GEMINI_MODELS = {
-    "gemini-1.0-pro-001",
-    "gemini-1.0-pro-002",
-    "gemini-1.5-pro-001",
-}
 
 FINISH_REASON_MAP = {
     FinishReason.MAX_TOKENS: "max_tokens",
@@ -41,6 +37,8 @@ def price_per_token(model_id: str) -> tuple[float, float]:
     elif model_id.startswith("gemini-1.5-pro"):  # 001 and 002
         # $0.0025 / 1k characters, $0.0075 / 1k characters
         prices = 0.0025, 0.0075
+    elif model_id.startswith("projects/"):  # assuming 1.0 pro prices for now since that's the only finetunable model
+        prices = 0.000125, 0.000375
     else:
         raise ValueError(f"Invalid model id: {model_id}")
     return tuple(price / 1000 * CHAR_PER_TOKEN for price in prices)
@@ -49,7 +47,7 @@ def price_per_token(model_id: str) -> tuple[float, float]:
 class GeminiModel(InferenceAPIModel):
     def __init__(self, prompt_history_dir: Path = None):
         self.prompt_history_dir = prompt_history_dir
-        self.limiter = AsyncLimiter(60, 60)  # 60 requests per 60 seconds
+        self.limiter = AsyncLimiter(120, 60)  # 60 requests per 60 seconds
 
     async def _make_api_call(
         self,
@@ -84,8 +82,16 @@ class GeminiModel(InferenceAPIModel):
             "max_output_tokens": kwargs.get("max_tokens_to_sample", 2000),
             "temperature": kwargs.get("temperature", 0.0),
         }
+        safety_settings = {
+            generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        }
 
-        response = await model.generate_content_async(contents=prompt_messages, generation_config=generation_config)
+        response = await model.generate_content_async(
+            contents=prompt_messages, generation_config=generation_config, safety_settings=safety_settings
+        )
 
         api_duration = time.time() - api_start
         duration = time.time() - start
@@ -101,18 +107,32 @@ class GeminiModel(InferenceAPIModel):
             parts = choice.content.parts
             return parts[0].text if parts else ""
 
-        responses = [
-            LLMResponse(
-                model_id=model_id,
-                completion=safe_text_extract(choice),
-                stop_reason=FINISH_REASON_MAP.get(choice.finish_reason, "unknown"),
-                api_duration=api_duration,
-                duration=duration,
-                cost=total_cost,
-                logprobs=[],  # HACK no logprobs
-            )
-            for choice in response.candidates
-        ]
+        if response.candidates:
+            responses = [
+                LLMResponse(
+                    model_id=model_id,
+                    completion=safe_text_extract(choice),
+                    stop_reason=FINISH_REASON_MAP.get(choice.finish_reason, "unknown"),
+                    api_duration=api_duration,
+                    duration=duration,
+                    cost=total_cost,
+                    logprobs=[],  # HACK no logprobs
+                )
+                for choice in response.candidates
+            ]
+        else:  # handle empty responses, usually because of safety block
+            responses = [
+                LLMResponse(
+                    model_id=model_id,
+                    completion="",
+                    # sometimes returns empty because of safety block
+                    stop_reason="safety" if response.prompt_feedback.block_reason == 4 else "unknown",
+                    api_duration=api_duration,
+                    duration=duration,
+                    cost=total_cost,
+                    logprobs=[],  # HACK no logprobs
+                )
+            ]
         self.add_response_to_prompt_file(prompt_file, responses)
 
         if print_prompt_and_response:
@@ -132,6 +152,9 @@ class GeminiModel(InferenceAPIModel):
                     responses = await self._make_api_call(
                         model_ids, prompt, print_prompt_and_response, max_attempts, **kwargs
                     )
+            except google.api_core.exceptions.ResourceExhausted:
+                LOGGER.warn(f"Encountered ResourceExhausted error. Retrying now. (Attempt {i})")
+                await asyncio.sleep(1.5**i)
             except Exception as e:
                 error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
                 LOGGER.warn(f"Encountered API error: {error_info}.\nRetrying now. (Attempt {i})")

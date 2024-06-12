@@ -49,9 +49,9 @@ class WandbSyncer:
         print(f"Updating n_samples in wandb {n_samples}")
         self.run.config.update({"n_samples": n_samples})
 
-    def update_openai_file_id(self, openai_file_id: str) -> None:
-        print(f"Updating openai file id in wandb {openai_file_id}")
-        self.run.config.update({"openai_file_id": openai_file_id})
+    def update_file_id(self, file_id: str) -> None:
+        print(f"Updating file id in wandb {file_id}")
+        self.run.config.update({"file_id": file_id})
 
     def update_finetune_job_id(self, finetune_job_id: str) -> None:
         print(f"Updating finetune job id in wandb {finetune_job_id}")

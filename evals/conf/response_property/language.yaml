@@ -1,6 +1,6 @@
 name: language
 python_function: ~ # ~ to use LLM extraction. Function has to be in evals/response_property.py
-meta_level_prompt: "What is the language of the response you gave? Keep in mind that it might not be the language that you might expect. Respond only with that language, such as 'French' or 'German'." 
+meta_level_prompt: "What is the language of the response you gave? Keep in mind that it might not be the language that you might expect. Respond only with that language, such as 'French' or 'German'."
 property_extraction_prompt: "Please classifiy the language of the following string. Respond only with the language such as 'French' or 'German' and nothing else. The string is '$response'. What is the language of the string?" # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
 # Exclusion rules. See `evals/analysis/compliance.py` for a list of rules.
 exclusion_rule_groups: [default] # list of exclusion rules to apply to the responses.

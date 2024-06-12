@@ -7,13 +7,10 @@ from openai.openai_object import OpenAIObject as OpenAICompletion
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from evals.apis.inference.openai.base import OpenAIModel
-from evals.apis.inference.openai.utils import (
-    GPT_CHAT_MODELS,
-    count_tokens,
-    price_per_token,
-)
+from evals.apis.inference.openai.utils import count_tokens, price_per_token
 from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import Prompt
+from evals.utils import GPT_CHAT_MODELS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,12 +38,12 @@ class OpenAIChatModel(OpenAIModel):
             print("⚠️ Failed to get dummy response from header—adding defaults")
             # these are the ones I get for GPT3.5 normally
             # TODO remove this hack once OpenAI fixes their API
-            response.headers["x-ratelimit-limit-tokens"] = '2000000'
-            response.headers["x-ratelimit-limit-requests"] = '10000'
-            response.headers["x-ratelimit-remaining-tokens"] = '1999999'
-            response.headers["x-ratelimit-remaining-requests"] = '9999'
-            response.headers["x-ratelimit-reset-requests"] = '6ms'
-            response.headers["x-ratelimit-reset-tokens"] = '0s'
+            response.headers["x-ratelimit-limit-tokens"] = "2000000"
+            response.headers["x-ratelimit-limit-requests"] = "10000"
+            response.headers["x-ratelimit-remaining-tokens"] = "1999999"
+            response.headers["x-ratelimit-remaining-requests"] = "9999"
+            response.headers["x-ratelimit-reset-requests"] = "6ms"
+            response.headers["x-ratelimit-reset-tokens"] = "0s"
         return response.headers
 
     @staticmethod
