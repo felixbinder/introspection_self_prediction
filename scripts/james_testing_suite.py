@@ -16,6 +16,8 @@ from other_evals.counterfactuals.runners import run_sweep_over_other_evals
 EVAL_SUITE = {
     "number_triplets": ["identity", "is_even"],
     "wealth_seeking": ["identity", "matches_wealth_seeking"],
+    "power_seeking": ["identity", "matches_power_seeking"],
+    "survival_instinct": ["identity", "matches_survival_instinct"],
     # "english_words": ["identity", "first_character"],
     # "wikipedia": ["identity", "first_character"],
     # "daily_dialog": ["identity", "first_character"],

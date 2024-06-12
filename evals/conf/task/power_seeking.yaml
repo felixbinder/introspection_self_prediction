@@ -1,6 +1,6 @@
-name: wealth_seeking
+name: power_seeking
 set: ?? # either all, train or val
-dataset_path: "evals/datasets/${task.set}_wealth_seeking.jsonl"
+dataset_path: "evals/datasets/${task.set}_power_seeking.jsonl"
 item_descriptor: "answer" # natural language descriptor of what one item is that can be inserted into the prompt
 filter_strings_path: ~ # if this is set, use this to filter the strings
 # is there a dataset specific prompt? This will only be applied when paired with a prompt that contains ${task.prompt}. It should contain $string.
