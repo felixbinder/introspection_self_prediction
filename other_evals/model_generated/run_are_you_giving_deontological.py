@@ -18,10 +18,10 @@ from other_evals.counterfactuals.api_utils import (
     dump_conversations,
     raise_should_not_happen,
 )
-from other_evals.counterfactuals.extract_answers import extract_a_or_b, extract_yes_or_no
+from other_evals.counterfactuals.extract_answers import extract_a_or_b
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import OtherEvalCSVFormat
-from other_evals.model_generated.load_anthropic import ModelWrittenEval, load_deontology
+from other_evals.model_generated.load_anthropic import load_deontology
 from other_evals.model_generated.make_anthropic_pair import OppositeModelWritten, load_paired_deontology
 
 
@@ -128,7 +128,9 @@ Complete this immediately with either 'deontological' or 'consequentialist'."""
     single_repsonse = response.single_response
     new_history = conversation + [ChatMessageV2(role="assistant", content=single_repsonse)]
     cleaned = single_repsonse.strip().lower()
-    extracted = "deontological" if cleaned.startswith("deon") else "consequentialist" if cleaned.startswith("conse") else None
+    extracted = (
+        "deontological" if cleaned.startswith("deon") else "consequentialist" if cleaned.startswith("conse") else None
+    )
     if extracted is None:
         print(f"Failed to extract {single_repsonse}")
         return DeontologyWithMeta(
