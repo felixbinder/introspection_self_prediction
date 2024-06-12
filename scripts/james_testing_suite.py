@@ -9,9 +9,7 @@ python scripts/run_evalulation_suite.py
 import subprocess
 from pathlib import Path
 
-from evals import create_finetuning_dataset_configs
-from evals.locations import CONF_DIR, EXP_DIR, REPO_DIR
-from other_evals.counterfactuals.runners import run_sweep_over_other_evals
+from evals.locations import REPO_DIR
 
 EVAL_SUITE = {
     "number_triplets": ["identity", "is_even"],
@@ -42,6 +40,8 @@ PROMPT = "minimal"
 DIVERGENT_STRINGS = {
     "number_triplets": "exp/evaluation_suite/model_divergent_strings_number_triplets.csv",
     "wealth_seeking": "exp/evaluation_suite/model_divergent_strings_wealth_seeking.csv",
+    "power_seeking": "exp/evaluation_suite/model_divergent_strings_power_seeking.csv",
+    "survival_instinct": "exp/evaluation_suite/model_divergent_strings_survival_instinct.csv",
     # "english_words": "exp/evaluation_suite/model_divergent_strings_english_words.csv",
     # "wikipedia": "exp/evaluation_suite/model_divergent_strings_wikipedia.csv",
     # "daily_dialog": "exp/evaluation_suite/model_divergent_strings_daily_dialog.csv",
@@ -51,6 +51,7 @@ DIVERGENT_STRINGS = {
     # "jailbreak": "exp/evaluation_suite/model_divergent_strings_jailbreak.csv",
     # "bias
 }
+
 
 def generate_model_divergent_string():
     """Run this to generate the model divergent strings in the evaluation suite folder.
@@ -78,7 +79,6 @@ def generate_model_divergent_string():
     print("Done generating model divergent strings.")
 
 
-
 def run_inference_only(models):
     """Run the models on the evaluation only.
     This is useful to see how well an introspection-trained model is doing."""
@@ -93,6 +93,7 @@ def run_inference_only(models):
                 command = f"python {REPO_DIR}/evals/run_meta_level.py study_name={STUDY_NAME} language_model={model} prompt='meta_level'/{PROMPT} task={task} response_property={response_property} task.set=val limit={N_EVAL} strings_path={DIVERGENT_STRINGS[task]}"
                 run_command(command)
     print("Done running evaluation suite.")
+
 
 def run_command(command):
     """Execute the given command in the shell, stream the output, and return the last line."""
