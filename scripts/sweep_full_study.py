@@ -42,10 +42,12 @@ import subprocess
 from functools import partial
 from multiprocessing import Manager, Pool, managers
 from pathlib import Path
-from typing import Dict, Type, Sequence
+from typing import Dict, Sequence, Type
+
+from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
-from evals.utils import get_current_git_hash
+from evals.utils import GEMINI_MODELS, MODEL_TO_FAMILY_MAP, get_current_git_hash
 from other_evals.counterfactuals.get_finetuning_samples import (
     add_new_samples_to_existing_jsonl_and_shuffle,
     get_other_evals_finetuning_samples,
@@ -266,7 +268,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        pool = Pool(2)  # create a pool of worker processes
+        pool = Pool()  # create a pool of worker processes
 
         #### run object level completions on train ####
         object_train_commands = []
@@ -379,10 +381,13 @@ class StudyRunner:
             [p.parent.name for p in finetuning_folder_paths]
         )  # we need the name of the subfolder
 
+        finetune_models = list(set(self.args.model_configs) - set(self.args.skip_finetuning_for_models))
+        should_create_gemini_dataset = len(GEMINI_MODELS & set(finetune_models)) > 0
+        finetune_models = "\\'" + ",".join(finetune_models) + "\\'"
         finetuning_dataset_creation_commands = []
         with self.state_lock:
             for data_folder in finetuning_study_names:
-                command = f"python -m evals.create_finetuning_dataset study_name={self.args.study_name} dataset_folder={data_folder}"
+                command = f"python -m evals.create_finetuning_dataset study_name={self.args.study_name} dataset_folder={data_folder} finetune_models={finetune_models}"
                 if command not in self.state["finetuning_dataset_creation"]:
                     self.state["finetuning_dataset_creation"].update(
                         self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
@@ -430,6 +435,8 @@ class StudyRunner:
                     new_jsonl_path=new_jsonl,
                     new_samples=model_samples,
                 )
+                if should_create_gemini_dataset:
+                    create_gemini_dataset_version(new_jsonl)
 
         #### run finetuning ####
         finetuning_commands = []
@@ -440,15 +447,20 @@ class StudyRunner:
                     continue
                 for ft_study in finetuning_study_names:
                     ft_study_path = f"{self.args.study_name}/{ft_study}"
-                    # Pass the correct train path, depending on whether we are have other evals or not
                     finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+
+                    ft_format = "-format_gemini" if MODEL_TO_FAMILY_MAP.get(model, "unknown") == "gemini" else ""
+                    default_train_fname = f"train_dataset{ft_format}.jsonl"
+                    default_val_fname = f"val_dataset{ft_format}.jsonl"
+                    other_evals_fname = f"other_evals_combined_train_dataset{ft_format}.jsonl"
+                    # Pass the correct train path, depending on whether we are have other evals or not
                     train_path = (
-                        finetuned_folder_path / "other_evals_combined_train_dataset.jsonl"
+                        finetuned_folder_path / other_evals_fname
                         if self.validated_other_evals
-                        else finetuned_folder_path / "train_dataset.jsonl"
+                        else finetuned_folder_path / default_train_fname
                     )
                     # currently not adding other evals to the val dataset
-                    val_path = finetuned_folder_path / "val_dataset.jsonl"
+                    val_path = finetuned_folder_path / default_val_fname
                     command = self.get_finetuning_command(
                         model,
                         ft_study_path,
