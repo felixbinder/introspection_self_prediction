@@ -158,6 +158,9 @@ class StudyRunner:
             "--n_finetuning", type=int, help="Number of finetuning completions to generate.", default=500
         )
         parser.add_argument(
+            "--n_meta_train", type=int, help="Number of meta level completions for validation.", default=2000
+        )
+        parser.add_argument(
             "--n_meta_val", type=int, help="Number of meta level completions for validation.", default=500
         )
         parser.add_argument("--skip_finetuning", action="store_true", help="Skip the finetuning step.", default=False)
@@ -224,6 +227,7 @@ class StudyRunner:
                     "finetuning_dataset_creation": self.manager.dict(),
                     "finetuning_runs": self.manager.dict(),
                     "ft_object_val_runs": self.manager.dict(),
+                    "meta_train_runs": self.manager.dict(),
                     "meta_val_runs": self.manager.dict(),
                     "commands": self.manager.list(),
                     "current_git_hash": get_current_git_hash(),
@@ -345,6 +349,97 @@ class StudyRunner:
         )
         self.write_state_file()
 
+        #### run meta level completions on train ####
+        meta_train_commands = []
+        with self.state_lock:
+            for model in self.args.model_configs:  # EDIT
+                for task, response_properties in combine_dicts_of_lists([self.args.tasks]).items():
+                    for response_property in response_properties:
+                        for prompt in self.args.prompt_configs:
+                            # pull the divergent strings
+                            # divergent_strings_path = self.state["divergent_strings"][task]["strings_path"]
+
+                            train_obj_command = self.get_object_level_command(
+                                model, task, prompt, self.args.n_object_train, "train"
+                            )
+                            # do we have the train and val folders?
+                            train_folder = self.state["object_train_runs"][train_obj_command].get("folder", None)
+                            command = self.get_meta_level_command(
+                                model,
+                                task,
+                                response_property,
+                                prompt,
+                                self.args.n_meta_train,
+                                "train",
+                                train_folder + "/data0.csv",
+                            )
+                            # import ipdb; ipdb.set_trace()
+                            if command not in self.state["meta_train_runs"]:
+                                self.state["meta_train_runs"].update(
+                                    self.turn_nested_dictionary_into_multiprocessing_dict(
+                                        {command: {"status": "incomplete"}}
+                                    )
+                                )
+                            elif self.state["meta_train_runs"][command]["status"] == "complete":
+                                print(f"Skipping {command} because it is already complete.")
+                            # save other args to the state file
+
+                            self.state["meta_train_runs"][command].update(
+                                {
+                                    "model": model,
+                                    "task": task,
+                                    "response_property": response_property,
+                                    "set": "train",
+                                }
+                            )
+                            meta_train_commands.append(command)
+        self.write_state_file()
+
+        pool.map(partial(run_meta_train_command, state=self.state, state_lock=self.state_lock), meta_train_commands)
+        self.write_state_file()
+
+        #### run meta level completions on val #### This is straight copied from below
+        meta_val_commands = []
+        with self.state_lock:
+            for model in self.args.model_configs + self.args.val_only_model_configs:  # EDIT
+                for task, response_properties in combine_dicts_of_lists([self.args.tasks, self.args.val_tasks]).items():
+                    for response_property in response_properties:
+                        for prompt in self.args.prompt_configs:
+                            # pull the divergent strings
+                            divergent_strings_path = self.state["divergent_strings"][task]["strings_path"]
+                            command = self.get_meta_level_command(
+                                model,
+                                task,
+                                response_property,
+                                prompt,
+                                self.args.n_meta_val,
+                                "val",
+                                divergent_strings_path,
+                            )
+                            if command not in self.state["meta_val_runs"]:
+                                self.state["meta_val_runs"].update(
+                                    self.turn_nested_dictionary_into_multiprocessing_dict(
+                                        {command: {"status": "incomplete"}}
+                                    )
+                                )
+                            elif self.state["meta_val_runs"][command]["status"] == "complete":
+                                print(f"Skipping {command} because it is already complete.")
+                            # save other args to the state file
+
+                            self.state["meta_val_runs"][command].update(
+                                {
+                                    "model": model,
+                                    "task": task,
+                                    "response_property": response_property,
+                                    "set": "val",
+                                }
+                            )
+                            meta_val_commands.append(command)
+        self.write_state_file()
+
+        pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
+        self.write_state_file()
+
         #### run finetuning dataset creation ####
         finetuning_folder_paths = []
         for model in self.args.model_configs:
@@ -376,6 +471,42 @@ class StudyRunner:
                             overwrite=False,
                         )
                         finetuning_folder_paths.append(yaml_path)
+
+                        # do this for meta
+                        divergent_strings_path = self.state["divergent_strings"][task]["strings_path"]
+                        train_command = self.get_meta_level_command(
+                            model,
+                            task,
+                            response_property,
+                            prompt,
+                            self.args.n_meta_train,
+                            "train",
+                            divergent_strings_path,
+                        )
+                        val_command = self.get_meta_level_command(
+                            model, task, response_property, prompt, self.args.n_meta_val, "val", divergent_strings_path
+                        )
+                        # do we have the train and val folders?
+                        train_folder = self.state["meta_train_runs"][train_command].get("folder", None)
+                        val_folder = self.state["meta_val_runs"][val_command].get("folder", None)
+                        if train_folder is None or val_folder is None:
+                            print(
+                                f"Skipping finetuning dataset creation for {model}, {task}, {response_property}, {prompt} because the object level completions are not complete."
+                            )
+                            continue
+                        # create the finetuning dataset
+                        yaml_path = create_finetuning_dataset_config(
+                            self.args.study_name,
+                            model,
+                            task,
+                            prompt,
+                            response_property,
+                            "",  # overrides string—not using that here
+                            train_folder,
+                            val_folder,
+                            overwrite=False,
+                        )
+                        finetuning_folder_paths.append(yaml_path)
         print(f"Created {len(finetuning_folder_paths)} finetuning dataset configs. Creating datasets...")
         finetuning_study_names = set(
             [p.parent.name for p in finetuning_folder_paths]
@@ -387,7 +518,8 @@ class StudyRunner:
         finetuning_dataset_creation_commands = []
         with self.state_lock:
             for data_folder in finetuning_study_names:
-                command = f"python -m evals.create_finetuning_dataset study_name={self.args.study_name} dataset_folder={data_folder} finetune_models={finetune_models}"
+                # TODO: can add another loop here where if --self_training_baseline is set then we add the self-training baseline, currently only doing one
+                command = f"python -m evals.create_finetuning_dataset study_name={self.args.study_name} dataset_folder={data_folder} finetune_models={finetune_models} self_training_baseline=True"
                 if command not in self.state["finetuning_dataset_creation"]:
                     self.state["finetuning_dataset_creation"].update(
                         self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
@@ -509,12 +641,10 @@ class StudyRunner:
         )
         self.write_state_file()
 
-        #### run meta level completions on val ####
+        #### run meta level completions on val for the finetuned models ####
         meta_val_commands = []
         with self.state_lock:
-            for model in (
-                self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
-            ):
+            for model in self.get_finetuned_model_configs():
                 for task, response_properties in combine_dicts_of_lists([self.args.tasks, self.args.val_tasks]).items():
                     for response_property in response_properties:
                         for prompt in self.args.prompt_configs:
@@ -688,6 +818,18 @@ def run_meta_val_command(command, state, state_lock):
     except Exception as e:
         with state_lock:
             state["meta_val_runs"][command].update({"status": "failed"})
+        print(f"Failed to run {command}: {e}")
+        raise e
+
+
+def run_meta_train_command(command, state, state_lock):
+    try:
+        data_folder = run_command(command, state, state_lock)
+        with state_lock:
+            state["meta_train_runs"][command].update({"status": "complete", "folder": data_folder})
+    except Exception as e:
+        with state_lock:
+            state["meta_train_runs"][command].update({"status": "failed"})
         print(f"Failed to run {command}: {e}")
         raise e
 
