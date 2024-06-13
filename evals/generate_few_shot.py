@@ -8,9 +8,6 @@ import pandas as pd
 
 from evals.analysis.compliance_checks import enforce_compliance_on_df
 from evals.analysis.loading_data import get_hydra_config, load_and_prep_dfs
-from evals.load.lazy_object_level_llm_extraction import (
-    lazy_add_response_property_to_object_level,
-)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,16 +111,18 @@ def generate_few_shot_data(
     out_df["few-shot_response"] = None
 
     # ensure that the response property has already been extracted
-    object_df = lazy_add_response_property_to_object_level(object_df, object_config, response_property_name)
+    # object_df = lazy_add_response_property_to_object_level(object_df, object_config, response_property_name)
 
     # add in few-shot strings
     for i, row in out_df.iterrows():
-        string = row["string"]
-        few_shot_strings, few_shot_responses = get_few_shot_completions(
-            string, object_df, n_shot, how, response_property_name
-        )
-        out_df.at[i, "few-shot_string"] = few_shot_strings
-        out_df.at[i, "few-shot_response"] = few_shot_responses
+        # string = row["string"]
+        # few_shot_strings, few_shot_responses = get_few_shot_completions(
+        #     string, object_df, n_shot, how, response_property_name
+        # )
+        # out_df.at[i, "few-shot_string"] = few_shot_strings
+        # out_df.at[i, "few-shot_response"] = few_shot_responses
+        out_df.at[i, "few-shot_string"] = []
+        out_df.at[i, "few-shot_response"] = []
 
     # save the output strings
     if output_path is None:
