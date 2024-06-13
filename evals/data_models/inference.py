@@ -44,7 +44,7 @@ class LLMResponse(BaseModel):
             return StopReason.MAX_TOKENS
         elif v in ["stop", "stop_sequence", "end_turn"]:
             return StopReason.STOP_SEQUENCE
-        elif v in ["safety"]:
+        elif v in ["safety", "content_filter"]:
             return StopReason.SAFETY
         elif v in ["unknown", ""]:
             return StopReason.UNKNOWN
