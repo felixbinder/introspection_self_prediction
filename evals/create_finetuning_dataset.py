@@ -33,7 +33,11 @@ LOGGER = logging.getLogger(__name__)
 
 
 def generate_finetuning_jsonl(
-    main_cfg: DictConfig, path: Path, finetune_models: str, filename: str = "dataset.jsonl"
+    main_cfg: DictConfig,
+    path: Path,
+    finetune_models: str,
+    filename: str = "dataset.jsonl",
+    self_training_labels: bool = False,
 ) -> tuple[Path, Path]:
     """Generate a jsonl file for finetuning.
 
@@ -60,7 +64,14 @@ def generate_finetuning_jsonl(
     main_cfg = copy.deepcopy(main_cfg)
 
     # get all the config files
-    config_files = list(path.glob("*.yaml"))
+    if self_training_labels:
+        config_files = list(path.glob("*meta.yaml"))
+    else:
+        config_files = list(path.glob("*.yaml"))
+    # import ipdb
+
+    # ipdb.set_trace()
+
     LOGGER.info(f"Found {len(config_files)} config files in {path}")
 
     assert len(config_files) > 0, f"No config files found in {path}"
@@ -160,6 +171,9 @@ def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_fi
     LOGGER.info(f"Loading base data from {train_base_dir}")
     datapath = get_data_path(cfg.train_base_dir)
     train_df = load_single_df(datapath)
+    # import ipdb
+
+    # ipdb.set_trace()
     train_df = lazy_add_response_property_to_object_level(
         train_df, get_hydra_config(datapath.parent), cfg.response_property.name
     )

@@ -36,7 +36,13 @@ def create_finetuning_dataset_config(
     ft_exp_dir = EXP_DIR / "finetuning" / study_name / model_config
     ft_exp_dir.mkdir(parents=True, exist_ok=True)
 
-    name = f"{model_config.replace('/', '-')}_{task_config.replace('/', '-')}_{response_property_config.replace('/', '-')}_{prompt_config.replace('/', '-')}"  # name of the config. We need to replace the / in the prompt config to avoid issues with the file path.
+    is_meta_level = "meta" in train_base_dir
+    if is_meta_level:
+        print("Creating meta level finetuning dataset config.")
+
+    meta_suffix = "_meta" if is_meta_level else ""
+
+    name = f"{model_config.replace('/', '-')}_{task_config.replace('/', '-')}_{response_property_config.replace('/', '-')}_{prompt_config.replace('/', '-')}{meta_suffix}"  # name of the config. We need to replace the / in the prompt config to avoid issues with the file path.
 
     if isinstance(overrides, list):
         overrides_str = "\n".join(overrides)

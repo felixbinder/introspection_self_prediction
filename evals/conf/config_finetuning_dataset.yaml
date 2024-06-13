@@ -22,6 +22,7 @@ study_name: ?? # the name of the study
 dataset_folder: ?? # the name of the folder containing the dataset infos
 
 finetune_models: ${finetune_models}
+self_training_baseline: ??
 
 exp_dir: ${study_dir}
 
