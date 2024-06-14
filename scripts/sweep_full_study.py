@@ -42,7 +42,7 @@ import subprocess
 from functools import partial
 from multiprocessing import Manager, Pool, managers
 from pathlib import Path
-from typing import Dict, Sequence, Type
+from typing import Dict, Sequence, Type, Union
 
 from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
@@ -94,21 +94,29 @@ class StudyRunner:
 
     # Updated to parse JSON string arguments into dictionaries
     def parse_args_into_lists_and_dicts(self):
-        for arg in [
+        string_args = [
             "model_configs",
             "val_only_model_configs",
             "prompt_configs",
             "inference_overrides",
-            "finetuning_overrides",
             "skip_finetuning_for_models",
-        ]:
+        ]
+        dict_args = ["tasks", "val_tasks"]
+        if getattr(self.args, "finetuning_overrides") and getattr(self.args, "finetuning_overrides").strip().startswith(
+            "{"
+        ):
+            dict_args.append("finetuning_overrides")
+        else:
+            string_args.append("finetuning_overrides")
+
+        for arg in string_args:
             setattr(
                 self.args,
                 arg,
                 [x.strip() for x in getattr(self.args, arg).split(",")] if getattr(self.args, arg) else [],
             )
         # Handling JSON string arguments for tasks and validation tasks
-        for arg in ["tasks", "val_tasks"]:
+        for arg in dict_args:
             if getattr(self.args, arg):
                 setattr(self.args, arg, json_string(getattr(self.args, arg)))
             else:
@@ -265,7 +273,15 @@ class StudyRunner:
         command = f"python -m evals.run_meta_level study_name={self.args.study_name} language_model={model} task={task} response_property={response_property} task.set={set} prompt=meta_level/{prompt} limit={limit} strings_path={strings_path} {overrides}"
         return command
 
-    def get_finetuning_command(self, model, ft_study, notes, val_path: Path, train_path: Path, overrides=""):
+    def get_finetuning_command(
+        self, model, ft_study, notes, val_path: Path, train_path: Path, overrides: Union[dict, str] = ""
+    ):
+        if isinstance(overrides, dict):
+            if model not in overrides:  # use empty overrides if not provided for a model
+                overrides = ""
+            else:
+                overrides = overrides[model]
+                overrides = [f"{k}={v}" for k, v in overrides.items()]
         override_str = " ".join(overrides)
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
