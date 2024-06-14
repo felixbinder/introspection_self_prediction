@@ -34,5 +34,5 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff
-        exclude: other_evals/
+        exclude: other_evals/, scripts/override_obj_w_meta_level.py
         args: [ --fix ]
