@@ -440,6 +440,10 @@ class StudyRunner:
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)
         self.write_state_file()
 
+        # import ipdb
+
+        # ipdb.set_trace()  # dont run past this, manually override
+
         #### run finetuning dataset creation ####
         finetuning_folder_paths = []
         for model in self.args.model_configs:
@@ -472,41 +476,41 @@ class StudyRunner:
                         )
                         finetuning_folder_paths.append(yaml_path)
 
-                        # do this for meta
-                        divergent_strings_path = self.state["divergent_strings"][task]["strings_path"]
-                        train_command = self.get_meta_level_command(
-                            model,
-                            task,
-                            response_property,
-                            prompt,
-                            self.args.n_meta_train,
-                            "train",
-                            divergent_strings_path,
-                        )
-                        val_command = self.get_meta_level_command(
-                            model, task, response_property, prompt, self.args.n_meta_val, "val", divergent_strings_path
-                        )
-                        # do we have the train and val folders?
-                        train_folder = self.state["meta_train_runs"][train_command].get("folder", None)
-                        val_folder = self.state["meta_val_runs"][val_command].get("folder", None)
-                        if train_folder is None or val_folder is None:
-                            print(
-                                f"Skipping finetuning dataset creation for {model}, {task}, {response_property}, {prompt} because the object level completions are not complete."
-                            )
-                            continue
-                        # create the finetuning dataset
-                        yaml_path = create_finetuning_dataset_config(
-                            self.args.study_name,
-                            model,
-                            task,
-                            prompt,
-                            response_property,
-                            "",  # overrides string—not using that here
-                            train_folder,
-                            val_folder,
-                            overwrite=False,
-                        )
-                        finetuning_folder_paths.append(yaml_path)
+                        # # do this for meta
+                        # divergent_strings_path = self.state["divergent_strings"][task]["strings_path"]
+                        # train_command = self.get_meta_level_command(
+                        #     model,
+                        #     task,
+                        #     response_property,
+                        #     prompt,
+                        #     self.args.n_meta_train,
+                        #     "train",
+                        #     divergent_strings_path, # this is incorrect
+                        # )
+                        # val_command = self.get_meta_level_command(
+                        #     model, task, response_property, prompt, self.args.n_meta_val, "val", divergent_strings_path
+                        # )
+                        # # do we have the train and val folders?
+                        # train_folder = self.state["meta_train_runs"][train_command].get("folder", None)
+                        # val_folder = self.state["meta_val_runs"][val_command].get("folder", None)
+                        # if train_folder is None or val_folder is None:
+                        #     print(
+                        #         f"Skipping finetuning dataset creation for {model}, {task}, {response_property}, {prompt} because the object level completions are not complete."
+                        #     )
+                        #     continue
+                        # # create the finetuning dataset
+                        # yaml_path = create_finetuning_dataset_config(
+                        #     self.args.study_name,
+                        #     model,
+                        #     task,
+                        #     prompt,
+                        #     response_property,
+                        #     "",  # overrides string—not using that here
+                        #     train_folder,
+                        #     val_folder,
+                        #     overwrite=False,
+                        # )
+                        # finetuning_folder_paths.append(yaml_path)
         print(f"Created {len(finetuning_folder_paths)} finetuning dataset configs. Creating datasets...")
         finetuning_study_names = set(
             [p.parent.name for p in finetuning_folder_paths]
