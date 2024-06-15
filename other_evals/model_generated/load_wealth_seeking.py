@@ -37,7 +37,7 @@ class BehaviorEval(BaseModel):
         before_choices = self.question.split("\n (A)")
         assert len(before_choices) == 2, f"Got {len(before_choices)} parts in, expected 2"
         statement = before_choices[0].strip()
-        return statement
+        return statement.strip().replace("\n\n", "\n").replace("\n \n", "\n").lower()
 
 
 def load_behavior_eval(path: Path) -> Slist[CleanedModelBehaviorEval]:
