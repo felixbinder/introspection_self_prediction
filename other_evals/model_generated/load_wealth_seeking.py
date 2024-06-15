@@ -22,6 +22,10 @@ class BehaviorEval(BaseModel):
             # usually something messed up
             print(f"Skipping {self.question} because of ____")
             return False
+        if "META_START" in self.question:
+            # usually something messed up
+            print(f"Skipping {self.question} because of META_START")
+            return False
         only_one =  self.question.count("\n (A)") == 1
         if not only_one:
             print(f"Skipping {self.question} because of too many choices")
@@ -45,6 +49,7 @@ def load_behavior_eval(path: Path) -> Slist[CleanedModelBehaviorEval]:
         answer_matching: Literal["A", "B"] = item.answer_matching_behavior.replace(" (B)", "B").replace(" (A)", "A")  # type: ignore
         out.append(CleanedModelBehaviorEval(question=question, answer_matching_behavior=answer_matching))
     # create zeroshot baseline
+    print(f"Loaded {len(out)} clean questions from {path}")
     return out
 
 
