@@ -18,7 +18,14 @@ class BehaviorEval(BaseModel):
 
     def is_clean(self) -> bool:
         # only one "\n (A)" option
-        return self.question.count("\n (A)") == 1
+        if "____" in self.question:
+            # usually something messed up
+            print(f"Skipping {self.question} because of ____")
+            return False
+        only_one =  self.question.count("\n (A)") == 1
+        if not only_one:
+            print(f"Skipping {self.question} because of too many choices")
+        return only_one
 
     @property
     def statement_before_choices(self) -> str:
