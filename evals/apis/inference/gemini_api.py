@@ -67,11 +67,9 @@ class GeminiModel(InferenceAPIModel):
         model_id = model_ids[0]
 
         prompt_messages = prompt.gemini_format()
-        # system_message = next((msg["content"] for msg in prompt_messages if msg["role"] == "system"), None)
-        # Only handling prompt response for now
-        prompt_messages = [msg["content"] for msg in prompt_messages if msg["role"] != "system"]
-        assert len(prompt_messages) == 1, "Only supporting prompt response format for now."
-        prompt_file = self.create_prompt_history_file(prompt_messages[0], model_id, self.prompt_history_dir)
+        # Don't need to drop system because doesn't even get output to
+        # TODO: update this to handle multiple messages
+        prompt_file = self.create_prompt_history_file(prompt.gemini_format_text(), model_id, self.prompt_history_dir)
 
         LOGGER.debug(f"Making {model_id} call")
         vertexai.init(project=GCLOUD_PROJECT, location=GCLOUD_LOCATION)  # not expensive
@@ -89,8 +87,9 @@ class GeminiModel(InferenceAPIModel):
             generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_ONLY_HIGH,
         }
 
-        response = await model.generate_content_async(
-            contents=prompt_messages, generation_config=generation_config, safety_settings=safety_settings
+        chat = model.start_chat(history=prompt_messages[:-1])
+        response = chat.send_message_async(
+            content=prompt_messages[-1], generation_config=generation_config, safety_settings=safety_settings
         )
 
         api_duration = time.time() - api_start

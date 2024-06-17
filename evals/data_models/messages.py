@@ -5,6 +5,7 @@ from typing import Dict, Optional, Self, Sequence
 import anthropic
 from pydantic import BaseModel
 from termcolor import cprint
+from vertexai.generative_models import Content, Part
 
 from evals.data_models.hashable import HashableBaseModel
 from evals.data_models.inference import LLMResponse
@@ -99,9 +100,24 @@ class Prompt(HashableBaseModel):
         if self.is_none_in_messages():
             raise ValueError(f"Gemini chat prompts cannot have a None role. Got {self.messages}")
         messages = []
+        # import ipdb; ipdb.set_trace()
         for msg in self.messages:
-            if msg.role == MessageRole.system and msg.content:  # Drop system role if content is empty
-                messages.append({"role": "system", "content": msg.content})
+            if msg.role == MessageRole.system:  # Drop system role
+                continue
+            elif msg.role == MessageRole.user:
+                messages.append(Content(parts=[Part.from_text(msg.content)], role="user"))
+            # Gemini uses the same format as OpenAI except uses 'model' instead of 'assistant'
+            elif msg.role == MessageRole.assistant:
+                messages.append(Content(parts=[Part.from_text(msg.content)], role="model"))
+        return messages
+
+    def gemini_format_text(self) -> str:
+        if self.is_none_in_messages():
+            raise ValueError(f"Gemini chat prompts cannot have a None role. Got {self.messages}")
+        messages = []
+        for msg in self.messages:
+            if msg.role == MessageRole.system:  # Drop system role
+                continue
             elif msg.role == MessageRole.user:
                 messages.append({"role": "user", "content": msg.content})
             # Gemini uses the same format as OpenAI except uses 'model' instead of 'assistant'
