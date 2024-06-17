@@ -291,7 +291,7 @@ def to_second_round_finetune(single_data: FirstRoundAsking) -> FinetuneConversat
     return FinetuneConversation(messages=messages)
 
 
-THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
+THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected2")
 
 
 # ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n is 1 hop
@@ -307,7 +307,7 @@ async def run_multiple_models(
 ) -> None:
     # Dumps results to xxx
     results: Slist[tuple[str, Slist[AreYouSureMetaResult]]] = Slist()
-    api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/counterfactuals_ask_if_affected")
+    api = CachedInferenceAPI(api=InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER), cache_path=THIS_EXP_FOLDER)
 
     for model in models:
         results.append(
