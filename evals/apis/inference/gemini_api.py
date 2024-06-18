@@ -88,7 +88,7 @@ class GeminiModel(InferenceAPIModel):
         }
 
         chat = model.start_chat(history=prompt_messages[:-1])
-        response = chat.send_message_async(
+        response = await chat.send_message_async(
             content=prompt_messages[-1], generation_config=generation_config, safety_settings=safety_settings
         )
 
@@ -153,6 +153,27 @@ class GeminiModel(InferenceAPIModel):
                     )
             except google.api_core.exceptions.ResourceExhausted:
                 LOGGER.warn(f"Encountered ResourceExhausted error. Retrying now. (Attempt {i})")
+                await asyncio.sleep(1.5**i)
+            except vertexai.generative_models._generative_models.ResponseValidationError:
+                LOGGER.warn(f"Encountered ResponseValidationError. Retrying now. (Attempt {i})")
+                if i == 8:
+                    LOGGER.warn(
+                        "This prompt is causing anomalous behavior. Treating this as a safety issue and skipping\n",
+                        prompt,
+                    )
+                    responses = [
+                        LLMResponse(
+                            model_id=model_ids[0],
+                            completion="",
+                            # sometimes returns empty because of safety block
+                            stop_reason="safety",
+                            api_duration=0.0,
+                            duration=0.0,
+                            cost=0.0,
+                            logprobs=[],  # HACK no logprobs
+                        )
+                    ]
+                    break
                 await asyncio.sleep(1.5**i)
             except Exception as e:
                 error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
