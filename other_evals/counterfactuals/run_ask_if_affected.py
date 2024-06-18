@@ -33,7 +33,7 @@ PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "
 
 
 round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices."
+    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 )
 round_2_answer_format = "\nAnswer Y for yes or N for no."
 
@@ -256,7 +256,7 @@ def first_round_to_finetune_message(single_data: FirstRoundAsking) -> FinetuneCo
     return FinetuneConversation(messages=finetune_messages)
 
 
-THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected")
+THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected3")
 
 
 # ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n is 1 hop
@@ -449,11 +449,11 @@ async def finetune_samples_ask_if_affected(
 
 
 async def test_main():
-    inference_api = InferenceAPI()
-    cached = CachedInferenceAPI(api=inference_api, cache_path="cached_dir")
+    inference_api = InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER)
+    cached = CachedInferenceAPI(api=inference_api, cache_path=THIS_EXP_FOLDER)
     await run_single_ask_if_affected(
-        object_model="gpt-3.5-turbo-1106",
-        meta_model="claude-3-sonnet-20240229",
+        object_model="gemini-1.0-pro-002",
+        meta_model="gemini-1.0-pro-002",
         number_samples=100,
         api=cached,
     )

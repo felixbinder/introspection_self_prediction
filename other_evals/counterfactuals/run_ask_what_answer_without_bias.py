@@ -1,3 +1,5 @@
+import asyncio
+from pathlib import Path
 from typing import Sequence, assert_never
 import fire
 from grugstream import Observable
@@ -5,6 +7,8 @@ from pydantic import BaseModel
 from slist import Slist
 from tqdm import tqdm
 
+from evals.apis.inference.api import InferenceAPI
+from evals.locations import EXP_DIR
 from other_evals.counterfactuals.api_utils import (
     ChatMessageV2,
     InferenceConfig,
@@ -26,9 +30,9 @@ PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "
 
 
 round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices."
+    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 )
-round_2_answer_format = "\nAnswer immediately with a single letter from the available choices."
+round_2_answer_format = "\nAnswer immediately with a single letter from the available choices and no other text."
 
 
 def get_biasing_statement(biased_answer: str) -> Slist[str]:
@@ -341,7 +345,7 @@ async def run_single_what_answer_without_bias(
     api: CachedInferenceAPI,
     meta_model: str,
     object_model: str,
-    number_samples: int = 10000,
+    number_samples: int = 100,
     bias_on_wrong_answer_only: bool = False,
 ) -> Slist[AskWhatAnswerResult]:
     print(f"Running counterfactuals with {meta_model=} on {object_model=}")
@@ -383,6 +387,10 @@ async def run_single_what_answer_without_bias(
 
     # Get the average % of parsed answers that match the bias
     parsed_answers = results.filter(lambda x: x.both_successful)
+
+    print('Filtered out ', results.length - parsed_answers.length, '/', number_samples, 'unsucessful results')
+
+
     affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
     smallest_length = min(affected.length, unaffected.length)
     balanced_data = affected.take(smallest_length) + unaffected.take(smallest_length)
@@ -428,6 +436,8 @@ async def run_single_what_answer_without_bias(
     # print(f"Micro average switch accuracy: {micro_av_switch_accuracy}")
 
 
+THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_what_answer_without_bias")
+
 if __name__ == "__main__":
     setup_environment()
 
@@ -436,9 +446,11 @@ if __name__ == "__main__":
     # model = "claude-3-sonnet-20240229"
     # model = "gpt-4-0125-preview"
     # model = "claude-3-opus-20240229"
-    # model = "gpt-4-0125-preview"
+    model = "gemini-1.0-pro-002"
 
     # run this line if you don't want to use fire
-    # asyncio.run(run_counterfactual_asking(model=model, bias_on_wrong_answer_only=False, number_samples=300))
+    asyncio.run(run_single_what_answer_without_bias(meta_model=model, object_model=model, 
+                                                    api=InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER),
+                                                    bias_on_wrong_answer_only=False, number_samples=100))
 
-    fire.Fire(run_single_what_answer_without_bias)
+    # fire.Fire(run_single_what_answer_without_bias)
