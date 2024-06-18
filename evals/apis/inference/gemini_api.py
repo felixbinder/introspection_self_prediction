@@ -156,10 +156,10 @@ class GeminiModel(InferenceAPIModel):
                 await asyncio.sleep(1.5**i)
             except vertexai.generative_models._generative_models.ResponseValidationError:
                 LOGGER.warn(f"Encountered ResponseValidationError. Retrying now. (Attempt {i})")
-                if i == 8:
+                if i == 5:
                     LOGGER.warn(
                         "This prompt is causing anomalous behavior. Treating this as a safety issue and skipping\n",
-                        prompt,
+                        prompt.gemini_format_text(),
                     )
                     responses = [
                         LLMResponse(

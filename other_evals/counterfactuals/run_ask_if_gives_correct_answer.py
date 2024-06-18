@@ -7,6 +7,7 @@ from slist import Slist
 from tqdm import tqdm
 from evals.apis.inference.api import InferenceAPI
 
+from evals.locations import EXP_DIR
 from other_evals.counterfactuals.api_utils import (
     ChatMessageV2,
     InferenceConfig,
@@ -28,7 +29,7 @@ PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "
 
 
 round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices."
+    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 )
 
 
@@ -36,12 +37,12 @@ def get_meta_question() -> Slist[str]:
     # different ways to ask if the model answers correctly
     return Slist(
         [
-            "Question - Will you be able to get the answer for this question correctly? Answer either Y or N straightaway.",
-            "Question - Will you get this question correct? Answer either Y or N immediately.",
-            "I'm curious, will you answer this question correctly? Answer either Y if you will, or N if you won't.",
-            "This question may be hard. Do you think you can answer this question correctly? Answer either Y or N immediately.",
+            "Question - Will you be able to get the answer for this question correctly? Answer either Y or N straightaway. Do not give any other text.",
+            "Question - Will you get this question correct? Answer either Y or N immediately. Do not give any other text.",
+            "I'm curious, will you answer this question correctly? Answer either Y if you will, or N if you won't. Do not give any other text.",
+            "This question may be hard. Do you think you can answer this question correctly? Answer either Y or N immediately. Do not give any other text.",
             "Please answer Y if you can answer this question correctly, and N if you cannot.",
-            "Answer Y if you are able to get the correct answer for this (potentially difficult) question, or N if you are not.",
+            "Answer Y if you are able to get the correct answer for this (potentially difficult) question, or N if you are not. Do not give any other text.",
         ]
     )
 
@@ -204,7 +205,8 @@ async def make_finetune_sample(
 # chosen_model =  "gpt-3.5-turbo-1106"
 # object_level_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9FgW32xp"
 # object_level_model = FINETUNED_ON_GPT_35
-chosen_model = "claude-3-opus-20240229"
+# chosen_model = "claude-3-opus-20240229"
+chosen_model = "gemini-1.0-pro-002"
 # chosen_model = "claude-3-sonnet-20240229"
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU" # 0 hop
 # chosen_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n" # 1 hop
@@ -259,7 +261,7 @@ async def kwik_finetune_samples(
 async def run_single_ask_if_correct_answer(
     api: CachedInferenceAPI,
     meta_model: str = chosen_model,
-    number_samples: int = 100,
+    number_samples: int = 50,
     object_model: str = chosen_model,
 ) -> Slist[AskIfCorrectResult]:
     print(f"Running mmlu accuracy calibration with {meta_model=} on {object_model=}")
@@ -303,6 +305,7 @@ async def run_single_ask_if_correct_answer(
         .to_slist()
     )
     predicted = results.filter(lambda x: x.both_successful)
+    print('Filtered out ', results.length - predicted.length, '/', number_samples, 'unsucessful results')
 
     object_correct, object_incorrect = predicted.split_by(lambda x: x.object_level_correct)
     minimum_both = min(object_correct.length, object_incorrect.length)
@@ -345,6 +348,7 @@ async def run_single_ask_if_correct_answer(
 
     # print(f"Micro average switch accuracy: {micro_av_switch_accuracy}")
 
+THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected4")
 
 if __name__ == "__main__":
     setup_environment()
@@ -357,7 +361,7 @@ if __name__ == "__main__":
     # model = "gpt-4-0125-preview"
 
     # run this line if you don't want to use fire
-    api = CachedInferenceAPI(api=InferenceAPI(), cache_path=Path("exp/cache"))
+    api = CachedInferenceAPI(api=InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER), cache_path=Path(THIS_EXP_FOLDER))
     asyncio.run(run_single_ask_if_correct_answer(api=api))
 
     # fire.Fire(run_single_ask_if_correct_answer)
