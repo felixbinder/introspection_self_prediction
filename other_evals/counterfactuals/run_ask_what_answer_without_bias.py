@@ -408,7 +408,7 @@ async def run_single_what_answer_without_bias(
         .to_slist()
     )
     second_round_extracted_answer = second_round_results.filter(lambda x: x.second_round_parsed is not None)
-    print(f"After filtering out {second_round_results.length - second_round_extracted_answer.length} missing answers")
+    print(f"After filtering out (and rebalancing): {number_samples - second_round_extracted_answer.length} missing answers total")
 
     # second_round_dicts = second_round_extracted_answer.map(second_round_to_json)
     # make a df
