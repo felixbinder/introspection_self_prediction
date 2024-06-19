@@ -6,10 +6,10 @@ from traceback import format_exc
 from typing import Any, Coroutine, Optional
 
 import google
-from tenacity import retry, retry_if_exception_type, wait_fixed
 import vertexai
 import vertexai.preview.generative_models as generative_models
 from aiolimiter import AsyncLimiter
+from tenacity import retry, retry_if_exception_type, wait_fixed
 from vertexai.generative_models import FinishReason, GenerativeModel
 
 from evals.apis.inference.model import InferenceAPIModel
