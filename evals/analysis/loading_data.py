@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 import os
 from pathlib import Path
@@ -358,6 +359,33 @@ def load_dfs_with_filter(
     dfs = load_and_prep_dfs(data_paths, configs=configs, exclude_noncompliant=exclude_noncompliant)
     LOGGER.info(f"Loaded {len(dfs)} dataframes")
     return dfs
+
+
+def load_dfs_with_filter_key_model_name(
+    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True
+) -> Dict[str, pd.DataFrame]:
+    """Loads and preps all dataframes from the experiment folder that match the conditions.
+
+    Args:
+        exp_folder: Path to the experiment folder.
+        conditions: Dictionary of conditions that the experiment folders must match.
+            For example, `conditions={"language_model": "gpt-3.5-turbo", "limit": [500,1000]}` will return all experiment folders that have a config for a gpt-3.5-turbo model and a limit of 500 or 1000.
+    """
+    matching_folders = get_folders_matching_config_key(exp_folder, conditions)
+    matching_folders = [folder for folder in matching_folders if get_data_path(folder) is not None]
+    data_paths = [get_data_path(folder) for folder in matching_folders]
+    LOGGER.info(f"Found {len(data_paths)} data entries")
+    configs = [get_hydra_config(folder) for folder in matching_folders]
+    dfs = load_and_prep_dfs(data_paths, configs=configs, exclude_noncompliant=exclude_noncompliant)
+
+    output = defaultdict(pd.DataFrame)
+    for config_key, df in dfs.items():
+        model_name = config_key["language_model"]["model"]
+        # concat
+        output[model_name] = pd.concat([output[model_name], df])
+    print(f"Loaded {len(output)} dataframes for {len(dfs)} configs")
+    return output
+
 
 
 def load_single_df(df_path: Path, exclude_noncompliant: bool = True) -> pd.DataFrame:

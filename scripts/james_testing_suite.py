@@ -121,7 +121,7 @@ def run_command(command):
 
 if __name__ == "__main__":
     # which non-fted models?
-    models = ["gpt-3.5-turbo", "claude-3-sonnet"]
+    models = ["gpt-3.5-turbo", "claude-3-sonnet", "finetuned/may20_thrifty_sweep/gpt-3.5-turbo-0125/ft_gpt-3.5-turbo-0125_dcevals-kokotajlo_sweep_9Th7D4TK"]
     # run the evaluation suite
     generate_model_divergent_string()
     run_inference_only(models)
