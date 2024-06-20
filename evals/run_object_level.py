@@ -202,7 +202,7 @@ async def async_main(cfg: DictConfig):
             dataset_runner,
             limit=cfg.limit,
         )
-    except RetryError as e: # make sure to reraise the proper error not the one from the async function
+    except RetryError as e:  # make sure to reraise the proper error not the one from the async function
         LOGGER.error(f"Failed with error {e}")
         LOGGER.error(traceback.format_exc())
         LOGGER.error("Failed to complete dataset—at least one row is not completed.")

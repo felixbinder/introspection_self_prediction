@@ -233,7 +233,7 @@ def remove_repetive_responses(df):
 
     # find responses that repeat the same word
     def is_repetitive(response):
-        response = str(response) # make sure it's a string
+        response = str(response)  # make sure it's a string
         return len(set(response.split())) == 1 and len(response.split()) > 10
 
     repetitive_mask = df["response"].apply(is_repetitive)
@@ -241,7 +241,7 @@ def remove_repetive_responses(df):
     df.loc[repetitive_mask, "response"] = df.loc[repetitive_mask, "response"].apply(
         lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"
     )
-    if not "identity" in df.columns: # if we don't have identity but we have response, add it
+    if "identity" not in df.columns:  # if we don't have identity but we have response, add it
         df["identity"] = df["response"]
     df.loc[repetitive_mask, "identity"] = df.loc[repetitive_mask, "identity"].apply(
         lambda x: " ".join(x.split()[0:10]) + "<truncated repetive response>"

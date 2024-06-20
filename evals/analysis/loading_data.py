@@ -580,8 +580,10 @@ def test_james():
     exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
 
     # compare = "gpt-3.5-turbo-0125"
-    object_model = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
+    object_model = "gpt-3.5-turbo-1106"
+    # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9ThVmSp2
+    # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    meta_model = "gpt-3.5-turbo-1106"
     # compare = "gpt-4-0613"
     objects, metas = load_meta_dfs(
         Path(exp_folder),
