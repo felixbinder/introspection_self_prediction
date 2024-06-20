@@ -1,4 +1,3 @@
-from collections import defaultdict
 import logging
 import os
 from pathlib import Path
@@ -7,11 +6,10 @@ from typing import Dict, List, Optional, Union
 import omegaconf
 import pandas as pd
 from omegaconf import DictConfig, ListConfig, OmegaConf
-from pydantic import BaseModel
-from regex import B
+from pydantic import BaseModel, ValidationError
+from scipy import stats
 from slist import Slist
-from evals import response_property
-from evals.locations import EXP_DIR
+from traitlets import ValidateHandler
 
 import evals.utils  # this is necessary to ensure that the Hydra sanitizer is registered  # noqa: F401
 from evals.analysis.analysis_helpers import get_pretty_name
@@ -20,6 +18,7 @@ from evals.analysis.string_cleaning import (
     apply_all_cleaning,
     match_log_probs_to_trimmed_response,
 )
+from evals.locations import EXP_DIR
 from evals.utils import get_maybe_nested_from_dict
 
 LOGGER = logging.getLogger(__name__)
@@ -402,7 +401,6 @@ class LoadedMeta(BaseModel):
 ## Calculate accuracy
 
 
-
 def load_meta_dfs(
     exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True
 ) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
@@ -413,8 +411,8 @@ def load_meta_dfs(
         conditions: Dictionary of conditions that the experiment folders must match.
             For example, `conditions={"language_model": "gpt-3.5-turbo", "limit": [500,1000]}` will return all experiment folders that have a config for a gpt-3.5-turbo model and a limit of 500 or 1000.
     """
-    matching_folders = get_folders_matching_config_key(exp_folder, conditions)
-    matching_folders = [folder for folder in matching_folders if get_data_path(folder) is not None]
+    matching_folders_ = get_folders_matching_config_key(exp_folder, conditions)
+    matching_folders = [folder for folder in matching_folders_ if get_data_path(folder) is not None]
     data_paths = [get_data_path(folder) for folder in matching_folders]
     LOGGER.info(f"Found {len(data_paths)} data entries")
     configs = [get_hydra_config(folder) for folder in matching_folders]
@@ -428,45 +426,56 @@ def load_meta_dfs(
         task = config_key["task"]["name"]
         response_property = config_key.response_property.name
         for i, row in df.iterrows():
-            final_metas.append(LoadedMeta(
-                string=row["string"],
-                response=row["response"],
-                raw_response=row["raw_response"],
-                response_property=response_property,
-                prompt_method=config_key["prompt"]["method"],
-                compliance=row["compliance"],
-                task=task,
-                meta_model=model_name,
-                # is_meta=not df_is_object_level
-            ))
+            try:
+                # sometimes its a list when it fails
+                compliance_is_true = row["compliance"] is True
+                final_metas.append(
+                    LoadedMeta(
+                        string=row["string"],
+                        response=row["response"],
+                        raw_response=row["raw_response"],
+                        response_property=response_property,
+                        prompt_method=config_key["prompt"]["method"],
+                        compliance=compliance_is_true,
+                        task=task,
+                        meta_model=model_name,
+                        # is_meta=not df_is_object_level
+                    )
+                )
+            except ValidationError as e:
+                raise ValueError(f"Got error {e} for row {row}")
     # key: task, values: [response_property1, response_property2, ...]
-    response_properties_mapping: Dict[str, set[str]] = final_metas.group_by(lambda x: x.task).map_on_group_values(
-        lambda values: values.map(lambda x: x.response_property).to_set()
-    ).to_dict()
-    
+    response_properties_mapping: Dict[str, set[str]] = (
+        final_metas.group_by(lambda x: x.task)
+        .map_on_group_values(lambda values: values.map(lambda x: x.response_property).to_set())
+        .to_dict()
+    )
+
     final_objects: Slist[LoadedObject] = Slist()
     for config_key, df in object_only_dfs.items():
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
+        assert task in response_properties_mapping, f"Task {task} not found in response properties mapping"
+        required_response_properties = response_properties_mapping[task]
         for i, row in df.iterrows():
-            assert task in response_properties_mapping, f"Task {task} not found in response properties mapping"
-            required_response_properties = response_properties_mapping[task]
             for response_property in required_response_properties:
                 object_level_response = row[response_property]
-                final_objects.append(LoadedObject(
-                    string=row["string"],
-                    response=row["response"],
-                    raw_response=row["raw_response"],
-                    prompt_method=config_key["prompt"]["method"],
-                    compliance=row["compliance"],
-                    task=task,
-                    object_model=model_name,
-                    response_property=response_property,
-                    response_property_answer=object_level_response
-
-                ))
+                # sometimes its a list when it fails
+                compliance_is_true = row["compliance"] is True
+                final_objects.append(
+                    LoadedObject(
+                        string=row["string"],
+                        response=row["response"],
+                        raw_response=row["raw_response"],
+                        prompt_method=config_key["prompt"]["method"],
+                        compliance=compliance_is_true,  
+                        task=task,
+                        object_model=model_name,
+                        response_property=response_property,
+                        response_property_answer=object_level_response,
+                    )
+                )
     return final_objects, final_metas
-
 
 
 def load_single_df(df_path: Path, exclude_noncompliant: bool = True) -> pd.DataFrame:
@@ -526,14 +535,16 @@ class ComparedMeta(BaseModel):
     def all_compliant(self):
         return self.object_level.compliance and self.meta_level.compliance
 
+
 def clean_for_comparison(string: str) -> str:
     return string.lower().strip()
 
-def compare_objects_and_metas(
-        objects: Slist[LoadedObject], metas: Slist[LoadedMeta]
-    ) -> Slist[ComparedMeta]:
+
+def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[ComparedMeta]:
     # group objects by task + string + response_property
-    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(lambda x: (x.task, x.string, x.response_property)).to_dict()
+    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
+        lambda x: (x.task, x.string, x.response_property)
+    ).to_dict()
     compared: Slist[ComparedMeta] = Slist()
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
@@ -546,25 +557,57 @@ def compare_objects_and_metas(
             cleaned_meta_response = clean_for_comparison(meta.response)
             predicted_correctly = cleaned_object_response == cleaned_meta_response
             if not predicted_correctly:
-                print(f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}")
-            compared.append(ComparedMeta(
-                object_level=obj,
-                meta_level=meta,
-                meta_predicts_correctly=predicted_correctly
-            ))
+                print(
+                    f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}, Task: {obj.task}"
+                )
+            compared.append(
+                ComparedMeta(object_level=obj, meta_level=meta, meta_predicts_correctly=predicted_correctly)
+            )
     return compared
 
+
+def filter_for_specific_models(
+    object_level_model: str, meta_level_model: str, objects: Slist[LoadedObject], metas: Slist[LoadedMeta]
+) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
+    filtered_objects = objects.filter(lambda x: x.object_model == object_level_model)
+    filtered_metas = metas.filter(lambda x: x.meta_model == meta_level_model)
+    return filtered_objects, filtered_metas
+
+
 def test_james():
-    exp_folder = EXP_DIR /"evaluation_suite"
-    objects, metas = load_meta_dfs(Path(exp_folder), {("task", "set"): ["val"]})
+    # exp_folder = EXP_DIR /"evaluation_suite"
+    exclude_noncompliant = False
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
+
+    # compare = "gpt-3.5-turbo-0125"
+    object_model = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
+    # compare = "gpt-4-0613"
+    objects, metas = load_meta_dfs(
+        Path(exp_folder),
+        {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): [object_model, meta_model],
+        },
+        exclude_noncompliant=False,
+    )
+    # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
+    filtered_objects, filtered_metas = filter_for_specific_models(
+        object_level_model=object_model, meta_level_model=meta_model, objects=objects, metas=metas
+    )
+    # filtered_objects, filtered_metas = objects, metas
     print(f"Got {len(objects)} objects and {len(metas)} metas")
-    compared = compare_objects_and_metas(objects, metas)
+    compared = compare_objects_and_metas(filtered_objects, filtered_metas)
     print(f"Got {len(compared)} compared")
-    acc = compared.map(lambda x: x.meta_predicts_correctly).average_or_raise()
+    correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+    acc = correct_bools.average_or_raise()
     print(f"Accuracy: {acc}")
+    error = stats.sem(correct_bools, axis=None) * 1.96
+    print(f"Error: {error}")
+    pretty_str = f"{acc:.1%} ± {error:.1%}"
+    print(f"Accuracy: {pretty_str}")
     compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
     print(f"Compliance rate: {compliance_rate}")
-
 
 
 test_james()
