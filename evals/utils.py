@@ -293,7 +293,7 @@ def collate_mode_of_n(data0_path: Path):
         responses = string_df["response"]
         assert len(responses) > 0, f"String {string} has no responses."
         modes = responses.mode()
-        assert len(modes) > 0, f"String {string} has no mode. wth?"
+        assert len(modes) > 0, f"String {string} has no mode. wth? response: {responses}"
         mode = modes[0]
         modal_row = string_df[string_df["response"] == mode].iloc[0]
         modal_rows.append(modal_row)
