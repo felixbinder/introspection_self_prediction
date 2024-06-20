@@ -287,15 +287,13 @@ def get_hydra_config(exp_folder: Union[Path, str]) -> Union[DictConfig, ListConf
     return config
 
 
-def get_data_path(exp_folder: Union[Path, str]) -> Optional[Path]:
+def get_data_path(exp_folder: Union[Path, str]) -> Path:
     """Pulls out the data*.csv file from the experiment folder.
     If more than one is found, returns the newest one.
     """
     if isinstance(exp_folder, str):
         exp_folder = Path(exp_folder)
     data_files = list(exp_folder.glob("data*.csv"))
-    # filter out raw data with multiple samples
-    data_files = [f for f in data_files if "raw_samples" not in f.name]
     data_files.sort(key=lambda x: x.stat().st_ctime, reverse=True)
     if len(data_files) == 0:
         print(f"No data*.csv files found in {exp_folder.absolute()}")

@@ -8,7 +8,6 @@ from typing import List
 
 import omegaconf
 import openai
-import pandas as pd
 import yaml
 from tenacity import retry, retry_if_result, stop_after_attempt
 from vertexai.preview.tuning import sft
@@ -265,36 +264,3 @@ def get_hparams_for_endpoints(endpoint_names):
                 hp = response.to_dict()["supervisedTuningSpec"]["hyperParameters"]
                 out.append(hp)
     return out
-
-
-def collate_mode_of_n(data0_path: Path):
-    """After the data is collected, we need to group the data into a dataframe that contains only the modal response for multiple samples.
-
-    Args:
-        data0_path (Path): Path to the data file (ie. `raw_data0.csv`)
-
-    Writes out a `data0.csv` file with the modal response for each sample.
-    If a string has only unique responses, it is discarded.
-    """
-    assert data0_path.exists(), f"Data file {data0_path} does not exist."
-    assert "raw_data" in data0_path.stem, f"Data file {data0_path} does not contain 'raw_data'."
-    df = pd.read_csv(data0_path)
-    strings = df["string"].unique()
-    modal_rows = []
-    skipped_strings = []
-    for string in strings:
-        string_df = df[df["string"] == string]
-        if len(string_df) > 1 & len(string_df["response"].unique()) == len(string_df):
-            # Skip strings that have only unique responses unless they are the only response
-            skipped_strings.append(string)
-            continue
-        # pull the first row that has the modal response (so that we get the logprobs etc.)
-        modal_row = string_df[string_df["response"] == string_df["response"].mode()[0]].iloc[0]
-        modal_rows.append(modal_row)
-    modal_df = pd.DataFrame(modal_rows)
-    modal_df.columns = df.columns
-    out_path = data0_path.parent / f"{data0_path.stem.replace('raw_data', 'data')}.csv"
-    modal_df.to_csv(out_path, index=False)
-    LOGGER.info(
-        f"Saved modal responses to {out_path}. {len(skipped_strings)} strings were skipped because all responses were unique."
-    )

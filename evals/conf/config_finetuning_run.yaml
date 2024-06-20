@@ -15,8 +15,8 @@ val_path: ${study_dir}/val_dataset.jsonl
 study_name: ??? # the name of the study
 
 defaults:
-  - language_model: gpt-3.5-turbo
   - _self_
+  - language_model: gpt-3.5-turbo
 
 epochs: ~ # how many epochs to train for. Use `~` to let the training script figure it out.
 learning_rate: ~ # the learning rate. OpenAI default is the learning rate multiplier of 2; our HuggingFace default is 1e-3. Use `~` to let the training script figure it out.

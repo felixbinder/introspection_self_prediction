@@ -19,7 +19,6 @@ from evals.data_models.messages import ChatMessage, MessageRole, Prompt, PromptT
 from evals.generate_few_shot import generate_few_shot_data
 from evals.utils import (
     async_function_with_retry,
-    collate_mode_of_n,
     get_current_git_hash,
     setup_environment,
 )
@@ -135,11 +134,11 @@ class DatasetRunner:
         return Prompt(messages=messages)
 
 
-async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None, n_samples: int = 1) -> bool:
+async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
     if limit is not None:
-        full_df = full_df.head(limit * n_samples)
+        full_df = full_df.head(limit)
     if dataset_runner.cfg.response_property.name not in full_df.columns:
         full_df[dataset_runner.cfg.response_property.name] = ""
     if "response" not in full_df.columns:
@@ -208,7 +207,7 @@ async def async_main(cfg: DictConfig):
     # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
-    filename = exp_dir / f"raw_data{cfg.base_seed}.csv"
+    filename = exp_dir / f"data{cfg.base_seed}.csv"
     if not filename.exists() or cfg.reset:
         # have to make the data_{seed}.csv file
         LOGGER.info(f"File {filename} does not exist. Creating...")
@@ -224,9 +223,7 @@ async def async_main(cfg: DictConfig):
         filename,
         dataset_runner,
         limit=cfg.limit,
-        n_samples=cfg.n_samples,
     )
-    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 

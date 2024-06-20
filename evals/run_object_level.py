@@ -20,7 +20,6 @@ from evals.data_models.messages import ChatMessage, Prompt, PromptTemplate
 from evals.load.load_dataset import create_data_file, load_dataset
 from evals.utils import (
     async_function_with_retry,
-    collate_mode_of_n,
     get_current_git_hash,
     setup_environment,
 )
@@ -103,13 +102,11 @@ class DatasetRunner:
         return Prompt(messages=messages)
 
 
-async def run_dataset(
-    filename: str, dataset_runner: DatasetRunner, limit: Optional[int] = None, n_samples: int = 1
-) -> bool:
+async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: Optional[int] = None) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
     if limit is not None:
-        full_df = full_df.head(limit * n_samples)
+        full_df = full_df.head(limit)
     if "response" not in full_df.columns:
         full_df["response"] = ""
     if "complete" not in full_df.columns:
@@ -174,7 +171,7 @@ async def async_main(cfg: DictConfig):
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = exp_dir / f"raw_data{cfg.seed}.csv"
+    filename = exp_dir / f"data{cfg.seed}.csv"
     if not filename.exists() or cfg.reset:
         LOGGER.info(f"File {filename} does not exist. Creating...")
         data = load_dataset(
@@ -204,14 +201,12 @@ async def async_main(cfg: DictConfig):
             filename,
             dataset_runner,
             limit=cfg.limit,
-            n_samples=cfg.n_samples,
         )
-    except RetryError as e:  # make sure to reraise the proper error not the one from the async function
+    except RetryError as e: # make sure to reraise the proper error not the one from the async function
         LOGGER.error(f"Failed with error {e}")
         LOGGER.error(traceback.format_exc())
         LOGGER.error("Failed to complete dataset—at least one row is not completed.")
         complete = False
-    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 

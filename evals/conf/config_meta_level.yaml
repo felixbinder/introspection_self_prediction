@@ -9,11 +9,11 @@ hydra:
       level: INFO
 
 defaults:
+  - _self_
   - prompt: meta_level/minimal
   - language_model: gpt-3.5-turbo
   - task: wikipedia
   - response_property: identity
-  - _self_
 
 # Common Params
 study_name: ???
