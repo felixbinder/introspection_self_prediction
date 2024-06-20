@@ -7,6 +7,10 @@ from typing import Dict, List, Optional, Union
 import omegaconf
 import pandas as pd
 from omegaconf import DictConfig, ListConfig, OmegaConf
+from pydantic import BaseModel
+from regex import B
+from slist import Slist
+from evals.locations import EXP_DIR
 
 import evals.utils  # this is necessary to ensure that the Hydra sanitizer is registered  # noqa: F401
 from evals.analysis.analysis_helpers import get_pretty_name
@@ -361,9 +365,44 @@ def load_dfs_with_filter(
     return dfs
 
 
-def load_dfs_with_filter_key_model_name(
+def is_object_level(config):
+    return config["prompt"]["method"].startswith("object") or config["prompt"]["method"].startswith("base")
+
+
+class LoadedObject(BaseModel):
+    string: str
+    response: str
+    raw_response: str
+    prompt_method: str
+    compliance: bool
+    task: str
+    object_model: str
+    # is_meta: bool
+
+
+class LoadedMeta(BaseModel):
+    string: str
+    response: str
+    raw_response: str
+    response_property: str
+    prompt_method: str
+    compliance: bool
+    task: str
+    meta_model: str
+
+
+## Step 1: Load the meta things.
+## Step 2: Get all the required meta response properties
+## Step 3: Convert the object things in a long format, each with the string and single response property
+## Step 4: Join meta to object. By matching on the response property + string + the object level response???
+## Check if meta's response is the same as expected
+## Calculate accuracy
+
+
+
+def load_meta_dfs(
     exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True
-) -> Dict[str, pd.DataFrame]:
+) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
     """Loads and preps all dataframes from the experiment folder that match the conditions.
 
     Args:
@@ -378,13 +417,41 @@ def load_dfs_with_filter_key_model_name(
     configs = [get_hydra_config(folder) for folder in matching_folders]
     dfs = load_and_prep_dfs(data_paths, configs=configs, exclude_noncompliant=exclude_noncompliant)
 
-    output = defaultdict(pd.DataFrame)
-    for config_key, df in dfs.items():
+    final_metas: Slist[LoadedMeta] = Slist()
+    meta_only_dfs = {config: df for config, df in dfs.items() if not is_object_level(config)}
+    object_only_dfs = {config: df for config, df in dfs.items() if is_object_level(config)}
+    for config_key, df in meta_only_dfs.items():
         model_name = config_key["language_model"]["model"]
-        # concat
-        output[model_name] = pd.concat([output[model_name], df])
-    print(f"Loaded {len(output)} dataframes for {len(dfs)} configs")
-    return output
+        task = config_key["task"]["name"]
+        response_property = config_key.response_property.name
+        for i, row in df.iterrows():
+            final_metas.append(LoadedMeta(
+                string=row["string"],
+                response=row["response"],
+                raw_response=row["raw_response"],
+                response_property=response_property,
+                prompt_method=config_key["prompt"]["method"],
+                compliance=row["compliance"],
+                task=task,
+                meta_model=model_name,
+                # is_meta=not df_is_object_level
+            ))
+    
+    final_objects: Slist[LoadedObject] = Slist()
+    for config_key, df in object_only_dfs.items():
+        model_name = config_key["language_model"]["model"]
+        task = config_key["task"]["name"]
+        for i, row in df.iterrows():
+            final_objects.append(LoadedObject(
+                string=row["string"],
+                response=row["response"],
+                raw_response=row["raw_response"],
+                prompt_method=config_key["prompt"]["method"],
+                compliance=row["compliance"],
+                task=task,
+                object_model=model_name,
+            ))
+    return final_objects, final_metas
 
 
 
@@ -435,3 +502,12 @@ def find_matching_base_dir(config: DictConfig):
     if base_dir is None:
         raise ValueError(f"No base dir found for {config}")
     return base_dir
+
+
+def test_james():
+    exp_folder = EXP_DIR /"evaluation_suite"
+    objects, metas = load_meta_dfs(Path(exp_folder), {("task", "set"): ["val"]})
+    print(f"Got {len(objects)} objects and {len(metas)} metas")
+
+
+test_james()
