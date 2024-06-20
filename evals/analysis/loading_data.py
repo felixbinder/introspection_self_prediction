@@ -10,6 +10,7 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 from pydantic import BaseModel
 from regex import B
 from slist import Slist
+from evals import response_property
 from evals.locations import EXP_DIR
 
 import evals.utils  # this is necessary to ensure that the Hydra sanitizer is registered  # noqa: F401
@@ -377,6 +378,8 @@ class LoadedObject(BaseModel):
     compliance: bool
     task: str
     object_model: str
+    response_property: str
+    response_property_answer: str
     # is_meta: bool
 
 
@@ -436,21 +439,32 @@ def load_meta_dfs(
                 meta_model=model_name,
                 # is_meta=not df_is_object_level
             ))
+    # key: task, values: [response_property1, response_property2, ...]
+    response_properties_mapping: Dict[str, set[str]] = final_metas.group_by(lambda x: x.task).map_on_group_values(
+        lambda values: values.map(lambda x: x.response_property).to_set()
+    ).to_dict()
     
     final_objects: Slist[LoadedObject] = Slist()
     for config_key, df in object_only_dfs.items():
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
         for i, row in df.iterrows():
-            final_objects.append(LoadedObject(
-                string=row["string"],
-                response=row["response"],
-                raw_response=row["raw_response"],
-                prompt_method=config_key["prompt"]["method"],
-                compliance=row["compliance"],
-                task=task,
-                object_model=model_name,
-            ))
+            assert task in response_properties_mapping, f"Task {task} not found in response properties mapping"
+            required_response_properties = response_properties_mapping[task]
+            for response_property in required_response_properties:
+                object_level_response = row[response_property]
+                final_objects.append(LoadedObject(
+                    string=row["string"],
+                    response=row["response"],
+                    raw_response=row["raw_response"],
+                    prompt_method=config_key["prompt"]["method"],
+                    compliance=row["compliance"],
+                    task=task,
+                    object_model=model_name,
+                    response_property=response_property,
+                    response_property_answer=object_level_response
+
+                ))
     return final_objects, final_metas
 
 
@@ -504,10 +518,53 @@ def find_matching_base_dir(config: DictConfig):
     return base_dir
 
 
+class ComparedMeta(BaseModel):
+    object_level: LoadedObject
+    meta_level: LoadedMeta
+    meta_predicts_correctly: bool
+
+    def all_compliant(self):
+        return self.object_level.compliance and self.meta_level.compliance
+
+def clean_for_comparison(string: str) -> str:
+    return string.lower().strip()
+
+def compare_objects_and_metas(
+        objects: Slist[LoadedObject], metas: Slist[LoadedMeta]
+    ) -> Slist[ComparedMeta]:
+    # group objects by task + string + response_property
+    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(lambda x: (x.task, x.string, x.response_property)).to_dict()
+    compared: Slist[ComparedMeta] = Slist()
+    for meta in metas:
+        key = (meta.task, meta.string, meta.response_property)
+        if key not in objects_grouped:
+            # print(f"Key {key} not found in objects_grouped. Weird...")
+            # Copmpliance issue?
+            continue
+        for obj in objects_grouped[key]:
+            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
+            cleaned_meta_response = clean_for_comparison(meta.response)
+            predicted_correctly = cleaned_object_response == cleaned_meta_response
+            if not predicted_correctly:
+                print(f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}")
+            compared.append(ComparedMeta(
+                object_level=obj,
+                meta_level=meta,
+                meta_predicts_correctly=predicted_correctly
+            ))
+    return compared
+
 def test_james():
     exp_folder = EXP_DIR /"evaluation_suite"
     objects, metas = load_meta_dfs(Path(exp_folder), {("task", "set"): ["val"]})
     print(f"Got {len(objects)} objects and {len(metas)} metas")
+    compared = compare_objects_and_metas(objects, metas)
+    print(f"Got {len(compared)} compared")
+    acc = compared.map(lambda x: x.meta_predicts_correctly).average_or_raise()
+    print(f"Accuracy: {acc}")
+    compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+    print(f"Compliance rate: {compliance_rate}")
+
 
 
 test_james()
