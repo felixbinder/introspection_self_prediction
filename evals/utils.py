@@ -290,7 +290,10 @@ def collate_mode_of_n(data0_path: Path):
             skipped_strings.append(string)
             continue
         # pull the first row that has the modal response (so that we get the logprobs etc.)
-        modal_row = string_df[string_df["response"] == string_df["response"].mode()[0]].iloc[0]
+        modes = string_df["response"].mode()
+        assert len(modes) > 0, f"String {string} has no mode. wth? {string_df["response"]}"
+        mode = modes[0]
+        modal_row = string_df[string_df["response"] == mode].iloc[0]
         modal_rows.append(modal_row)
     modal_df = pd.DataFrame(modal_rows)
     modal_df.columns = df.columns
