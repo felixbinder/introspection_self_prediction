@@ -284,6 +284,7 @@ def collate_mode_of_n(data0_path: Path):
     skipped_strings = []
     for string in strings:
         string_df = df[df["string"] == string]
+        assert len(string_df) > 0, f"String {string} has no responses."
         if len(string_df) > 1 & len(string_df["response"].unique()) == len(string_df):
             # Skip strings that have only unique responses unless they are the only response
             skipped_strings.append(string)
