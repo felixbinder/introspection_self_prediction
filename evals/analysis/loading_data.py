@@ -390,6 +390,7 @@ class LoadedMeta(BaseModel):
     compliance: bool
     task: str
     meta_model: str
+    task_set: str
 
 
 ## Step 1: Load the meta things.
@@ -421,6 +422,7 @@ def load_meta_dfs(
     meta_only_dfs = {config: df for config, df in dfs.items() if not is_object_level(config)}
     object_only_dfs = {config: df for config, df in dfs.items() if is_object_level(config)}
     for config_key, df in meta_only_dfs.items():
+        task_set = config_key["task"]["set"]
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
         response_property = config_key.response_property.name
@@ -439,6 +441,7 @@ def load_meta_dfs(
                         task=task,
                         meta_model=model_name,
                         # is_meta=not df_is_object_level
+                        task_set=task_set,
                     )
                 )
             except ValidationError as e:
@@ -554,9 +557,10 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
-            # print(f"Key {key} not found in objects_grouped. Weird...")
+            print(f"Key {key} not found in objects_grouped. Weird...")
+            raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
-            continue
+            # continue
         for obj in objects_grouped[key]:
             cleaned_object_response = clean_for_comparison(obj.response_property_answer)
             cleaned_meta_response = clean_for_comparison(meta.response)
@@ -619,8 +623,8 @@ def test_james():
     # object_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
     # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
     # meta_model = "gpt-3.5-turbo-1106"
-    object_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
-    # object_model = "gpt-4-0613"
+    # object_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+    object_model = "gpt-4-0613"
     # meta_model = "gpt-4-0613"
     meta_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
 
@@ -636,6 +640,9 @@ def test_james():
     filtered_objects, filtered_metas = filter_for_specific_models(
         object_level_model=object_model, meta_level_model=meta_model, objects=objects, metas=metas
     )
+    # unique set of task_set
+    task_sets = filtered_metas.map(lambda x: x.task_set).to_set()
+    print(f"Using task sets: {task_sets}")
     # filtered_objects, filtered_metas = objects, metas
     print(f"Got {len(objects)} objects and {len(metas)} metas")
     compared = compare_objects_and_metas(filtered_objects, filtered_metas)
