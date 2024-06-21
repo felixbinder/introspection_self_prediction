@@ -9,7 +9,6 @@ from omegaconf import DictConfig, ListConfig, OmegaConf
 from pydantic import BaseModel, ValidationError
 from scipy import stats
 from slist import Slist
-from traitlets import ValidateHandler
 
 import evals.utils  # this is necessary to ensure that the Hydra sanitizer is registered  # noqa: F401
 from evals.analysis.analysis_helpers import get_pretty_name
@@ -468,7 +467,7 @@ def load_meta_dfs(
                         response=row["response"],
                         raw_response=row["raw_response"],
                         prompt_method=config_key["prompt"]["method"],
-                        compliance=compliance_is_true,  
+                        compliance=compliance_is_true,
                         task=task,
                         object_model=model_name,
                         response_property=response_property,
@@ -536,6 +535,12 @@ class ComparedMeta(BaseModel):
         return self.object_level.compliance and self.meta_level.compliance
 
 
+class ComparedMode(BaseModel):
+    object_level: LoadedObject
+    mode: str
+    meta_predicts_correctly: bool
+
+
 def clean_for_comparison(string: str) -> str:
     return string.lower().strip()
 
@@ -557,13 +562,40 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
             cleaned_meta_response = clean_for_comparison(meta.response)
             predicted_correctly = cleaned_object_response == cleaned_meta_response
             if not predicted_correctly:
-                print(
-                    f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}, Task: {obj.task}"
-                )
+                pass
+                # print(
+                #     f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}, Task: {obj.task}"
+                # )
             compared.append(
                 ComparedMeta(object_level=obj, meta_level=meta, meta_predicts_correctly=predicted_correctly)
             )
     return compared
+
+
+def modal_baseline(objects: Slist[LoadedObject]) -> Slist[ComparedMode]:
+    # group objects by task  + response_property
+    objects_grouped: Dict[tuple[str, str], str] = (
+        objects.group_by(lambda x: (x.task, x.response_property))
+        .map_on_group_values(
+            lambda objects: objects.map(
+                lambda object: clean_for_comparison(object.response_property_answer)
+            ).mode_or_raise()
+        )
+        .to_dict()
+    )
+
+    results = Slist()
+    for item in objects:
+        key = (item.task, item.response_property)
+        mode = objects_grouped[key]
+        results.append(
+            ComparedMode(
+                object_level=item,
+                mode=mode,
+                meta_predicts_correctly=clean_for_comparison(item.response_property_answer) == mode,
+            )
+        )
+    return results
 
 
 def filter_for_specific_models(
@@ -580,18 +612,25 @@ def test_james():
     exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
 
     # compare = "gpt-3.5-turbo-0125"
-    object_model = "gpt-3.5-turbo-1106"
-    # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9ThVmSp2
+    # object_model = "gpt-3.5-turbo-1106"
+
+    # object_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    # object_model = "gpt-3.5-turbo-1106"
+    # object_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
     # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-    meta_model = "gpt-3.5-turbo-1106"
-    # compare = "gpt-4-0613"
+    # meta_model = "gpt-3.5-turbo-1106"
+    object_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+    # object_model = "gpt-4-0613"
+    # meta_model = "gpt-4-0613"
+    meta_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+
     objects, metas = load_meta_dfs(
         Path(exp_folder),
         {
             ("task", "set"): ["val"],
             ("language_model", "model"): [object_model, meta_model],
         },
-        exclude_noncompliant=False,
+        exclude_noncompliant=exclude_noncompliant,
     )
     # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
     filtered_objects, filtered_metas = filter_for_specific_models(
@@ -610,6 +649,10 @@ def test_james():
     print(f"Accuracy: {pretty_str}")
     compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
     print(f"Compliance rate: {compliance_rate}")
+    modal_baselines = modal_baseline(filtered_objects)
+    correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+    mode_acc = correct_modes.average_or_raise()
+    print(f"Mode accuracy: {mode_acc}")
 
 
 test_james()
