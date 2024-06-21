@@ -433,7 +433,7 @@ def load_meta_dfs(
                 final_metas.append(
                     LoadedMeta(
                         string=row["string"],
-                        response=row["response"],
+                        response=clean_for_comparison(row["response"]),
                         raw_response=row["raw_response"],
                         response_property=response_property,
                         prompt_method=config_key["prompt"]["method"],
@@ -467,7 +467,7 @@ def load_meta_dfs(
                 final_objects.append(
                     LoadedObject(
                         string=row["string"],
-                        response=row["response"],
+                        response=clean_for_comparison(row["response"]),
                         raw_response=row["raw_response"],
                         prompt_method=config_key["prompt"]["method"],
                         compliance=compliance_is_true,
@@ -565,11 +565,10 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
             cleaned_object_response = clean_for_comparison(obj.response_property_answer)
             cleaned_meta_response = clean_for_comparison(meta.response)
             predicted_correctly = cleaned_object_response == cleaned_meta_response
-            if not predicted_correctly:
-                pass
-                # print(
-                #     f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}, Task: {obj.task}"
-                # )
+            # if not predicted_correctly:
+            # print(
+            #     f"Meta response: {cleaned_meta_response}, Object response: {cleaned_object_response}, Response property: {obj.response_property}, Task: {obj.task}"
+            # )
             compared.append(
                 ComparedMeta(object_level=obj, meta_level=meta, meta_predicts_correctly=predicted_correctly)
             )
@@ -796,6 +795,9 @@ def james_per_response_property():
         )
 
         unique_response_properties = metas.map(lambda x: x.response_property).to_set()
+        # remove identity
+        assert "identity" in unique_response_properties, "Identity not found in response properties"
+        unique_response_properties.remove("identity")
 
         for response_property in unique_response_properties:
             # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
@@ -825,10 +827,10 @@ def james_per_response_property():
             mode_acc = correct_modes.average_or_raise()
             print(f"Mode accuracy: {mode_acc}")
             # acc * 100 1 d.p
-            acc_formatted = f"{acc:.1%}"
-            error_formatted = f"{error:.1%}"
-            mode_acc = f"{mode_acc:.1%}"
-            compliance_rate = f"{compliance_rate:.1%}"
+            acc_formatted = f"{acc:1f}"
+            error_formatted = f"{error:1f}"
+            mode_acc = f"{mode_acc:1f}"
+            compliance_rate = f"{compliance_rate:1f}"
             result_row = {
                 "response_property": response_property,
                 "accuracy": acc_formatted,
@@ -848,4 +850,171 @@ def james_per_response_property():
     df.to_csv("response_property_results.csv")
 
 
-james_per_response_property()
+def only_shifted_objects(
+    prefinetuned_objects: Slist[LoadedObject],
+    postfinetuned_objects: Slist[LoadedObject],
+) -> set[str]:
+    # returns a set of strings that are different between the two
+    # hash the objects by  string, value is the response
+    prefinetuned_objects = prefinetuned_objects.filter(lambda x: x.compliance)
+    postfinetuned_objects = postfinetuned_objects.filter(lambda x: x.compliance)
+    responses = prefinetuned_objects.map(lambda x: (x.string, x.response)).to_dict()
+    different_objects = set()
+    for postfinetuned_object in postfinetuned_objects:
+        key = postfinetuned_object.string
+        if key not in responses:
+            # missing due to compliance
+            # raise ValueError(f"Key {key} not found in responses")
+            continue
+        if responses[key] != postfinetuned_object.response:
+            different_objects.add(key)
+    return different_objects
+
+
+def only_same_objects(
+    prefinetuned_objects: Slist[LoadedObject],
+    postfinetuned_objects: Slist[LoadedObject],
+) -> set[str]:
+    prefinetuned_objects = prefinetuned_objects.filter(lambda x: x.compliance)
+    postfinetuned_objects = postfinetuned_objects.filter(lambda x: x.compliance)
+    # returns a set of strings that are different between the two
+    # hash the objects by  string, value is the response
+    responses = prefinetuned_objects.map(lambda x: (x.string, x.response)).to_dict()
+    same_objects = set()
+    for postfinetuned_object in postfinetuned_objects:
+        key = postfinetuned_object.string
+        if key not in responses:
+            # missing due to compliance
+            # raise ValueError(f"Key {key} not found in responses")
+            continue
+
+        if responses[key] == postfinetuned_object.response:
+            same_objects.add(key)
+    return same_objects
+
+
+def james_per_response_property_object_switched(shifted_only: bool = True):
+    # If shifted_only is True, only compares objects that have shifted.
+    # If shifted_only is False, only compares objects that are the same.
+    # exp_folder = EXP_DIR /"evaluation_suite"
+    exclude_noncompliant = False
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
+
+    # object_model = "gpt-4-0613"
+    # object_model = "gpt-3.5-turbo-1106"
+    # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    object_meta_pairs: Slist[ObjectMetaPair] = Slist(
+        [
+            # ("gpt-3.5-turbo-1106", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
+            # ObjectMetaPair(
+            #     object_model="gpt-3.5-turbo-1106",
+            #     meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            #     label="Predicting behavior before training",
+            # ),
+            ObjectMetaPair(
+                object_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+                meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+                label="Predicting behavior after training",
+            ),
+            # ("ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
+        ]
+    )
+    all_models = (
+        object_meta_pairs.map(lambda x: x.object_model) + object_meta_pairs.map(lambda x: x.meta_model)
+    ).distinct()
+
+    all_objects, all_metas = load_meta_dfs(
+        Path(exp_folder),
+        {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): all_models,
+        },
+        exclude_noncompliant=exclude_noncompliant,
+    )
+    prefinetuned_objects = all_objects.filter(lambda x: x.object_model == "gpt-3.5-turbo-1106")
+    postfinetuned_objects = all_objects.filter(
+        lambda x: x.object_model == "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    )
+    assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
+    assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
+    switched_objects = (
+        only_shifted_objects(prefinetuned_objects, postfinetuned_objects)
+        if shifted_only
+        else only_same_objects(prefinetuned_objects, postfinetuned_objects)
+    )
+    print(f"Got {len(switched_objects)} switched objects")
+    objects_in_switch = all_objects.filter(lambda x: x.string in switched_objects)
+    metas_in_switch = all_metas.filter(lambda x: x.string in switched_objects)
+    assert len(objects_in_switch) > 0, "No objects found in switch"
+    assert len(metas_in_switch) > 0, "No metas found in switch"
+
+    result_rows: list[dict] = []
+    for item in object_meta_pairs:
+        object_model = item.object_model
+        meta_model = item.meta_model
+        # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
+        filtered_objects, filtered_metas = filter_for_specific_models(
+            object_level_model=object_model,
+            meta_level_model=meta_model,
+            objects=objects_in_switch,
+            metas=metas_in_switch,
+        )
+
+        unique_response_properties = metas_in_switch.map(lambda x: x.response_property).to_set()
+        # # remove identity
+        # assert "identity" in unique_response_properties, "Identity not found in response properties"
+        # unique_response_properties.remove("identity")
+
+        for response_property in unique_response_properties:
+            filtered_objects = filtered_objects.filter(
+                lambda filtered_obj: filtered_obj.response_property == response_property
+            )
+            filtered_metas = filtered_metas.filter(lambda x: x.response_property == response_property)
+
+            assert len(filtered_objects) > 0, f"No objects found for {response_property}"
+            assert len(filtered_metas) > 0, f"No metas found for {response_property}"
+
+            # filtered_objects, filtered_metas = objects, metas
+            print(f"Got {len(all_objects)} objects and {len(all_metas)} metas")
+            compared = compare_objects_and_metas(filtered_objects, filtered_metas)
+            print(f"Got {len(compared)} compared")
+            correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+            acc = correct_bools.average_or_raise()
+            print(f"Accuracy: {acc}")
+            error = stats.sem(correct_bools, axis=None) * 1.96
+            print(f"Error: {error}")
+            average_stats = correct_bools.statistics_or_raise()
+            print(f"Stats error: {average_stats.upper_confidence_interval_95}")
+            pretty_str = f"{acc:.1%} ± {error:.1%}"
+            print(f"Accuracy: {pretty_str}")
+            compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+            print(f"Compliance rate: {compliance_rate}")
+            modal_baselines = modal_baseline(filtered_objects)
+            correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+            mode_acc = correct_modes.average_or_raise()
+            print(f"Mode accuracy: {mode_acc}")
+            # acc * 100 1 d.p
+            acc_formatted = f"{acc:1f}"
+            error_formatted = f"{error:1f}"
+            mode_acc = f"{mode_acc:1f}"
+            compliance_rate = f"{compliance_rate:1f}"
+            result_row = {
+                "response_property": response_property,
+                "accuracy": acc_formatted,
+                "error": error_formatted,
+                "mode_accuracy": mode_acc,
+                "compliance_rate": compliance_rate,
+                "count": len(compared),
+                "object_model": object_model,
+                "meta_model": meta_model,
+                "label": item.label,
+            }
+            result_rows.append(result_row)
+
+    # make a csv
+    # save it
+    df = pd.DataFrame(result_rows)
+    df.to_csv("response_property_results.csv")
+
+
+james_per_response_property_object_switched(shifted_only=True)
