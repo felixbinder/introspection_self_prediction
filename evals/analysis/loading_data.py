@@ -652,6 +652,8 @@ def test_james():
     print(f"Accuracy: {acc}")
     error = stats.sem(correct_bools, axis=None) * 1.96
     print(f"Error: {error}")
+    average_stats = correct_bools.statistics_or_raise()
+    print(f"Stats error: {average_stats.upper_confidence_interval_95}")
     pretty_str = f"{acc:.1%} ± {error:.1%}"
     print(f"Accuracy: {pretty_str}")
     compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
@@ -662,4 +664,188 @@ def test_james():
     print(f"Mode accuracy: {mode_acc}")
 
 
-test_james()
+class ObjectMetaPair(BaseModel):
+    object_model: str
+    meta_model: str
+    label: str
+
+
+def james_per_task():
+    # exp_folder = EXP_DIR /"evaluation_suite"
+    exclude_noncompliant = False
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
+
+    # object_model = "gpt-4-0613"
+    # object_model = "gpt-3.5-turbo-1106"
+    # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    object_meta_pairs: list[ObjectMetaPair] = [
+        # ("gpt-3.5-turbo-1106", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
+        ObjectMetaPair(
+            object_model="gpt-3.5-turbo-1106",
+            meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            label="Predicting behavior before training",
+        ),
+        ObjectMetaPair(
+            object_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            label="Predicting behavior after training",
+        ),
+        # ("ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
+    ]
+
+    result_rows: list[dict] = []
+    for item in object_meta_pairs:
+        object_model = item.object_model
+        meta_model = item.meta_model
+        objects, metas = load_meta_dfs(
+            Path(exp_folder),
+            {
+                ("task", "set"): ["val"],
+                ("language_model", "model"): [object_model, meta_model],
+            },
+            exclude_noncompliant=exclude_noncompliant,
+        )
+
+        unique_tasks = metas.map(lambda x: x.task).to_set()
+
+        for task in unique_tasks:
+            # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
+            filtered_objects, filtered_metas = filter_for_specific_models(
+                object_level_model=object_model, meta_level_model=meta_model, objects=objects, metas=metas
+            )
+            filtered_objects = filtered_objects.filter(lambda x: x.task == task)
+            filtered_metas = filtered_metas.filter(lambda x: x.task == task)
+
+            # filtered_objects, filtered_metas = objects, metas
+            print(f"Got {len(objects)} objects and {len(metas)} metas")
+            compared = compare_objects_and_metas(filtered_objects, filtered_metas)
+            print(f"Got {len(compared)} compared")
+            correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+            acc = correct_bools.average_or_raise()
+            print(f"Accuracy: {acc}")
+            error = stats.sem(correct_bools, axis=None) * 1.96
+            print(f"Error: {error}")
+            average_stats = correct_bools.statistics_or_raise()
+            print(f"Stats error: {average_stats.upper_confidence_interval_95}")
+            pretty_str = f"{acc:.1%} ± {error:.1%}"
+            print(f"Accuracy: {pretty_str}")
+            compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+            print(f"Compliance rate: {compliance_rate}")
+            modal_baselines = modal_baseline(filtered_objects)
+            correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+            mode_acc = correct_modes.average_or_raise()
+            print(f"Mode accuracy: {mode_acc}")
+            # acc * 100 1 d.p
+            acc_formatted = f"{acc:.1%}"
+            error_formatted = f"{error:.1%}"
+            mode_acc = f"{mode_acc:.1%}"
+            compliance_rate = f"{compliance_rate:.1%}"
+            result_row = {
+                "task": task,
+                "accuracy": acc_formatted,
+                "error": error_formatted,
+                "mode_accuracy": mode_acc,
+                "compliance_rate": compliance_rate,
+                "count": len(compared),
+                "object_model": object_model,
+                "meta_model": meta_model,
+                "label": item.label,
+            }
+            result_rows.append(result_row)
+
+    # make a csv
+    # save it
+    df = pd.DataFrame(result_rows)
+    df.to_csv("task_results.csv")
+
+
+def james_per_response_property():
+    # exp_folder = EXP_DIR /"evaluation_suite"
+    exclude_noncompliant = False
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
+
+    # object_model = "gpt-4-0613"
+    # object_model = "gpt-3.5-turbo-1106"
+    # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    object_meta_pairs: list[ObjectMetaPair] = [
+        # ("gpt-3.5-turbo-1106", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
+        ObjectMetaPair(
+            object_model="gpt-3.5-turbo-1106",
+            meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            label="Predicting behavior before training",
+        ),
+        ObjectMetaPair(
+            object_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+            label="Predicting behavior after training",
+        ),
+        # ("ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
+    ]
+
+    result_rows: list[dict] = []
+    for item in object_meta_pairs:
+        object_model = item.object_model
+        meta_model = item.meta_model
+        objects, metas = load_meta_dfs(
+            Path(exp_folder),
+            {
+                ("task", "set"): ["val"],
+                ("language_model", "model"): [object_model, meta_model],
+            },
+            exclude_noncompliant=exclude_noncompliant,
+        )
+
+        unique_response_properties = metas.map(lambda x: x.response_property).to_set()
+
+        for response_property in unique_response_properties:
+            # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
+            filtered_objects, filtered_metas = filter_for_specific_models(
+                object_level_model=object_model, meta_level_model=meta_model, objects=objects, metas=metas
+            )
+            filtered_objects = filtered_objects.filter(lambda x: x.response_property == response_property)
+            filtered_metas = filtered_metas.filter(lambda x: x.response_property == response_property)
+
+            # filtered_objects, filtered_metas = objects, metas
+            print(f"Got {len(objects)} objects and {len(metas)} metas")
+            compared = compare_objects_and_metas(filtered_objects, filtered_metas)
+            print(f"Got {len(compared)} compared")
+            correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+            acc = correct_bools.average_or_raise()
+            print(f"Accuracy: {acc}")
+            error = stats.sem(correct_bools, axis=None) * 1.96
+            print(f"Error: {error}")
+            average_stats = correct_bools.statistics_or_raise()
+            print(f"Stats error: {average_stats.upper_confidence_interval_95}")
+            pretty_str = f"{acc:.1%} ± {error:.1%}"
+            print(f"Accuracy: {pretty_str}")
+            compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+            print(f"Compliance rate: {compliance_rate}")
+            modal_baselines = modal_baseline(filtered_objects)
+            correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+            mode_acc = correct_modes.average_or_raise()
+            print(f"Mode accuracy: {mode_acc}")
+            # acc * 100 1 d.p
+            acc_formatted = f"{acc:.1%}"
+            error_formatted = f"{error:.1%}"
+            mode_acc = f"{mode_acc:.1%}"
+            compliance_rate = f"{compliance_rate:.1%}"
+            result_row = {
+                "response_property": response_property,
+                "accuracy": acc_formatted,
+                "error": error_formatted,
+                "mode_accuracy": mode_acc,
+                "compliance_rate": compliance_rate,
+                "count": len(compared),
+                "object_model": object_model,
+                "meta_model": meta_model,
+                "label": item.label,
+            }
+            result_rows.append(result_row)
+
+    # make a csv
+    # save it
+    df = pd.DataFrame(result_rows)
+    df.to_csv("response_property_results.csv")
+
+
+james_per_response_property()
