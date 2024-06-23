@@ -101,7 +101,6 @@ class StudyRunner:
             "model_configs",
             "val_only_model_configs",
             "prompt_configs",
-            "inference_overrides",
             "skip_finetuning_for_models",
         ]
         dict_args = ["tasks", "val_tasks"]
@@ -218,7 +217,6 @@ class StudyRunner:
             "model_configs",
             "val_only_model_configs",
             "prompt_configs",
-            "inference_overrides",
             "finetuning_overrides",
             "skip_finetuning_for_models",
         ]:
