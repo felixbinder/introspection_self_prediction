@@ -1,7 +1,6 @@
-
-
 # read csv
 import pandas as pd
+
 # read w/o index
 df = pd.read_csv("inspect_response_property_results.csv", index_col=0)
 # columns predicted_correctly	task	string	response_property	meta_model	object_model
@@ -30,5 +29,5 @@ for string in correct_strings_vanilla:
 # make a csv of the offending string
 offending = df[df["string"].isin(offending)]
 offending.to_csv("offending.csv")
-    # else:
-    #     print(f"ok")
+# else:
+#     print(f"ok")

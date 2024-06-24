@@ -19,7 +19,9 @@ from evals.analysis.string_cleaning import (
 )
 from evals.locations import EXP_DIR
 from evals.utils import get_maybe_nested_from_dict
-from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
+from other_evals.counterfactuals.api_utils import (
+    write_jsonl_file_from_basemodel,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -581,6 +583,53 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
             # )
             compared.append(
                 ComparedMeta(object_level=obj, meta_level=meta, meta_predicts_correctly=predicted_correctly)
+            )
+    return compared
+
+
+class FlatObjectMeta(BaseModel):
+    task: str
+    string: str
+    meta_predicted_correctly: bool
+    response_property: str
+    meta_model: str
+    object_model: str
+    object_response_property_answer: str
+    object_response_raw_response: str
+    object_complied: bool
+    meta_complied: bool
+
+
+def flat_object_meta(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[FlatObjectMeta]:
+    # group objects by task + string + response_property
+    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
+        lambda x: (x.task, x.string, x.response_property)
+    ).to_dict()
+    compared: Slist[FlatObjectMeta] = Slist()
+    for meta in metas:
+        key = (meta.task, meta.string, meta.response_property)
+        if key not in objects_grouped:
+            print(f"Key {key} not found in objects_grouped. Weird...")
+            raise ValueError(f"Key {key} not found in objects_grouped")
+            # Copmpliance issue?
+            # continue
+        for obj in objects_grouped[key]:
+            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
+            cleaned_meta_response = clean_for_comparison(meta.response)
+            predicted_correctly = cleaned_object_response == cleaned_meta_response
+            compared.append(
+                FlatObjectMeta(
+                    meta_predicted_correctly=predicted_correctly,
+                    task=meta.task,
+                    string=meta.string,
+                    response_property=meta.response_property,
+                    meta_model=meta.meta_model,
+                    object_model=obj.object_model,
+                    object_response_property_answer=obj.response_property_answer,
+                    object_response_raw_response=obj.raw_response,
+                    object_complied=obj.compliance,
+                    meta_complied=meta.compliance,
+                )
             )
     return compared
 
@@ -1377,64 +1426,6 @@ def per_response_property_object_PROPERTY_switched(
             inspect_row = calc_inspect_rows(objects_in_switch, metas_in_switch)
             inspect_rows.extend(inspect_row)
 
-        new_filtered_objects = filtered_objects
-        new_filtered_metas = filtered_metas
-
-        switched_objects = (
-            only_shifted_object_properties(
-                prefinetuned_objects=prefinetuned_objects,
-                postfinetuned_objects=postfinetuned_objects,
-            )
-            if only_shifted
-            else only_same_object_properties(
-                prefinetuned_objects=prefinetuned_objects,
-                postfinetuned_objects=postfinetuned_objects,
-            )
-        )
-
-        print(f"Got {len(switched_objects)} switched objects")
-        objects_in_switch: Slist[LoadedObject] = new_filtered_objects.filter(lambda x: x.string in switched_objects)
-        metas_in_switch = new_filtered_metas.filter(lambda x: x.string in switched_objects)
-        assert len(objects_in_switch) > 0, "No objects found in switch"
-        assert len(metas_in_switch) > 0, "No metas found in switch"
-
-        # filtered_objects, filtered_metas = objects, metas
-        print(f"Got {len(all_objects)} objects and {len(all_metas)} metas")
-        compared = compare_objects_and_metas(objects_in_switch, metas_in_switch)
-        print(f"Got {len(compared)} compared")
-        correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
-        acc = correct_bools.average_or_raise()
-        print(f"Accuracy: {acc}")
-        error = stats.sem(correct_bools, axis=None) * 1.96
-        print(f"Error: {error}")
-        average_stats = correct_bools.statistics_or_raise()
-        print(f"Stats error: {average_stats.upper_confidence_interval_95}")
-        pretty_str = f"{acc:.1%} ± {error:.1%}"
-        print(f"Accuracy: {pretty_str}")
-        compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
-        print(f"Compliance rate: {compliance_rate}")
-        modal_baselines = modal_baseline(filtered_objects)
-        correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
-        mode_acc = correct_modes.average_or_raise()
-        print(f"Mode accuracy: {mode_acc}")
-        # acc * 100 1 d.p
-        acc_formatted = f"{acc:1f}"
-        error_formatted = f"{error:1f}"
-        mode_acc = f"{mode_acc:1f}"
-        compliance_rate = f"{compliance_rate:1f}"
-        result_row = {
-            "response_property": "zMicro-average",
-            "accuracy": acc_formatted,
-            "error": error_formatted,
-            "mode_accuracy": mode_acc,
-            "compliance_rate": compliance_rate,
-            "count": len(compared),
-            "object_model": object_model,
-            "meta_model": meta_model,
-            "label": item.label,
-        }
-        result_rows.append(result_row)
-
     # make a csvs
     # save it
     df = pd.DataFrame(result_rows)
@@ -1448,11 +1439,11 @@ def per_response_property_object_PROPERTY_switched(
 # james_per_task()
 # james_per_response_property_object_switched(shifted_only=True)
 # james_micro()
-# prefinetuned_model = "gpt-4-0613"
-# postfinetuned_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+prefinetuned_model = "gpt-4-0613"
+postfinetuned_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
 # object_model = "gpt-4-0613"
-prefinetuned_model: str = "gpt-3.5-turbo-1106"
-postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# prefinetuned_model: str = "gpt-3.5-turbo-1106"
+# postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
 per_response_property_object_PROPERTY_switched(
     prefinetuned_model=prefinetuned_model, postfinetuned_model=postfinetuned_model, only_shifted=False
 )
