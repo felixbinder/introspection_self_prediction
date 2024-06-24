@@ -1,5 +1,5 @@
-import plotly.graph_objects as go
 import pandas as pd
+import plotly.graph_objects as go
 
 # Load the data
 df = pd.read_csv("task_results.csv")
