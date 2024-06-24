@@ -1,18 +1,80 @@
-
-
 from pathlib import Path
-import pandas as pd
 
+import pandas as pd
 from slist import AverageStats, Slist
-from evals.analysis.loading_data import FlatObjectMeta, LoadedObject, ObjectMetaPair, filter_for_specific_models, flat_object_meta, load_meta_dfs, only_same_object_properties, only_shifted_object_properties
+
+from evals.analysis.loading_data import (
+    FlatObjectMeta,
+    LoadedMeta,
+    LoadedObject,
+    ObjectMetaPair,
+    clean_for_comparison,
+    filter_for_specific_models,
+    load_meta_dfs,
+    only_same_object_properties,
+    only_shifted_object_properties,
+)
 from evals.locations import EXP_DIR
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
+
+
+def flat_object_meta(
+    objects: Slist[LoadedObject], metas: Slist[LoadedMeta], add_micro_average: bool
+) -> Slist[FlatObjectMeta]:
+    # group objects by task + string + response_property
+    objects_grouped: dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
+        lambda x: (x.task, x.string, x.response_property)
+    ).to_dict()
+    compared: Slist[FlatObjectMeta] = Slist()
+    for meta in metas:
+        key = (meta.task, meta.string, meta.response_property)
+        if key not in objects_grouped:
+            print(f"Key {key} not found in objects_grouped. Weird...")
+            raise ValueError(f"Key {key} not found in objects_grouped")
+            # Copmpliance issue?
+            # continue
+        for obj in objects_grouped[key]:
+            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
+            cleaned_meta_response = clean_for_comparison(meta.response)
+            predicted_correctly = cleaned_object_response == cleaned_meta_response
+            compared.append(
+                FlatObjectMeta(
+                    meta_predicted_correctly=predicted_correctly,
+                    task=meta.task,
+                    string=meta.string,
+                    response_property=meta.response_property,
+                    meta_model=meta.meta_model,
+                    object_model=obj.object_model,
+                    object_response_property_answer=obj.response_property_answer,
+                    object_response_raw_response=obj.raw_response,
+                    object_complied=obj.compliance,
+                    meta_complied=meta.compliance,
+                )
+            )
+            if add_micro_average:
+                compared.append(
+                    FlatObjectMeta(
+                        meta_predicted_correctly=predicted_correctly,
+                        task=meta.task,
+                        string=meta.string,
+                        response_property="zMicro Average",
+                        meta_model=meta.meta_model,
+                        object_model=obj.object_model,
+                        object_response_property_answer=obj.response_property_answer,
+                        object_response_raw_response=obj.raw_response,
+                        object_complied=obj.compliance,
+                        meta_complied=meta.compliance,
+                    )
+                )
+
+    return compared
 
 
 def get_flat_object_meta(
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     only_shifted: bool = True,
+    add_micro_average: bool = True,
 ) -> Slist[FlatObjectMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -120,7 +182,7 @@ def get_flat_object_meta(
             print(
                 f"Comparing {len(objects_in_switch)} vs {len(metas_in_switch)} to evaluate for {object_model} for {response_property}"
             )
-            compared = flat_object_meta(objects_in_switch, metas_in_switch)
+            compared = flat_object_meta(objects_in_switch, metas_in_switch, add_micro_average=add_micro_average)
             result_rows.extend(compared)
 
     return result_rows
@@ -132,11 +194,13 @@ def calculate_shift_results(
     only_shifted: bool = True,
 ) -> None:
     flats = get_flat_object_meta(
-        prefinetuned_model=prefinetuned_model, postfinetuned_model=postfinetuned_model, only_shifted=only_shifted
+        prefinetuned_model=prefinetuned_model,
+        postfinetuned_model=postfinetuned_model,
+        only_shifted=only_shifted,
     )
-    grouped_by_response_property = flats.group_by(lambda x: (x.response_property,x.object_model,x.meta_model))
-    dataframe_row: list[dict]= []
-    for group , values in grouped_by_response_property:
+    grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
+    dataframe_row: list[dict] = []
+    for group, values in grouped_by_response_property:
         response_property, object_model, meta_model = group
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
@@ -149,13 +213,16 @@ def calculate_shift_results(
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
 
-
         # acc * 100 1 d.p
         # acc_formatted = f"{acc:1f}"
         # error_formatted = f"{error:1f}"
         # mode_acc = f"{mode_acc:1f}"
         # compliance_rate = f"{compliance_rate:1f}"
-        label = "Predicting behavior before training" if object_model == prefinetuned_model else "Predicting behavior after training"
+        label = (
+            "Predicting behavior before training"
+            if object_model == prefinetuned_model
+            else "Predicting behavior after training"
+        )
         result_row = {
             "response_property": response_property,
             "accuracy": acc,
@@ -167,10 +234,14 @@ def calculate_shift_results(
             "meta_model": meta_model,
             "label": label,
         }
+
         dataframe_row.append(result_row)
+
     df = pd.DataFrame(dataframe_row)
     # to csv inspect_response_property_results.csv
     df.to_csv("response_property_results.csv")
 
+
+prefinetuned_model: str = "gpt-3.5-turbo-1106"
+postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
 calculate_shift_results(only_shifted=False)
-        

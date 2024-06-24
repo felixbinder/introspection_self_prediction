@@ -19,9 +19,7 @@ from evals.analysis.string_cleaning import (
 )
 from evals.locations import EXP_DIR
 from evals.utils import get_maybe_nested_from_dict
-from other_evals.counterfactuals.api_utils import (
-    write_jsonl_file_from_basemodel,
-)
+from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -598,40 +596,6 @@ class FlatObjectMeta(BaseModel):
     object_response_raw_response: str
     object_complied: bool
     meta_complied: bool
-
-
-def flat_object_meta(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[FlatObjectMeta]:
-    # group objects by task + string + response_property
-    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
-        lambda x: (x.task, x.string, x.response_property)
-    ).to_dict()
-    compared: Slist[FlatObjectMeta] = Slist()
-    for meta in metas:
-        key = (meta.task, meta.string, meta.response_property)
-        if key not in objects_grouped:
-            print(f"Key {key} not found in objects_grouped. Weird...")
-            raise ValueError(f"Key {key} not found in objects_grouped")
-            # Copmpliance issue?
-            # continue
-        for obj in objects_grouped[key]:
-            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
-            cleaned_meta_response = clean_for_comparison(meta.response)
-            predicted_correctly = cleaned_object_response == cleaned_meta_response
-            compared.append(
-                FlatObjectMeta(
-                    meta_predicted_correctly=predicted_correctly,
-                    task=meta.task,
-                    string=meta.string,
-                    response_property=meta.response_property,
-                    meta_model=meta.meta_model,
-                    object_model=obj.object_model,
-                    object_response_property_answer=obj.response_property_answer,
-                    object_response_raw_response=obj.raw_response,
-                    object_complied=obj.compliance,
-                    meta_complied=meta.compliance,
-                )
-            )
-    return compared
 
 
 def calc_inspect_rows(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[dict]:
@@ -1444,7 +1408,7 @@ postfinetuned_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
 # object_model = "gpt-4-0613"
 # prefinetuned_model: str = "gpt-3.5-turbo-1106"
 # postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-per_response_property_object_PROPERTY_switched(
-    prefinetuned_model=prefinetuned_model, postfinetuned_model=postfinetuned_model, only_shifted=False
-)
+# per_response_property_object_PROPERTY_switched(
+#     prefinetuned_model=prefinetuned_model, postfinetuned_model=postfinetuned_model, only_shifted=False
+# )
 # check_dupes()
