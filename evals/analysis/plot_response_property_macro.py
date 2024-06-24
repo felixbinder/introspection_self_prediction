@@ -36,7 +36,7 @@ def create_chart(df, title, sorted_properties):
                 y=df_sorted["accuracy"] * 100,  # Convert to percentage
                 name=label,
                 text=df_sorted["accuracy"].apply(lambda x: f"{x*100:.1f}%"),
-                textposition="auto",
+                textposition="outside",  # Place text outside the bar
                 error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),  # Convert to percentage
             )
         )

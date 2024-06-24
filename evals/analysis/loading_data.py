@@ -402,7 +402,7 @@ class LoadedMeta(BaseModel):
 
 
 def load_meta_dfs(
-    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True
+    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True, exclude_identity: bool = True
 ) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
     """Loads and preps all dataframes from the experiment folder that match the conditions.
 
@@ -477,6 +477,9 @@ def load_meta_dfs(
                         response_property_answer=object_level_response,
                     )
                 )
+    if exclude_identity:
+        final_objects = final_objects.filter(lambda x: x.response_property != "identity")
+        final_metas = final_metas.filter(lambda x: x.response_property != "identity")
     return final_objects, final_metas
 
 
@@ -619,11 +622,11 @@ def james_micro():
 
     # object_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
     # object_model = "gpt-3.5-turbo-1106"
-    # object_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    # object_model = "gpt-3.5-turbo-1106"
     # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
     # meta_model = "gpt-3.5-turbo-1106"
-    # object_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
-    object_model = "gpt-4-0613"
+    object_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+    # object_model = "gpt-4-0613"
     # meta_model = "gpt-4-0613"
     meta_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
 
@@ -788,7 +791,6 @@ def james_per_response_property():
         #     meta_model="ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP",
         #     label="Predicting behavior after training",
         # ),
-        
         # ("ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
     ]
 
@@ -855,6 +857,50 @@ def james_per_response_property():
             }
             result_rows.append(result_row)
 
+        # same thing for micro
+        filtered_objects, filtered_metas = filter_for_specific_models(
+            object_level_model=object_model, meta_level_model=meta_model, objects=objects, metas=metas
+        )
+        filtered_objects = filtered_objects
+        filtered_metas = filtered_metas
+
+        # filtered_objects, filtered_metas = objects, metas
+        print(f"Got {len(objects)} objects and {len(metas)} metas")
+        compared = compare_objects_and_metas(filtered_objects, filtered_metas)
+        print(f"Got {len(compared)} compared")
+        correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+        acc = correct_bools.average_or_raise()
+        print(f"Accuracy: {acc}")
+        error = stats.sem(correct_bools, axis=None) * 1.96
+        print(f"Error: {error}")
+        average_stats = correct_bools.statistics_or_raise()
+        print(f"Stats error: {average_stats.upper_confidence_interval_95}")
+        pretty_str = f"{acc:.1%} ± {error:.1%}"
+        print(f"Accuracy: {pretty_str}")
+        compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+        print(f"Compliance rate: {compliance_rate}")
+        modal_baselines = modal_baseline(filtered_objects)
+        correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+        mode_acc = correct_modes.average_or_raise()
+        print(f"Mode accuracy: {mode_acc}")
+        # acc * 100 1 d.p
+        acc_formatted = f"{acc:1f}"
+        error_formatted = f"{error:1f}"
+        mode_acc = f"{mode_acc:1f}"
+        compliance_rate = f"{compliance_rate:1f}"
+        result_row = {
+            "response_property": "micro_average",
+            "accuracy": acc_formatted,
+            "error": error_formatted,
+            "mode_accuracy": mode_acc,
+            "compliance_rate": compliance_rate,
+            "count": len(compared),
+            "object_model": object_model,
+            "meta_model": meta_model,
+            "label": item.label,
+        }
+        result_rows.append(result_row)
+
     # make a csv
     # save it
     df = pd.DataFrame(result_rows)
@@ -876,8 +922,8 @@ def only_shifted_objects(
             raise ValueError(f"Key {key} not found in responses")
         retrieved_object = responses[key]
         if retrieved_object.response != postfinetuned_object.response:
-        # filter on the response property rather than the response itself, because some response are always different (e.g. the sentiment of the review.)
-        # if retrieved_object.response_property_answer != postfinetuned_object.response_property_answer:
+            # filter on the response property rather than the response itself, because some response are always different (e.g. the sentiment of the review.)
+            # if retrieved_object.response_property_answer != postfinetuned_object.response_property_answer:
             # both need to be compliant
             if retrieved_object.compliance and postfinetuned_object.compliance:
                 different_objects.add(retrieved_object.string)
@@ -950,9 +996,6 @@ def james_per_response_property_object_switched(shifted_only: bool = True):
     )
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
     assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
-    
-    
-    
 
     result_rows: list[dict] = []
     for item in object_meta_pairs:
@@ -969,12 +1012,11 @@ def james_per_response_property_object_switched(shifted_only: bool = True):
 
         # todo: this needs to be called within the response property loop, because we need to filter on the object response property answer rather than the response property itself.
         switched_objects = (
-        only_shifted_objects(prefinetuned_objects, postfinetuned_objects)
-        if shifted_only
-        else only_same_objects(prefinetuned_objects, postfinetuned_objects)
-    )
+            only_shifted_objects(prefinetuned_objects, postfinetuned_objects)
+            if shifted_only
+            else only_same_objects(prefinetuned_objects, postfinetuned_objects)
+        )
 
-        
         print(f"Got {len(switched_objects)} switched objects")
         objects_in_switch: Slist[LoadedObject] = filtered_objects.filter(lambda x: x.string in switched_objects)
         metas_in_switch = filtered_metas.filter(lambda x: x.string in switched_objects)
@@ -994,7 +1036,7 @@ def james_per_response_property_object_switched(shifted_only: bool = True):
             new_filtered_metas = metas_in_switch.filter(lambda x: x.response_property == response_property)
 
             if len(filtered_objects) == 0:
-                print(f"Break")
+                print("Break")
 
             assert len(new_filtered_objects) > 0, f"No objects found for {response_property} for {object_model}"
             assert len(new_filtered_metas) > 0, f"No metas found for {response_property}"
@@ -1036,7 +1078,49 @@ def james_per_response_property_object_switched(shifted_only: bool = True):
             }
             result_rows.append(result_row)
 
-    # make a csv
+        # Same thing to obtain micro
+
+        new_filtered_objects = objects_in_switch
+        new_filtered_metas = metas_in_switch
+
+        # filtered_objects, filtered_metas = objects, metas
+        print(f"Got {len(all_objects)} objects and {len(all_metas)} metas")
+        compared = compare_objects_and_metas(new_filtered_objects, new_filtered_metas)
+        print(f"Got {len(compared)} compared")
+        correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+        acc = correct_bools.average_or_raise()
+        print(f"Accuracy: {acc}")
+        error = stats.sem(correct_bools, axis=None) * 1.96
+        print(f"Error: {error}")
+        average_stats = correct_bools.statistics_or_raise()
+        print(f"Stats error: {average_stats.upper_confidence_interval_95}")
+        pretty_str = f"{acc:.1%} ± {error:.1%}"
+        print(f"Accuracy: {pretty_str}")
+        compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+        print(f"Compliance rate: {compliance_rate}")
+        modal_baselines = modal_baseline(filtered_objects)
+        correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+        mode_acc = correct_modes.average_or_raise()
+        print(f"Mode accuracy: {mode_acc}")
+        # acc * 100 1 d.p
+        acc_formatted = f"{acc:1f}"
+        error_formatted = f"{error:1f}"
+        mode_acc = f"{mode_acc:1f}"
+        compliance_rate = f"{compliance_rate:1f}"
+        result_row = {
+            "response_property": "zMicro average",
+            "accuracy": acc_formatted,
+            "error": error_formatted,
+            "mode_accuracy": mode_acc,
+            "compliance_rate": compliance_rate,
+            "count": len(compared),
+            "object_model": object_model,
+            "meta_model": meta_model,
+            "label": item.label,
+        }
+        result_rows.append(result_row)
+
+    # make a csvs
     # save it
     df = pd.DataFrame(result_rows)
     df.to_csv("response_property_results.csv")
@@ -1044,4 +1128,5 @@ def james_per_response_property_object_switched(shifted_only: bool = True):
 
 # james_per_response_property()
 # james_per_task()
-james_per_response_property_object_switched(shifted_only=True)
+# james_per_response_property_object_switched(shifted_only=True)
+james_micro()
