@@ -34,7 +34,7 @@ def create_chart(df, title, sorted_properties):
             go.Bar(
                 x=df_sorted["response_property"],
                 y=df_sorted["accuracy"] * 100,  # Convert to percentage
-                name=name,
+                name=label,
                 text=df_sorted["accuracy"].apply(lambda x: f"{x*100:.1f}%"),
                 textposition="outside",  # Place text outside the bar
                 error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),  # Convert to percentage

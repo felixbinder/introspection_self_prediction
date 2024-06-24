@@ -1332,4 +1332,10 @@ def per_response_property_object_PROPERTY_switched(
 # james_per_task()
 # james_per_response_property_object_switched(shifted_only=True)
 # james_micro()
-per_response_property_object_PROPERTY_switched()
+prefinetuned_model=  "gpt-4-0613"
+postfinetuned_model= "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+    # object_model = "gpt-4-0613"
+per_response_property_object_PROPERTY_switched(
+    prefinetuned_model=prefinetuned_model,
+    postfinetuned_model=postfinetuned_model,
+)
