@@ -20,9 +20,15 @@ print(len(correct_strings_vanilla))
 finetuned_df = df[df["object_model"] == "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"]
 correct_strings_finetuned = finetuned_df[finetuned_df["predicted_correctly"] == True]["string"].to_list()
 print(len(correct_strings_finetuned))
-
+offending = set()
 for string in correct_strings_vanilla:
     if string not in correct_strings_finetuned:
         print(f"{string} incorrect for ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2")
+        offending.add(string)
+
+
+# make a csv of the offending string
+offending = df[df["string"].isin(offending)]
+offending.to_csv("offending.csv")
     # else:
     #     print(f"ok")

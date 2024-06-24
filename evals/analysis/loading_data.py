@@ -19,6 +19,7 @@ from evals.analysis.string_cleaning import (
 )
 from evals.locations import EXP_DIR
 from evals.utils import get_maybe_nested_from_dict
+from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1323,10 +1324,13 @@ def per_response_property_object_PROPERTY_switched(
             )
 
             print(f"Got {len(switched_objects)} switched objects")
-            objects_in_switch: Slist[LoadedObject] = filtered_objects.filter(lambda x: x.string in switched_objects)
+            objects_in_switch: Slist[LoadedObject] = new_filtered_objects.filter(lambda x: x.string in switched_objects)
+            if response_property == "is_even":
+                write_jsonl_file_from_basemodel(f"is_even_objects_{object_model}.jsonl", objects_in_switch)
+
             print(f"Got {len(objects_in_switch)} to evaluate for {object_model} for {response_property}")
 
-            metas_in_switch = filtered_metas.filter(lambda x: x.string in switched_objects)
+            metas_in_switch = new_filtered_metas.filter(lambda x: x.string in switched_objects)
             assert len(objects_in_switch) > 0, "No objects found in switch"
             assert len(metas_in_switch) > 0, "No metas found in switch"
 
@@ -1389,8 +1393,8 @@ def per_response_property_object_PROPERTY_switched(
         )
 
         print(f"Got {len(switched_objects)} switched objects")
-        objects_in_switch: Slist[LoadedObject] = filtered_objects.filter(lambda x: x.string in switched_objects)
-        metas_in_switch = filtered_metas.filter(lambda x: x.string in switched_objects)
+        objects_in_switch: Slist[LoadedObject] = new_filtered_objects.filter(lambda x: x.string in switched_objects)
+        metas_in_switch = new_filtered_metas.filter(lambda x: x.string in switched_objects)
         assert len(objects_in_switch) > 0, "No objects found in switch"
         assert len(metas_in_switch) > 0, "No metas found in switch"
 
