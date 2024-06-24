@@ -474,7 +474,7 @@ def load_meta_dfs(
                         task=task,
                         object_model=model_name,
                         response_property=response_property,
-                        response_property_answer=object_level_response,
+                        response_property_answer=clean_for_comparison(object_level_response),
                     )
                 )
     if exclude_identity:
@@ -553,9 +553,15 @@ def clean_for_comparison(string: str) -> str:
 
 def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[ComparedMeta]:
     # group objects by task + string + response_property
-    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
+    objects_grouped_: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
         lambda x: (x.task, x.string, x.response_property)
-    ).to_dict()
+    )
+    # we should only have 1???
+    for group, items in objects_grouped_:
+        if len(items) > 1:
+            raise ValueError(f"group {group=} has {len(items)}")
+    objects_grouped = objects_grouped_.to_dict()
+
     compared: Slist[ComparedMeta] = Slist()
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
@@ -574,6 +580,38 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
             # )
             compared.append(
                 ComparedMeta(object_level=obj, meta_level=meta, meta_predicts_correctly=predicted_correctly)
+            )
+    return compared
+
+
+def calc_inspect_rows(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[dict]:
+    # group objects by task + string + response_property
+    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
+        lambda x: (x.task, x.string, x.response_property)
+    ).to_dict()
+    compared: Slist[dict] = Slist()
+    for meta in metas:
+        key = (meta.task, meta.string, meta.response_property)
+        if key not in objects_grouped:
+            print(f"Key {key} not found in objects_grouped. Weird...")
+            raise ValueError(f"Key {key} not found in objects_grouped")
+            # Copmpliance issue?
+            # continue
+        for obj in objects_grouped[key]:
+            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
+            cleaned_meta_response = clean_for_comparison(meta.response)
+            predicted_correctly = cleaned_object_response == cleaned_meta_response
+            compared.append(
+                {
+                    "predicted_correctly": predicted_correctly,
+                    "task": meta.task,
+                    "string": meta.string,
+                    "response_property": meta.response_property,
+                    "meta_model": meta.meta_model,
+                    "object_model": obj.object_model,
+                    "object_response_property_answer": obj.response_property_answer,
+                    "object_response_raw_response": obj.raw_response,
+                }
             )
     return compared
 
@@ -936,10 +974,10 @@ def only_shifted_object_properties(
 ) -> set[str]:
     # returns a set of strings that are different between the two
     # hash the objects by  string, value is the item
-    responses = prefinetuned_objects.map(lambda x: (x.string + x.response_property, x)).to_dict()
+    responses = prefinetuned_objects.map(lambda x: (x.string + x.response_property + x.task, x)).to_dict()
     different_objects = set()
     for postfinetuned_object in postfinetuned_objects:
-        key = postfinetuned_object.string + postfinetuned_object.response_property
+        key = postfinetuned_object.string + postfinetuned_object.response_property + postfinetuned_object.task
         if key not in responses:
             # missing due to compliance
             raise ValueError(f"Key {key} not found in responses")
@@ -947,6 +985,27 @@ def only_shifted_object_properties(
         # if retrieved_object.response != postfinetuned_object.response:
         # filter on the response property rather than the response itself, because some response are always different (e.g. the sentiment of the review.)
         if retrieved_object.response_property_answer != postfinetuned_object.response_property_answer:
+            # both need to be compliant
+            if retrieved_object.compliance and postfinetuned_object.compliance:
+                different_objects.add(retrieved_object.string)
+    return different_objects
+
+
+def only_same_object_properties(
+    prefinetuned_objects: Slist[LoadedObject],
+    postfinetuned_objects: Slist[LoadedObject],
+) -> set[str]:
+    # returns a set of strings that are different between the two
+    # hash the objects by  string, value is the item
+    responses = prefinetuned_objects.map(lambda x: (x.string + x.response_property + x.task, x)).to_dict()
+    different_objects = set()
+    for postfinetuned_object in postfinetuned_objects:
+        key = postfinetuned_object.string + postfinetuned_object.response_property + postfinetuned_object.task
+        if key not in responses:
+            # missing due to compliance
+            raise ValueError(f"Key {key} not found in responses")
+        retrieved_object = responses[key]
+        if retrieved_object.response_property_answer == postfinetuned_object.response_property_answer:
             # both need to be compliant
             if retrieved_object.compliance and postfinetuned_object.compliance:
                 different_objects.add(retrieved_object.string)
@@ -1149,9 +1208,27 @@ def per_response_property_object_switched(shifted_only: bool = True):
     df.to_csv("response_property_results.csv")
 
 
+def check_dupes():
+    model = "gpt-3.5-turbo-1106"
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
+    all_objects, all_metas = load_meta_dfs(
+        Path(exp_folder), {("task", "set"): ["val"], ("language_model", "model"): model}, exclude_noncompliant=False
+    )
+
+    supposedly_unique = all_objects.group_by(lambda x: x.task + x.string + x.response_property)
+    number_more_than_1 = supposedly_unique.map_2(
+        lambda group, values: (group, values.length) if values.length > 1 else None
+    ).flatten_option()
+    for group, items in supposedly_unique:
+        if len(items) > 1:
+            raise ValueError(f"Group {group} has {len(items)}")
+    print(f"{number_more_than_1=}")
+
+
 def per_response_property_object_PROPERTY_switched(
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+    only_shifted: bool = True,
 ):
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -1191,11 +1268,13 @@ def per_response_property_object_PROPERTY_switched(
         exclude_noncompliant=exclude_noncompliant,
     )
     prefinetuned_objects = all_objects.filter(lambda x: x.object_model == prefinetuned_model)
+
     postfinetuned_objects = all_objects.filter(lambda x: x.object_model == postfinetuned_model)
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
     assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
 
     result_rows: list[dict] = []
+    inspect_rows: list[dict] = []
     for item in object_meta_pairs:
         print(f"Comparing {item.object_model} and {item.meta_model}")
         object_model = item.object_model
@@ -1223,20 +1302,40 @@ def per_response_property_object_PROPERTY_switched(
             assert len(new_filtered_objects) > 0, f"No objects found for {response_property} for {object_model}"
             assert len(new_filtered_metas) > 0, f"No metas found for {response_property}"
 
-            switched_objects = only_shifted_object_properties(
-                prefinetuned_objects=prefinetuned_objects.filter(lambda x: x.response_property == response_property),
-                postfinetuned_objects=postfinetuned_objects.filter(lambda x: x.response_property == response_property),
+            switched_objects = (
+                only_shifted_object_properties(
+                    prefinetuned_objects=prefinetuned_objects.filter(
+                        lambda x: x.response_property == response_property
+                    ),
+                    postfinetuned_objects=postfinetuned_objects.filter(
+                        lambda x: x.response_property == response_property
+                    ),
+                )
+                if only_shifted
+                else only_same_object_properties(
+                    prefinetuned_objects=prefinetuned_objects.filter(
+                        lambda x: x.response_property == response_property
+                    ),
+                    postfinetuned_objects=postfinetuned_objects.filter(
+                        lambda x: x.response_property == response_property
+                    ),
+                )
             )
 
             print(f"Got {len(switched_objects)} switched objects")
             objects_in_switch: Slist[LoadedObject] = filtered_objects.filter(lambda x: x.string in switched_objects)
+            print(f"Got {len(objects_in_switch)} to evaluate for {object_model} for {response_property}")
+
             metas_in_switch = filtered_metas.filter(lambda x: x.string in switched_objects)
             assert len(objects_in_switch) > 0, "No objects found in switch"
             assert len(metas_in_switch) > 0, "No metas found in switch"
 
             # filtered_objects, filtered_metas = objects, metas
-            print(f"Got {len(all_objects)} objects and {len(all_metas)} metas")
+            print(
+                f"Comparing {len(objects_in_switch)} vs {len(metas_in_switch)} to evaluate for {object_model} for {response_property}"
+            )
             compared = compare_objects_and_metas(objects_in_switch, metas_in_switch)
+
             print(f"Got {len(compared)} compared")
             correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
             acc = correct_bools.average_or_raise()
@@ -1271,12 +1370,22 @@ def per_response_property_object_PROPERTY_switched(
             }
             result_rows.append(result_row)
 
+            inspect_row = calc_inspect_rows(objects_in_switch, metas_in_switch)
+            inspect_rows.extend(inspect_row)
+
         new_filtered_objects = filtered_objects
         new_filtered_metas = filtered_metas
 
-        switched_objects = only_shifted_object_properties(
-            prefinetuned_objects=prefinetuned_objects,
-            postfinetuned_objects=postfinetuned_objects,
+        switched_objects = (
+            only_shifted_object_properties(
+                prefinetuned_objects=prefinetuned_objects,
+                postfinetuned_objects=postfinetuned_objects,
+            )
+            if only_shifted
+            else only_same_object_properties(
+                prefinetuned_objects=prefinetuned_objects,
+                postfinetuned_objects=postfinetuned_objects,
+            )
         )
 
         print(f"Got {len(switched_objects)} switched objects")
@@ -1327,15 +1436,20 @@ def per_response_property_object_PROPERTY_switched(
     df = pd.DataFrame(result_rows)
     df.to_csv("response_property_results.csv")
 
+    inspect_df = pd.DataFrame(inspect_rows)
+    inspect_df.to_csv("inspect_response_property_results.csv")
+
 
 # james_per_response_property()
 # james_per_task()
 # james_per_response_property_object_switched(shifted_only=True)
 # james_micro()
-prefinetuned_model=  "gpt-4-0613"
-postfinetuned_model= "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
-    # object_model = "gpt-4-0613"
+# prefinetuned_model = "gpt-4-0613"
+# postfinetuned_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+# object_model = "gpt-4-0613"
+prefinetuned_model: str = "gpt-3.5-turbo-1106"
+postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
 per_response_property_object_PROPERTY_switched(
-    prefinetuned_model=prefinetuned_model,
-    postfinetuned_model=postfinetuned_model,
+    prefinetuned_model=prefinetuned_model, postfinetuned_model=postfinetuned_model, only_shifted=False
 )
+# check_dupes()

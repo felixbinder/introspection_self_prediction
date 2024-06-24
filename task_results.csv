@@ -1,0 +1,15 @@
+,task,accuracy,error,mode_accuracy,compliance_rate,count,object_model,meta_model,label
+0,dear_abbie,70.7%,9.9%,76.0%,100.0%,82,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+1,wikipedia,42.5%,7.1%,22.7%,98.9%,186,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+2,number_triplets,44.8%,5.7%,38.7%,100.0%,297,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+3,writing_stories,55.2%,7.1%,48.0%,100.0%,192,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+4,personal_preferences,20.8%,16.6%,28.9%,100.0%,24,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+5,self_referential,16.7%,17.7%,42.4%,100.0%,18,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+6,daily_dialog,48.8%,6.7%,27.0%,100.0%,213,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+7,dear_abbie,70.7%,9.9%,70.0%,100.0%,82,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+8,wikipedia,55.4%,7.2%,28.0%,98.9%,186,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+9,number_triplets,48.8%,5.7%,54.7%,100.0%,297,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+10,writing_stories,56.2%,7.0%,48.5%,100.0%,192,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+11,personal_preferences,37.5%,19.8%,33.3%,100.0%,24,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+12,self_referential,11.1%,14.9%,39.4%,100.0%,18,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+13,daily_dialog,57.7%,6.6%,31.7%,100.0%,213,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training

@@ -1,0 +1,17 @@
+,response_property,accuracy,error,mode_accuracy,compliance_rate,count,object_model,meta_model,label
+0,writing_stories/main_character_name,0.629310,0.088276,0.363067,1.000000,116,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+1,syllable_count,0.554422,0.056912,0.363067,0.993197,294,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+2,first_character,0.546948,0.047327,0.363067,1.000000,426,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+3,first_word,0.615385,0.076591,0.363067,1.000000,156,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+4,last_character,0.538251,0.051145,0.363067,1.000000,366,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+5,sentiment,0.750000,0.103686,0.363067,1.000000,68,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+6,is_even,0.429952,0.067606,0.363067,1.000000,207,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+7,zMicro-average,0.545682,0.034547,0.363067,0.997497,799,gpt-3.5-turbo-1106,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior before training
+8,writing_stories/main_character_name,0.629310,0.088276,0.420970,1.000000,116,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+9,syllable_count,0.581633,0.056484,0.420970,0.993197,294,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+10,first_character,0.572770,0.047031,0.420970,1.000000,426,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+11,first_word,0.596154,0.077246,0.420970,1.000000,156,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+12,last_character,0.551913,0.051018,0.420970,1.000000,366,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+13,sentiment,0.750000,0.103686,0.420970,1.000000,68,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+14,is_even,0.468599,0.068145,0.420970,1.000000,207,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
+15,zMicro-average,0.566959,0.034379,0.420970,0.997497,799,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2,Predicting behavior after training
