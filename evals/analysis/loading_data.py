@@ -936,10 +936,10 @@ def only_shifted_object_properties(
 ) -> set[str]:
     # returns a set of strings that are different between the two
     # hash the objects by  string, value is the item
-    responses = prefinetuned_objects.map(lambda x: (x.string, x)).to_dict()
+    responses = prefinetuned_objects.map(lambda x: (x.string + x.response_property, x)).to_dict()
     different_objects = set()
     for postfinetuned_object in postfinetuned_objects:
-        key = postfinetuned_object.string
+        key = postfinetuned_object.string + postfinetuned_object.response_property
         if key not in responses:
             # missing due to compliance
             raise ValueError(f"Key {key} not found in responses")
@@ -1149,7 +1149,10 @@ def per_response_property_object_switched(shifted_only: bool = True):
     df.to_csv("response_property_results.csv")
 
 
-def per_response_property_object_PROPERTY_switched(shifted_only: bool = True):
+def per_response_property_object_PROPERTY_switched(
+    prefinetuned_model: str = "gpt-3.5-turbo-1106",
+    postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+):
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
     # exp_folder = EXP_DIR /"evaluation_suite"
@@ -1163,13 +1166,13 @@ def per_response_property_object_PROPERTY_switched(shifted_only: bool = True):
         [
             # ("gpt-3.5-turbo-1106", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
             ObjectMetaPair(
-                object_model="gpt-3.5-turbo-1106",
-                meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+                object_model=prefinetuned_model,
+                meta_model=postfinetuned_model,
                 label="Predicting behavior before training",
             ),
             ObjectMetaPair(
-                object_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
-                meta_model="ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+                object_model=postfinetuned_model,
+                meta_model=postfinetuned_model,
                 label="Predicting behavior after training",
             ),
             # ("ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2", "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"),
@@ -1187,10 +1190,8 @@ def per_response_property_object_PROPERTY_switched(shifted_only: bool = True):
         },
         exclude_noncompliant=exclude_noncompliant,
     )
-    prefinetuned_objects = all_objects.filter(lambda x: x.object_model == "gpt-3.5-turbo-1106")
-    postfinetuned_objects = all_objects.filter(
-        lambda x: x.object_model == "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-    )
+    prefinetuned_objects = all_objects.filter(lambda x: x.object_model == prefinetuned_model)
+    postfinetuned_objects = all_objects.filter(lambda x: x.object_model == postfinetuned_model)
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
     assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
 
@@ -1269,6 +1270,57 @@ def per_response_property_object_PROPERTY_switched(shifted_only: bool = True):
                 "label": item.label,
             }
             result_rows.append(result_row)
+
+        new_filtered_objects = filtered_objects
+        new_filtered_metas = filtered_metas
+
+        switched_objects = only_shifted_object_properties(
+            prefinetuned_objects=prefinetuned_objects,
+            postfinetuned_objects=postfinetuned_objects,
+        )
+
+        print(f"Got {len(switched_objects)} switched objects")
+        objects_in_switch: Slist[LoadedObject] = filtered_objects.filter(lambda x: x.string in switched_objects)
+        metas_in_switch = filtered_metas.filter(lambda x: x.string in switched_objects)
+        assert len(objects_in_switch) > 0, "No objects found in switch"
+        assert len(metas_in_switch) > 0, "No metas found in switch"
+
+        # filtered_objects, filtered_metas = objects, metas
+        print(f"Got {len(all_objects)} objects and {len(all_metas)} metas")
+        compared = compare_objects_and_metas(objects_in_switch, metas_in_switch)
+        print(f"Got {len(compared)} compared")
+        correct_bools = compared.map(lambda x: x.meta_predicts_correctly)
+        acc = correct_bools.average_or_raise()
+        print(f"Accuracy: {acc}")
+        error = stats.sem(correct_bools, axis=None) * 1.96
+        print(f"Error: {error}")
+        average_stats = correct_bools.statistics_or_raise()
+        print(f"Stats error: {average_stats.upper_confidence_interval_95}")
+        pretty_str = f"{acc:.1%} ± {error:.1%}"
+        print(f"Accuracy: {pretty_str}")
+        compliance_rate = compared.map(lambda x: x.meta_level.compliance).average_or_raise()
+        print(f"Compliance rate: {compliance_rate}")
+        modal_baselines = modal_baseline(filtered_objects)
+        correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
+        mode_acc = correct_modes.average_or_raise()
+        print(f"Mode accuracy: {mode_acc}")
+        # acc * 100 1 d.p
+        acc_formatted = f"{acc:1f}"
+        error_formatted = f"{error:1f}"
+        mode_acc = f"{mode_acc:1f}"
+        compliance_rate = f"{compliance_rate:1f}"
+        result_row = {
+            "response_property": "zMicro-average",
+            "accuracy": acc_formatted,
+            "error": error_formatted,
+            "mode_accuracy": mode_acc,
+            "compliance_rate": compliance_rate,
+            "count": len(compared),
+            "object_model": object_model,
+            "meta_model": meta_model,
+            "label": item.label,
+        }
+        result_rows.append(result_row)
 
     # make a csvs
     # save it
