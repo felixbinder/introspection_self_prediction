@@ -59,7 +59,10 @@ def load_and_prep_dfs(
     # load the data
     dfs = {}
     for path, name in zip(df_paths, configs):
-        dfs[name] = pd.read_csv(path, dtype={"complete": bool})
+        try:
+            dfs[name] = pd.read_csv(path, dtype={"complete": bool})
+        except pd.errors.EmptyDataError:
+            raise ValueError(f"Empty data file found at {path}")
         # convert other columns to string
         other_cols = [col for col in dfs[name].columns if col != "complete"]
         dfs[name][other_cols] = dfs[name][other_cols].astype(str)
@@ -585,19 +588,6 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
     return compared
 
 
-class FlatObjectMeta(BaseModel):
-    task: str
-    string: str
-    meta_predicted_correctly: bool
-    response_property: str
-    meta_model: str
-    object_model: str
-    object_response_property_answer: str
-    object_response_raw_response: str
-    object_complied: bool
-    meta_complied: bool
-
-
 def calc_inspect_rows(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[dict]:
     # group objects by task + string + response_property
     objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
@@ -994,7 +984,9 @@ def only_shifted_object_properties(
         key = postfinetuned_object.string + postfinetuned_object.response_property + postfinetuned_object.task
         if key not in responses:
             # missing due to compliance
-            raise ValueError(f"Key {key} not found in responses")
+            # raise ValueError(f"Key {key} not found in responses")
+            print(f"WARNING: Key {key} not found in responses")
+            continue
         retrieved_object = responses[key]
         # if retrieved_object.response != postfinetuned_object.response:
         # filter on the response property rather than the response itself, because some response are always different (e.g. the sentiment of the review.)
@@ -1016,8 +1008,10 @@ def only_same_object_properties(
     for postfinetuned_object in postfinetuned_objects:
         key = postfinetuned_object.string + postfinetuned_object.response_property + postfinetuned_object.task
         if key not in responses:
-            # missing due to compliance
-            raise ValueError(f"Key {key} not found in responses")
+            # missing due to compliance?
+            # raise ValueError(f"Key {key} not found in responses")
+            print(f"WARNING: Key {key} not found in responses")
+            continue
         retrieved_object = responses[key]
         if retrieved_object.response_property_answer == postfinetuned_object.response_property_answer:
             # both need to be compliant

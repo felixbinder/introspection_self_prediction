@@ -1,10 +1,10 @@
 from pathlib import Path
 
 import pandas as pd
+from pydantic import BaseModel
 from slist import AverageStats, Slist
 
 from evals.analysis.loading_data import (
-    FlatObjectMeta,
     LoadedMeta,
     LoadedObject,
     ObjectMetaPair,
@@ -16,6 +16,26 @@ from evals.analysis.loading_data import (
 )
 from evals.locations import EXP_DIR
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
+
+
+class FlatObjectMeta(BaseModel):
+    task: str
+    string: str
+    meta_predicted_correctly: bool
+    response_property: str
+    meta_model: str
+    object_model: str
+    object_response_property_answer: str
+    object_response_raw_response: str
+    object_complied: bool
+    meta_complied: bool
+
+    def rename_matches_behavior(self):
+        # if "matches" in self.response_property, rename to "matches behavior"
+        new = self.model_copy()
+        if "matches" in self.response_property:
+            new.response_property = "matches behavior"
+        return new
 
 
 def flat_object_meta(
@@ -71,16 +91,16 @@ def flat_object_meta(
 
 
 def get_flat_object_meta(
+    exp_folder: Path,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     only_shifted: bool = True,
     add_micro_average: bool = True,
+    exclude_noncompliant: bool = False,
 ) -> Slist[FlatObjectMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
     # exp_folder = EXP_DIR /"evaluation_suite"
-    exclude_noncompliant = False
-    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep"
 
     # object_model = "gpt-4-0613"
     # object_model = "gpt-3.5-turbo-1106"
@@ -192,12 +212,16 @@ def calculate_shift_results(
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     only_shifted: bool = True,
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep",
+    exclude_noncompliant: bool = False,
 ) -> None:
     flats = get_flat_object_meta(
         prefinetuned_model=prefinetuned_model,
         postfinetuned_model=postfinetuned_model,
         only_shifted=only_shifted,
-    )
+        exp_folder=exp_folder,
+        exclude_noncompliant=exclude_noncompliant,
+    ).map(lambda x: x.rename_matches_behavior())
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property:
@@ -242,6 +266,16 @@ def calculate_shift_results(
     df.to_csv("response_property_results.csv")
 
 
-prefinetuned_model: str = "gpt-3.5-turbo-1106"
-postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-calculate_shift_results(only_shifted=False)
+# prefinetuned_model: str = "gpt-3.5-turbo-1106"
+# postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+
+prefinetune_model = "gpt-3.5-turbo-0125"
+postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9bMqzmwS"
+exp_folder = EXP_DIR / "jun17_training_on_everything"
+calculate_shift_results(
+    only_shifted=True,
+    prefinetuned_model=prefinetune_model,
+    postfinetuned_model=postfinetune_model,
+    exp_folder=exp_folder,
+)
