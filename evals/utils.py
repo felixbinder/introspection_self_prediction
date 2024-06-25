@@ -287,8 +287,8 @@ def collate_mode_of_n(data0_path: Path, overwrite: bool = False):
         return
     df = pd.read_csv(data0_path)
     strings = df["string"].unique()
-    df["trunc_response"] = df["response"].astype(str).str.slice(
-        0, MAX_RESPONSE_LEN_FOR_MODE
+    df["trunc_response"] = (
+        df["response"].astype(str).str.slice(0, MAX_RESPONSE_LEN_FOR_MODE)
     )  # we truncate responses since long responses are likely to be non-deterministic
     modal_rows = []
     skipped_strings = []

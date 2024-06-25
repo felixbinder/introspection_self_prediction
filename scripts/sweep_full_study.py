@@ -181,7 +181,9 @@ class StudyRunner:
             "--n_meta_val", type=int, help="Number of meta level completions for validation.", default=100
         )
         parser.add_argument("--skip_finetuning", action="store_true", help="Skip the finetuning step.", default=False)
-        parser.add_argument("--skip_finetuned_models", action="store_true", help="Do not run finetuned models.", default=False)
+        parser.add_argument(
+            "--skip_finetuned_models", action="store_true", help="Do not run finetuned models.", default=False
+        )
         parser.add_argument(
             "--skip_finetuning_for_models",
             type=str,
@@ -263,7 +265,7 @@ class StudyRunner:
 
     def get_finetuned_model_configs(self):
         """Pull out the config names of the finetuned models from the state file."""
-        if self.args.skip_finetuned_models: # we don't want to run finetuned models
+        if self.args.skip_finetuned_models:  # we don't want to run finetuned models
             return []
         return [v["ft_model_config"] for v in self.state["finetuning_runs"].values() if v["status"] == "complete"]
 
@@ -312,7 +314,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        pool = Pool()  # create a pool of worker processes
+        pool = Pool(2)  # create a pool of worker processes
 
         #### run object level completions on train ####
         object_train_commands = []
@@ -417,7 +419,7 @@ class StudyRunner:
                             f"n_train_items: {self.args.n_finetuning}",
                             train_folder,
                             val_folder,
-                            overwrite=False, # they get recreated only when missing
+                            overwrite=False,  # they get recreated only when missing
                         )
                         finetuning_folder_paths.append(yaml_path)
         print(f"Created {len(finetuning_folder_paths)} finetuning dataset configs. Creating datasets...")

@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -22,17 +21,18 @@ class InferenceAPIModel(Protocol):
 
     @staticmethod
     def create_prompt_history_file(prompt: dict, model: str, prompt_history_dir: Path):
-        if prompt_history_dir is None:
-            return None
-        filename = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4]}_{hash(str(prompt))}.txt"
-        prompt_file = prompt_history_dir / model / filename
-        prompt_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(prompt_file, "w") as f:
-            json_str = json.dumps(prompt, indent=4)
-            json_str = json_str.replace("\\n", "\n")
-            f.write(json_str)
+        return None
+        # if prompt_history_dir is None:
+        #     return None
+        # filename = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-4]}_{hash(str(prompt))}.txt"
+        # prompt_file = prompt_history_dir / model / filename
+        # prompt_file.parent.mkdir(parents=True, exist_ok=True)
+        # with open(prompt_file, "w") as f:
+        #     json_str = json.dumps(prompt, indent=4)
+        #     json_str = json_str.replace("\\n", "\n")
+        #     f.write(json_str)
 
-        return prompt_file
+        # return prompt_file
 
     @staticmethod
     def add_response_to_prompt_file(prompt_file, responses):

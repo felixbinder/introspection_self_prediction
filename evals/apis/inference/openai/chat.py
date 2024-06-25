@@ -4,7 +4,8 @@ import time
 import openai
 import requests
 from openai.openai_object import OpenAIObject as OpenAICompletion
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry as async_retry
+from tenacity import retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from evals.apis.inference.openai.base import OpenAIModel
 from evals.apis.inference.openai.utils import count_tokens, price_per_token
@@ -21,7 +22,6 @@ class OpenAIChatModel(OpenAIModel):
             model_id = model_id.split(":")[1]
         assert model_id in GPT_CHAT_MODELS, f"Invalid model id: {model_id}"
 
-    @retry(stop=stop_after_attempt(8), wait=wait_fixed(2))
     async def _get_dummy_response_header(self, model_id: str):
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
@@ -77,6 +77,9 @@ class OpenAIChatModel(OpenAIModel):
 
         return top_logprobs
 
+    @async_retry(
+        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError)), wait=wait_fixed(5)
+    )
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
 
