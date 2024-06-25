@@ -253,21 +253,21 @@ class InferenceAPI:
 
     def log_model_timings(self):
         if len(self.model_timings) > 0:
-            plt.figure(figsize=(10, 6))
+           # plt.figure(figsize=(10, 6))
             for model in self.model_timings:
                 timings = np.array(self.model_timings[model])
                 wait_times = np.array(self.model_wait_times[model])
                 LOGGER.info(
                     f"{model}: response {timings.mean():.3f}, waiting {wait_times.mean():.3f} (max {wait_times.max():.3f}, min {wait_times.min():.3f})"
                 )
-                plt.plot(timings, label=f"{model} - Response Time", linestyle="-", linewidth=2)
-                plt.plot(wait_times, label=f"{model} - Waiting Time", linestyle="--", linewidth=2)
-            plt.legend()
-            plt.title("Model Performance: Response and Waiting Times")
-            plt.xlabel("Sample Number")
-            plt.ylabel("Time (seconds)")
-            plt.savefig(self.prompt_history_dir / "model_timings.png", bbox_inches="tight")
-            plt.close()
+            #     # plt.plot(timings, label=f"{model} - Response Time", linestyle="-", linewidth=2)
+            #     # plt.plot(wait_times, label=f"{model} - Waiting Time", linestyle="--", linewidth=2)
+            # plt.legend()
+            # plt.title("Model Performance: Response and Waiting Times")
+            # plt.xlabel("Sample Number")
+            # plt.ylabel("Time (seconds)")
+            # plt.savefig(self.prompt_history_dir / "model_timings.png", bbox_inches="tight")
+            # plt.close()
 
 
 async def demo():
