@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=str, nargs="+", help="Paths to the input directories.")
-    parser.add_argument("--n", type=int, default=float("inf"), help="Number of strings to extract.")
+    parser.add_argument("--n", type=int, default=999999999999999, help="Number of strings to extract.")
     parser.add_argument("--output", type=str, default=None, help="Path to save the output file.")
     parser.add_argument(
         "--response_properties",
