@@ -270,6 +270,8 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
 
 def get_flat_object_meta(
     exp_folder: Path,
+    to_compare_before: str,
+    to_compare_after: str,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     add_micro_average: bool = True,
@@ -313,6 +315,18 @@ def get_flat_object_meta(
     prefinetuned_objects = all_objects.filter(lambda x: x.object_model == prefinetuned_model)
 
     postfinetuned_objects = all_objects.filter(lambda x: x.object_model == postfinetuned_model)
+
+
+    shift_model_objects,  shift_model_metas= load_meta_dfs(
+        Path(exp_folder),
+        {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): [to_compare_before, to_compare_after]
+        },
+        exclude_noncompliant=exclude_noncompliant,
+    )
+    before_shift_objects = shift_model_objects.filter(lambda x: x.object_model == to_compare_before)
+    after_shift_objects = shift_model_objects.filter(lambda x: x.object_model == to_compare_after)
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
     assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
 
@@ -345,8 +359,8 @@ def get_flat_object_meta(
             assert len(new_filtered_metas) > 0, f"No metas found for {response_property}"
 
             switched_objects: ShiftResult = only_shifted_object_properties(
-                prefinetuned_objects=prefinetuned_objects.filter(lambda x: x.response_property == response_property),
-                postfinetuned_objects=postfinetuned_objects.filter(lambda x: x.response_property == response_property),
+                prefinetuned_objects=before_shift_objects.filter(lambda x: x.response_property == response_property),
+                postfinetuned_objects=after_shift_objects.filter(lambda x: x.response_property == response_property),
             )
 
             compared = flat_object_meta(
@@ -415,6 +429,8 @@ def james_micro():
 
 
 def calculate_shift_results(
+    to_compare_before: str,
+    to_compare_after: str,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     shifting: Literal["all", "only_shifted", "only_same"] = "all",
@@ -424,6 +440,8 @@ def calculate_shift_results(
     flats: Slist[FlatObjectMeta] = get_flat_object_meta(
         prefinetuned_model=prefinetuned_model,
         postfinetuned_model=postfinetuned_model,
+        to_compare_before=to_compare_before,
+        to_compare_after=to_compare_after,
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
     ).map(lambda x: x.rename_matches_behavior())
@@ -482,9 +500,15 @@ def calculate_shift_results(
 
 # prefinetune_model: str = "gpt-3.5-turbo-1106"
 # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-prefinetune_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-postfinetune_model = "projects/351298396653/locations/us-central1/endpoints/8583876282930954240"
-exp_folder = EXP_DIR / "may20_thrifty_sweep"
+# prefinetune_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# postfinetune_model = "projects/351298396653/locations/us-central1/endpoints/8583876282930954240"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+
+
+# half heldout
+prefinetune_model: str = "gpt-3.5-turbo-0125"
+postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9bgE5U3J"
+exp_folder = EXP_DIR / "jun17_half_heldout_tasks"
 
 # prefinetune_model = "gpt-4-0613"
 # postfinetune_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
@@ -502,7 +526,9 @@ exp_folder = EXP_DIR / "may20_thrifty_sweep"
 # exp_folder = EXP_DIR / "jun17_training_on_everything"
 calculate_shift_results(
     # shifting="only_same",
-    shifting="all",
+    to_compare_before=prefinetune_model,
+    to_compare_after=postfinetune_model,
+    shifting="only_shifted",
     prefinetuned_model=prefinetune_model,
     postfinetuned_model=postfinetune_model,
     exp_folder=exp_folder,
