@@ -266,13 +266,24 @@ def calculate_shift_results(
     df.to_csv("response_property_results.csv")
 
 
-# prefinetuned_model: str = "gpt-3.5-turbo-1106"
-# postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# prefinetune_model: str = "gpt-3.5-turbo-1106"
+# postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
 # exp_folder = EXP_DIR / "may20_thrifty_sweep"
 
+# prefinetune_model = "gpt-4-0613"
+# postfinetune_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+
+
 prefinetune_model = "gpt-3.5-turbo-0125"
-postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9bMqzmwS"
+postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9bMqzmwS"  # gpt_35
+# postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9bMneYk4" # claude
 exp_folder = EXP_DIR / "jun17_training_on_everything"
+
+
+# prefinetune_model = "gpt-4o"
+# postfinetune_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9bwjNtwH"
+# exp_folder = EXP_DIR / "jun17_training_on_everything"
 calculate_shift_results(
     only_shifted=True,
     prefinetuned_model=prefinetune_model,

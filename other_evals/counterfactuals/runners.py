@@ -340,13 +340,17 @@ def run_sweep_over_other_evals_ids(
 
 def test_main():
     # What evals to run?
-    eval_list = [WillYouGiveDeontology]
-    # eval_list = [BiasDetectAddAreYouSure]
+    # eval_list = [WillYouGiveDeontology]
+    eval_list = [BiasDetectAddAreYouSure, BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, KwikWillYouBeCorrect]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 500
+    limit = 250
     # What models to run?
+    prefinetune_model: str = "gpt-3.5-turbo-1106"
+    postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
     models = Slist(
         [
+            prefinetune_model,
+            postfinetune_model,
             # "gpt-3.5-turbo",
             # "gpt-3.5-turbo-0125",
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH", # non mmlu sweep
@@ -359,7 +363,7 @@ def test_main():
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
             # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9YHdMAcl", # leave out are you sure
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
-            "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN", # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WOKeIsb", # 12,000 samples gpt-3.5
@@ -381,6 +385,8 @@ def test_main():
         limit=limit,
         study_folder=study_folder,
         show_plot=True,
+        
+        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/jun17_training_on_everything/other_evals_cache"
     )
 
 

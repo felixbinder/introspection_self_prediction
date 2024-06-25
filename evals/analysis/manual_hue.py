@@ -8,8 +8,8 @@ training = [
     "Predicting behavior before training",
     "Predicting behavior after training",
 ]
-accuracy = [36.8, 47.9, 40.0, 45.4]
-ci_95 = [4.1, 4.1, 4.3, 4.4]
+accuracy = [23.5, 39.1, 25.9, 34.4]
+ci_95 = [4.3, 4.9, 4.8, 5.2]
 
 # Sort the data, but put GPT-4 last
 sorted_data = sorted(zip(models, training, accuracy, ci_95), key=lambda x: (x[0] == "GPT-4", x[0], x[1]))
