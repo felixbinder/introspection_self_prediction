@@ -151,9 +151,9 @@ def only_shifted_object_properties(
         key = postfinetuned_object.string + postfinetuned_object.response_property + postfinetuned_object.task
         if key not in responses:
             # missing due to compliance
-            raise ValueError(f"Key {key} not found in responses")
-            # print(f"WARNING: Key {key} not found in responses")
-            # continue
+            # raise ValueError(f"Key {key} not found in responses")
+            print(f"WARNING: Key {key} not found in responses")
+            continue
         retrieved_object = responses[key]
         # if retrieved_object.response != postfinetuned_object.response:
         # filter on the response property rather than the response itself, because some response are always different (e.g. the sentiment of the review.)
@@ -480,8 +480,10 @@ def calculate_shift_results(
     df.to_csv("response_property_results.csv")
 
 
-prefinetune_model: str = "gpt-3.5-turbo-1106"
-postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# prefinetune_model: str = "gpt-3.5-turbo-1106"
+# postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+prefinetune_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+postfinetune_model = "projects/351298396653/locations/us-central1/endpoints/8583876282930954240"
 exp_folder = EXP_DIR / "may20_thrifty_sweep"
 
 # prefinetune_model = "gpt-4-0613"
