@@ -78,7 +78,7 @@ class OpenAIChatModel(OpenAIModel):
         return top_logprobs
 
     @async_retry(
-        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError)), wait=wait_fixed(5)
+        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)), wait=wait_fixed(5)
     )
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
