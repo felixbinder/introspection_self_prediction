@@ -404,7 +404,7 @@ class LoadedMeta(BaseModel):
 
 
 def load_meta_dfs(
-    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True, exclude_identity: bool = True
+    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True
 ) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
     """Loads and preps all dataframes from the experiment folder that match the conditions.
 
@@ -479,9 +479,7 @@ def load_meta_dfs(
                         response_property_answer=clean_for_comparison(object_level_response),
                     )
                 )
-    if exclude_identity:
-        final_objects = final_objects.filter(lambda x: x.response_property != "identity")
-        final_metas = final_metas.filter(lambda x: x.response_property != "identity")
+
     return final_objects, final_metas
 
 
