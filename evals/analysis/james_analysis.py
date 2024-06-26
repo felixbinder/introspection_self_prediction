@@ -316,13 +316,9 @@ def get_flat_object_meta(
 
     postfinetuned_objects = all_objects.filter(lambda x: x.object_model == postfinetuned_model)
 
-
-    shift_model_objects,  shift_model_metas= load_meta_dfs(
+    shift_model_objects, shift_model_metas = load_meta_dfs(
         Path(exp_folder),
-        {
-            ("task", "set"): ["val"],
-            ("language_model", "model"): [to_compare_before, to_compare_after]
-        },
+        {("task", "set"): ["val"], ("language_model", "model"): [to_compare_before, to_compare_after]},
         exclude_noncompliant=exclude_noncompliant,
     )
     before_shift_objects = shift_model_objects.filter(lambda x: x.object_model == to_compare_before)
@@ -507,8 +503,8 @@ def calculate_shift_results(
 
 # half heldout
 prefinetune_model: str = "gpt-3.5-turbo-0125"
-postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9bgE5U3J"
-exp_folder = EXP_DIR / "jun17_half_heldout_tasks"
+postfinetune_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 
 # prefinetune_model = "gpt-4-0613"
 # postfinetune_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
