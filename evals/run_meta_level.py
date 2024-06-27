@@ -80,7 +80,7 @@ class DatasetRunner:
             answer = responses[0].completion
             logprobs = responses[0].logprobs
             complete = True
-            self.inference_api.log_model_timings()
+            # self.inference_api.log_model_timings()
             LOGGER.info(f"Completed row {index}\tRunning cost: ${self.inference_api.running_cost:.3f}")
         except RuntimeError as e:
             complete = False
