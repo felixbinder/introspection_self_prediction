@@ -17,6 +17,8 @@ from evals.locations import EXP_DIR
 
 LOGGER = logging.getLogger(__name__)
 
+MAX_RESPONSE_LEN_FOR_MODE = 350  # number of characters before truncation is applied in the mode of N sampling
+
 LOGGING_LEVELS = {
     "critical": logging.CRITICAL,
     "error": logging.ERROR,
@@ -267,34 +269,47 @@ def get_hparams_for_endpoints(endpoint_names):
     return out
 
 
-def collate_mode_of_n(data0_path: Path):
+def collate_mode_of_n(data0_path: Path, overwrite: bool = False):
     """After the data is collected, we need to group the data into a dataframe that contains only the modal response for multiple samples.
 
     Args:
         data0_path (Path): Path to the data file (ie. `raw_data0.csv`)
+        overwrite (bool, optional): Whether to overwrite the existing `data0.csv` file. Defaults to False.
 
     Writes out a `data0.csv` file with the modal response for each sample.
     If a string has only unique responses, it is discarded.
     """
     assert data0_path.exists(), f"Data file {data0_path} does not exist."
     assert "raw_data" in data0_path.stem, f"Data file {data0_path} does not contain 'raw_data'."
+    out_path = data0_path.parent / f"{data0_path.stem.replace('raw_data', 'data')}.csv"
+    if out_path.exists() and not overwrite:
+        LOGGER.info(f"File {out_path} already exists. Will not overwrite with mode-of-N data.")
+        return
     df = pd.read_csv(data0_path)
     strings = df["string"].unique()
+    df["trunc_response"] = df["response"].astype(str).str.slice(
+        0, MAX_RESPONSE_LEN_FOR_MODE
+    )  # we truncate responses since long responses are likely to be non-deterministic
     modal_rows = []
     skipped_strings = []
     for string in strings:
         string_df = df[df["string"] == string]
-        if len(string_df) > 1 & len(string_df["response"].unique()) == len(string_df):
+        if len(string_df) > 1 and string_df["trunc_response"].nunique() == len(string_df["trunc_response"]):
             # Skip strings that have only unique responses unless they are the only response
             skipped_strings.append(string)
             continue
         # pull the first row that has the modal response (so that we get the logprobs etc.)
-        modal_row = string_df[string_df["response"] == string_df["response"].mode()[0]].iloc[0]
+        # we know from above that there is at least one row
+        modal_row = string_df[string_df["trunc_response"] == string_df["trunc_response"].mode()[0]].iloc[0]
         modal_rows.append(modal_row)
     modal_df = pd.DataFrame(modal_rows)
-    modal_df.columns = df.columns
-    out_path = data0_path.parent / f"{data0_path.stem.replace('raw_data', 'data')}.csv"
     modal_df.to_csv(out_path, index=False)
     LOGGER.info(
         f"Saved modal responses to {out_path}. {len(skipped_strings)} strings were skipped because all responses were unique."
     )
+    if len(skipped_strings) > 0:
+        LOGGER.warning(
+            f"Skipped strings the following strings since no modal answer could be extracted: {skipped_strings}"
+        )
+    if max([len(str(s)) for s in df["response"]]) > MAX_RESPONSE_LEN_FOR_MODE:
+        LOGGER.warning(f"Some responses were truncated to {MAX_RESPONSE_LEN_FOR_MODE} characters.")
