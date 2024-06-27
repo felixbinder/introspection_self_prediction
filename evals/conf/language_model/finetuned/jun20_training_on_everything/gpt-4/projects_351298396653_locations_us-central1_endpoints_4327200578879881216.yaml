@@ -1,0 +1,8 @@
+
+model: projects/351298396653/locations/us-central1/endpoints/4327200578879881216
+cais_path: ~
+temperature: 0.0
+top_p: 1.0
+max_tokens: null
+num_candidates_per_completion: 1
+insufficient_valids_behaviour: "error"
