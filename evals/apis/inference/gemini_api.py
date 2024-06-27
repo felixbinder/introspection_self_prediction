@@ -172,7 +172,7 @@ class GeminiModel(InferenceAPIModel):
                     break
             except vertexai.generative_models._generative_models.ResponseValidationError as e:
                 exc = e
-                LOGGER.warn(
+                LOGGER.error(
                     "This prompt is causing anomalous behavior. Treating this as a safety issue and skipping\n",
                     prompt.gemini_format_text(),
                 )
@@ -189,6 +189,25 @@ class GeminiModel(InferenceAPIModel):
                     )
                 ]
                 break
+            except IndexError as e:
+                exc = e
+                LOGGER.error(
+                    f"Error: {e} while running prompt: {prompt.gemini_format_text()}. This is likely a safety refusal: treating as refusal and skipping."
+                )
+                responses = [
+                    LLMResponse(
+                        model_id=model_ids[0],
+                        completion="",
+                        # sometimes returns empty because of safety block
+                        stop_reason="safety",
+                        api_duration=0.0,
+                        duration=0.0,
+                        cost=0.0,
+                        logprobs=[],  # HACK no logprobs
+                    )
+                ]
+                break
+
             except Exception as e:
                 exc = e
                 error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
