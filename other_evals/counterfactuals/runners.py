@@ -341,16 +341,18 @@ def run_sweep_over_other_evals_ids(
 def test_main():
     # What evals to run?
     # eval_list = [WillYouGiveDeontology]
-    eval_list = [BiasDetectAddAreYouSure, BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, KwikWillYouBeCorrect]
+    eval_list = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 250
+    limit = 500
     # What models to run?
-    prefinetune_model: str = "gpt-3.5-turbo-1106"
-    postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    # prefinetune_model: str = "gpt-3.5-turbo-1106"
+    # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    object_model: str = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
     models = Slist(
         [
-            prefinetune_model,
-            postfinetune_model,
+            object_model,
+            meta_model,
             # "gpt-3.5-turbo",
             # "gpt-3.5-turbo-0125",
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH", # non mmlu sweep

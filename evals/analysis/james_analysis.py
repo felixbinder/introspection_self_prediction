@@ -2,6 +2,7 @@ import typing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+from xml.etree.ElementInclude import include
 
 import pandas as pd
 from pydantic import BaseModel
@@ -706,9 +707,46 @@ def plot_without_comparison(
 # show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
 
 # investigate if baseline works w/o idenity ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:resp-blin:9bMpuarB
+# object_model: str = "gpt-3.5-turbo-0125"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:resp-blin:9bMpuarB"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+# include_identity=False
+
+
+# investigate finetune strength of precting claude
+# object_model: str = "claude-3-sonnet-20240229"
+# meta_model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQHCmp"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+# include_identity=True
+
+## held out evidence 2
+# # half heldout
+# object_model: str = "gpt-3.5-turbo-0125"
+# meta_model = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+# include_identity = False
+
+## gpt-4o
+# object_model: str = "gpt-3.5-turbo-0125"
+# meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-gpt4o-sweep:9eFW626d"
+# # postfinetune_model: str = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_gpt4o_inference_only"
+
+
 object_model: str = "gpt-3.5-turbo-0125"
-meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:resp-blin:9bMpuarB"
-exp_folder = EXP_DIR / "may20_thrifty_sweep"
+meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# postfinetune_model: str = "gpt-3.5-turbo-0125"
+exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+include_identity = True
+
+# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# # postfinetune_model: str = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+# include_identity = False
 
 
 plot_without_comparison(
@@ -716,6 +754,6 @@ plot_without_comparison(
     meta_model=meta_model,
     exp_folder=exp_folder,
     exclude_noncompliant=False,
-    include_identity=False,
-    # only_response_properties=show_only,
+    include_identity=include_identity,
+    only_response_properties=show_only,
 )
