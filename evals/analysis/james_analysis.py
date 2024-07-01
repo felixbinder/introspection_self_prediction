@@ -344,9 +344,6 @@ def single_comparison_flat(
 
         unique_response_properties = filtered_metas.map(lambda x: x.response_property).to_set()
 
-        # # remove identity
-        # assert "identity" in unique_response_properties, "Identity not found in response properties"
-        # unique_response_properties.remove("identity")
 
         for response_property in unique_response_properties:
             new_filtered_objects = filtered_objects.filter(
@@ -618,7 +615,7 @@ def plot_without_comparison(
         flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
-    flats = flats.map(lambda x: x.rename_matches_behavior())
+    # flats = flats.map(lambda x: x.rename_matches_behavior())
     flats = add_micro_average(flats)
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
@@ -784,7 +781,14 @@ include_identity = False
 # # postfinetune_model: str = "gpt-3.5-turbo-0125"
 # exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 # include_identity = False
-# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+# show_only: set[str] = {
+#     "first_word",
+#     "writing_stories/main_character_name",
+#     "is_even",
+#     "matches_survival_instinct",
+#     "matches_myopic_reward",
+#     MICRO_AVERAGE_LABEL,
+# }
 plot_without_comparison(
     object_model=object_model,
     meta_model=meta_model,

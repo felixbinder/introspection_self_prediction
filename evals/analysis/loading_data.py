@@ -467,6 +467,7 @@ def load_meta_dfs(
                     # raise ValueError(
                     #     f"Response property {response_property} not found in row {row}, {required_response_properties=}"
                     # )
+                    print(f"WARN: Response property {response_property} not found in row {row}, skipping")
                     continue
                 object_level_response = row[response_property]
                 # sometimes its a list when it fails

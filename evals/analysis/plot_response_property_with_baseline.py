@@ -6,11 +6,7 @@ df = pd.read_csv("double_finetune.csv")
 
 # Calculate macro average
 def calculate_macro_average(df):
-    macro_avg = df.groupby("label").agg({
-        "accuracy": "mean", 
-        "error": "mean", 
-        "mode_baseline": "mean"
-    }).reset_index()
+    macro_avg = df.groupby("label").agg({"accuracy": "mean", "error": "mean", "mode_baseline": "mean"}).reset_index()
     macro_avg["response_property"] = "Macro Average"
     return macro_avg
 
@@ -25,19 +21,24 @@ sorted_properties.append("Macro Average")
 # Function to create and show the chart
 def create_chart(df, title, sorted_properties):
     fig = go.Figure()
-    
+
     # Calculate bar positions
     n_properties = len(sorted_properties)
     n_labels = len(df["label"].unique())
     bar_width = 0.8 / n_labels
-    
+
     for i, label in enumerate(df["label"].unique()):
         mask = df["label"] == label
-        df_sorted = df[mask].set_index("response_property").loc[sorted_properties].reset_index()
+        df_label = df[mask].set_index("response_property")
         
+        # Filter sorted_properties to only include those present in df_label
+        available_properties = [prop for prop in sorted_properties if prop in df_label.index]
+        
+        df_sorted = df_label.loc[available_properties].reset_index()
+
         # Calculate x-positions for bars and scatter points
-        x_positions = [j + (i - (n_labels-1)/2) * bar_width for j in range(n_properties)]
-        
+        x_positions = [sorted_properties.index(prop) + (i - (n_labels - 1) / 2) * bar_width for prop in available_properties]
+
         # Accuracy bars
         fig.add_trace(
             go.Bar(
@@ -47,18 +48,18 @@ def create_chart(df, title, sorted_properties):
                 text=df_sorted["accuracy"].apply(lambda x: f"{x*100:.1f}%"),
                 textposition="outside",
                 error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),
-                width=bar_width
+                width=bar_width,
             )
         )
-        
+
         # Mode baseline markers
         fig.add_trace(
             go.Scatter(
                 x=x_positions,
                 y=df_sorted["mode_baseline"] * 100,
-                mode='markers',
+                mode="markers",
                 name=f"{label} (Mode Baseline)",
-                marker=dict(symbol='star', size=8, color='red'),
+                marker=dict(symbol="star", size=8, color="red"),
             )
         )
 
@@ -69,17 +70,9 @@ def create_chart(df, title, sorted_properties):
         barmode="group",
         yaxis=dict(range=[0, 100]),
         legend=dict(traceorder="normal"),
-        xaxis=dict(
-            tickangle=45,
-            tickmode='array',
-            tickvals=list(range(n_properties)),
-            ticktext=sorted_properties
-        ),
+        xaxis=dict(tickangle=45, tickmode="array", tickvals=list(range(n_properties)), ticktext=sorted_properties),
     )
     fig.show()
-
-# Create the chart
-create_chart(df, "Response Properties: Model Accuracy with Mode Baseline and 95% CI", sorted_properties)
 
 # Create the chart
 create_chart(df, "Response Properties: Model Accuracy with Mode Baseline and 95% CI", sorted_properties)
