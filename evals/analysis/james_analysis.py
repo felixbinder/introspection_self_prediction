@@ -28,6 +28,7 @@ class FlatObjectMeta(BaseModel):
     task: str
     string: str
     meta_predicted_correctly: bool
+    meta_response: str
     response_property: str
     meta_model: str
     object_model: str
@@ -36,6 +37,7 @@ class FlatObjectMeta(BaseModel):
     object_complied: bool
     meta_complied: bool
     shifted: Literal["shifted", "same", "not_compliant", "not_calculated"]
+    modal_response_property_answer: str
 
     def rename_matches_behavior(self):
         # if "matches" in self.response_property, rename to "matches behavior"
@@ -43,6 +45,10 @@ class FlatObjectMeta(BaseModel):
         if "matches" in self.response_property:
             new.response_property = "matches behavior"
         return new
+
+    @property
+    def mode_is_correct(self) -> bool:
+        return self.object_response_property_answer == self.modal_response_property_answer
 
 
 @dataclass
@@ -182,6 +188,8 @@ def flat_object_meta(
         lambda x: (x.task, x.string, x.response_property)
     ).to_dict()
     compared: Slist[FlatObjectMeta] = Slist()
+    # for mode, group by task + response_property
+    mode_grouping = objects.group_by(lambda x: (x.task, x.response_property)).to_dict()
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
@@ -189,7 +197,10 @@ def flat_object_meta(
             raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
             continue
-        for obj in objects_grouped[key]:
+        mode_objects = mode_grouping[(meta.task, meta.response_property)]
+        modal_object_answer = mode_objects.map(lambda x: x.response_property_answer).mode_or_raise()
+        objects_for_meta = objects_grouped[key]
+        for obj in objects_for_meta:
             cleaned_object_response = clean_for_comparison(obj.response_property_answer)
             cleaned_meta_response = clean_for_comparison(meta.response)
             predicted_correctly = cleaned_object_response == cleaned_meta_response
@@ -202,11 +213,13 @@ def flat_object_meta(
                     shifted = "not_compliant"
             else:
                 shifted = "not_calculated"
+
             compared.append(
                 FlatObjectMeta(
                     meta_predicted_correctly=predicted_correctly,
                     task=meta.task,
                     string=meta.string,
+                    meta_response=meta.response,
                     response_property=meta.response_property,
                     meta_model=meta.meta_model,
                     object_model=obj.object_model,
@@ -215,6 +228,7 @@ def flat_object_meta(
                     object_complied=obj.compliance,
                     meta_complied=meta.compliance,
                     shifted=shifted,
+                    modal_response_property_answer=modal_object_answer,
                 )
             )
 
@@ -263,6 +277,7 @@ def add_micro_average(items: Slist[FlatObjectMeta]) -> Slist[FlatObjectMeta]:
                 meta_predicted_correctly=compared.meta_predicted_correctly,
                 task=compared.task,
                 string=compared.string,
+                meta_response=compared.meta_response,
                 response_property=MICRO_AVERAGE_LABEL,
                 meta_model=compared.meta_model,
                 object_model=compared.object_model,
@@ -271,6 +286,7 @@ def add_micro_average(items: Slist[FlatObjectMeta]) -> Slist[FlatObjectMeta]:
                 object_complied=compared.object_complied,
                 meta_complied=compared.meta_complied,
                 shifted=compared.shifted,
+                modal_response_property_answer=compared.modal_response_property_answer,
             )
         )
     return items + output
@@ -534,6 +550,7 @@ def calculate_shift_results(
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":
         pass
+    flats = add_micro_average(flats)
 
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
@@ -549,6 +566,7 @@ def calculate_shift_results(
         stats: AverageStats = values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
+        mode_baseline = values.map(lambda x: x.mode_is_correct).average_or_raise()
         shift_percentage = values.map(lambda x: x.shifted == "shifted").average_or_raise()
 
         # acc * 100 1 d.p
@@ -567,6 +585,7 @@ def calculate_shift_results(
             "error": error,
             "shifted": shift_percentage,
             # "mode_accuracy": mode_acc,
+            "mode_baseline": mode_baseline,
             "compliance_rate": compliance_rate,
             "count": len(values),
             "object_model": object_model,
@@ -578,7 +597,7 @@ def calculate_shift_results(
 
     df = pd.DataFrame(dataframe_row)
     # to csv inspect_response_property_results.csv
-    df.to_csv("response_property_results.csv")
+    df.to_csv("response_property_results.csv", index=False)
 
 
 def plot_without_comparison(
@@ -618,6 +637,7 @@ def plot_without_comparison(
         stats: AverageStats = values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
+        mode_baseline = values.map(lambda x: x.mode_is_correct).average_or_raise()
 
         # acc * 100 1 d.p
         # acc_formatted = f"{acc:1f}"
@@ -629,6 +649,7 @@ def plot_without_comparison(
             "response_property": response_property,
             "accuracy": acc,
             "error": error,
+            "mode_baseline": mode_baseline,
             # "mode_accuracy": mode_acc,
             "compliance_rate": compliance_rate,
             "count": len(values),
@@ -641,7 +662,7 @@ def plot_without_comparison(
 
     df = pd.DataFrame(dataframe_row)
     # to csv inspect_response_property_results.csv
-    df.to_csv("response_property_results.csv")
+    df.to_csv("response_property_results.csv", index=False)
 
 
 # prefinetune_model: str = "gpt-3.5-turbo-1106"
@@ -743,12 +764,19 @@ def plot_without_comparison(
 # show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
 # include_identity = True
 
-# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-# # postfinetune_model: str = "gpt-3.5-turbo-0125"
-# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
-# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
-# include_identity = False
+object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# postfinetune_model: str = "gpt-3.5-turbo-0125"
+exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+show_only: set[str] = {
+    "first_word",
+    "writing_stories/main_character_name",
+    "is_even",
+    "matches_survival_instinct",
+    "matches_myopic_reward",
+    MICRO_AVERAGE_LABEL,
+}
+include_identity = False
 
 ## gpt-4o predicting A_ft_A
 # object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
@@ -757,6 +785,15 @@ def plot_without_comparison(
 # exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 # include_identity = False
 # show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+plot_without_comparison(
+    object_model=object_model,
+    meta_model=meta_model,
+    exp_folder=exp_folder,
+    exclude_noncompliant=False,
+    include_identity=include_identity,
+    only_response_properties=show_only,
+)
+
 
 ## gpt-3.5 predicting itself
 # object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
@@ -769,26 +806,43 @@ def plot_without_comparison(
 
 # 2x more samples ev 1
 # object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
-object_model = "gpt-3.5-turbo-0125"
+# object_model = "gpt-3.5-turbo-0125"
 # object_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
-meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
-exp_folder = EXP_DIR / "jun26_leave_out_response_prop_2k_samples"
-include_identity = False
-show_only: set[str] = {
-    "first_word",
-    "writing_stories/main_character_name",
-    "is_even",
-    "matches_survival_instinct",
-    "matches_myopic_reward",
-    MICRO_AVERAGE_LABEL,
-}
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+# exp_folder = EXP_DIR / "jun26_leave_out_response_prop_2k_samples"
+# include_identity = False
+# show_only: set[str] = {
+#     "first_word",
+#     "writing_stories/main_character_name",
+#     "is_even",
+#     "matches_survival_instinct",
+#     "matches_myopic_reward",
+#     MICRO_AVERAGE_LABEL,
+# }
 
 
-plot_without_comparison(
-    object_model=object_model,
-    meta_model=meta_model,
-    exp_folder=exp_folder,
-    exclude_noncompliant=False,
-    include_identity=include_identity,
-    only_response_properties=show_only,
-)
+# investigate may 20
+# object_model: str = "gpt-3.5-turbo-1106"
+# object_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# meta_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# # prefinetune_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# # postfinetune_model = "projects/351298396653/locations/us-central1/endpoints/8583876282930954240"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+# include_identity = False
+# show_only: set[str] = set()
+
+
+## shift with baseline
+
+# prefinetune_model = "gpt-3.5-turbo-1106"
+# postfinetune_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+# exp_folder = EXP_DIR / "may20_thrifty_sweep"
+# calculate_shift_results(
+#     to_compare_before=prefinetune_model,
+#     to_compare_after=postfinetune_model,
+#     shifting="only_shifted",
+#     prefinetuned_model=prefinetune_model,
+#     postfinetuned_model=postfinetune_model,
+#     exp_folder=exp_folder,
+#     # only_response_properties=show_only,
+# )
