@@ -463,6 +463,11 @@ def load_meta_dfs(
         required_response_properties = response_properties_mapping[task]
         for i, row in df.iterrows():
             for response_property in required_response_properties:
+                if response_property not in row:
+                    raise ValueError(
+                        f"Response property {response_property} not found in row {row}, {required_response_properties=}"
+                    )
+                #     continue
                 object_level_response = row[response_property]
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True

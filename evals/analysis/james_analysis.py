@@ -2,7 +2,6 @@ import typing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
-from xml.etree.ElementInclude import include
 
 import pandas as pd
 from pydantic import BaseModel
@@ -20,6 +19,7 @@ from evals.analysis.loading_data import (
     modal_baseline,
 )
 from evals.locations import EXP_DIR
+from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
 
@@ -185,10 +185,10 @@ def flat_object_meta(
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
-            print(f"Key {key} not found in objects_grouped. Weird...")
+            # print(f"Key {key} not found in objects_grouped. Weird...")
             raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
-            # continue
+            continue
         for obj in objects_grouped[key]:
             cleaned_object_response = clean_for_comparison(obj.response_property_answer)
             cleaned_meta_response = clean_for_comparison(meta.response)
@@ -280,7 +280,6 @@ def single_comparison_flat(
     exp_folder: Path,
     object_model: str,
     meta_model: str,
-    add_micro_average: bool = True,
     exclude_noncompliant: bool = False,
 ) -> Slist[FlatObjectMeta]:
     # If shifted_only is True, only compares objects that have shifted.
@@ -608,6 +607,9 @@ def plot_without_comparison(
         response_property, object_model, meta_model = group
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
+        if response_property == "first_word":
+            # dump
+            write_jsonl_file_from_basemodel("first_word.jsonl", values)
         # print(f"Compliance rate: {compliance_rate}")
         # modal_baselines = modal_baseline(filtered_objects)
         # correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
@@ -734,12 +736,12 @@ def plot_without_comparison(
 # exp_folder = EXP_DIR / "jun25_gpt4o_inference_only"
 
 
-object_model: str = "gpt-3.5-turbo-0125"
-meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-# postfinetune_model: str = "gpt-3.5-turbo-0125"
-exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
-show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
-include_identity = True
+# object_model: str = "gpt-3.5-turbo-0125"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# # postfinetune_model: str = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+# include_identity = True
 
 # object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
 # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
@@ -747,6 +749,39 @@ include_identity = True
 # exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 # show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
 # include_identity = False
+
+## gpt-4o predicting A_ft_A
+# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji"
+# # postfinetune_model: str = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# include_identity = False
+# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+
+## gpt-3.5 predicting itself
+# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# # postfinetune_model: str = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# include_identity = False
+# show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
+
+
+# 2x more samples ev 1
+# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+object_model = "gpt-3.5-turbo-0125"
+# object_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+exp_folder = EXP_DIR / "jun26_leave_out_response_prop_2k_samples"
+include_identity = False
+show_only: set[str] = {
+    "first_word",
+    "writing_stories/main_character_name",
+    "is_even",
+    "matches_survival_instinct",
+    "matches_myopic_reward",
+    MICRO_AVERAGE_LABEL,
+}
 
 
 plot_without_comparison(
