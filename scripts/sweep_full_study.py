@@ -470,7 +470,7 @@ class StudyRunner:
                 existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model.replace("/", "-") / "train_dataset.jsonl"
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
                 new_jsonl: Path = (
-                    EXP_DIR / "finetuning" / self.args.study_name / model / "other_evals_combined_train_dataset.jsonl"
+                    EXP_DIR / "finetuning" / self.args.study_name / model.replace("/", "-") / "other_evals_combined_train_dataset.jsonl"
                 )
                 # idempotent so we don't need state check of whether we've done this before
                 add_new_samples_to_existing_jsonl_and_shuffle(
