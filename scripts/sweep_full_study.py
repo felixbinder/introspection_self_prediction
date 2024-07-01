@@ -465,7 +465,7 @@ class StudyRunner:
 
             # Now add the samples to the existing jsonl files
             for model, model_samples in additional_samples:
-                existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model / "train_dataset.jsonl"
+                existing_jsonl: Path = EXP_DIR / "finetuning" / self.args.study_name / model.replace("/", "-") / "train_dataset.jsonl"
                 assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
                 new_jsonl: Path = (
                     EXP_DIR / "finetuning" / self.args.study_name / model / "other_evals_combined_train_dataset.jsonl"
