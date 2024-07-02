@@ -193,8 +193,8 @@ def flat_object_meta(
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
-            # print(f"Key {key} not found in objects_grouped. Weird...")
-            raise ValueError(f"Key {key} not found in objects_grouped")
+            print(f"Key {key} not found in objects_grouped. Weird...")
+            # raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
             continue
         mode_objects = mode_grouping[(meta.task, meta.response_property)]
@@ -343,7 +343,6 @@ def single_comparison_flat(
         )
 
         unique_response_properties = filtered_metas.map(lambda x: x.response_property).to_set()
-
 
         for response_property in unique_response_properties:
             new_filtered_objects = filtered_objects.filter(
@@ -540,7 +539,7 @@ def calculate_shift_results(
     flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
-    # flats = flats.map(lambda x: x.rename_matches_behavior())
+    flats = flats.map(lambda x: x.rename_matches_behavior())
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
     if shifting == "only_same":
@@ -761,19 +760,19 @@ def plot_without_comparison(
 # show_only: set[str] = {"first_word", "writing_stories/main_character_name", "is_even", "matches_survival_instinct", "matches_myopic_reward", MICRO_AVERAGE_LABEL}
 # include_identity = True
 
-object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-# postfinetune_model: str = "gpt-3.5-turbo-0125"
-exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
-show_only: set[str] = {
-    "first_word",
-    "writing_stories/main_character_name",
-    "is_even",
-    "matches_survival_instinct",
-    "matches_myopic_reward",
-    MICRO_AVERAGE_LABEL,
-}
-include_identity = False
+# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# # postfinetune_model: str = "gpt-3.5-turbo-0125"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# show_only: set[str] = {
+#     "first_word",
+#     "writing_stories/main_character_name",
+#     "is_even",
+#     "matches_survival_instinct",
+#     "matches_myopic_reward",
+#     MICRO_AVERAGE_LABEL,
+# }
+# include_identity = False
 
 ## gpt-4o predicting A_ft_A
 # object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
@@ -789,14 +788,14 @@ include_identity = False
 #     "matches_myopic_reward",
 #     MICRO_AVERAGE_LABEL,
 # }
-plot_without_comparison(
-    object_model=object_model,
-    meta_model=meta_model,
-    exp_folder=exp_folder,
-    exclude_noncompliant=False,
-    include_identity=include_identity,
-    only_response_properties=show_only,
-)
+# plot_without_comparison(
+#     object_model=object_model,
+#     meta_model=meta_model,
+#     exp_folder=exp_folder,
+#     exclude_noncompliant=False,
+#     include_identity=include_identity,
+#     only_response_properties=show_only,
+# )
 
 
 ## gpt-3.5 predicting itself
@@ -850,3 +849,30 @@ plot_without_comparison(
 #     exp_folder=exp_folder,
 #     # only_response_properties=show_only,
 # )
+
+
+# evidence 1 on 20 june
+# object_model = "gpt-3.5-turbo-0125"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
+# exp_folder = EXP_DIR / "jun20_training_on_everything"
+# calculate_shift_results(
+#     to_compare_before=object_model,
+#     to_compare_after=meta_model,
+#     shifting="all",
+#     prefinetuned_model=object_model,
+#     postfinetuned_model=meta_model,
+#     exp_folder=exp_folder,
+
+# )
+
+object_model = "gpt-4o-2024-05-13"
+meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+exp_folder = EXP_DIR / "jun20_training_on_everything"
+calculate_shift_results(
+    to_compare_before=object_model,
+    to_compare_after=meta_model,
+    shifting="only_shifted",
+    prefinetuned_model=object_model,
+    postfinetuned_model=meta_model,
+    exp_folder=exp_folder,
+)

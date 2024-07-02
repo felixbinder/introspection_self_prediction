@@ -343,12 +343,27 @@ def test_main():
     # eval_list = [WillYouGiveDeontology]
     eval_list = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 500
+    limit = 1000
     # What models to run?
     # prefinetune_model: str = "gpt-3.5-turbo-1106"
     # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-    object_model: str = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, doesn't work
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, 2x more samples
+    object_model = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+
+
+    # train on all... Train does help!
+    # object_model = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
+    # object_model = "gpt-4o-2024-05-13"
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
     models = Slist(
         [
             object_model,
@@ -388,9 +403,42 @@ def test_main():
         study_folder=study_folder,
         show_plot=True,
         
-        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/jun17_training_on_everything/other_evals_cache"
+        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/cache"
+    )
+
+def test_cross_train():
+    # What evals to run?
+    # eval_list = [WillYouGiveDeontology]
+    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout]
+    print(f"Running evals: {[e.name() for e in eval_list]}")
+    limit = 2000
+    # What models to run?
+    # prefinetune_model: str = "gpt-3.5-turbo-1106"
+    # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, doesn't work
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, 2x more samples
+    first = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y")
+    second = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji")
+    # We want to run all the combinations of the models
+    object_and_meta_models = [first, second]
+    study_folder = EXP_DIR / "other_evals"
+
+    run_sweep_over_other_evals_ids(
+        eval_list=eval_list,
+        object_and_meta_ids=object_and_meta_models,
+        limit=limit,
+        study_folder=study_folder,
+        show_plot=True,
+        
+        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/cache"
     )
 
 
 if __name__ == "__main__":
-    test_main()
+    test_cross_train()
