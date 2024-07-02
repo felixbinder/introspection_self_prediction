@@ -235,6 +235,12 @@ async def async_main(cfg: DictConfig):
     return complete
 
 
+
+
+def path_to_object_level(study_dir: str, language_model: str, prompt_method: str, task_name: str, task_set: str, note: str):
+    # {study_dir}/${sanitize:object_level_${language_model.model}_${prompt.method}_prompt_${task.name}_${task.set}_task}_${note}_note
+    return f"{study_dir}/object_level_{language_model}_{prompt_method}_prompt_{task_name}_{task_set}_{note}"
+
 def setup_data_file(cfg, exp_dir, filename):
     # we have to create the data{seed}.csv file
     if cfg.strings_path != "none" and cfg.strings_path is not None:
@@ -247,7 +253,15 @@ def setup_data_file(cfg, exp_dir, filename):
         LOGGER.info("No strings file provided. Using the base data as the strings file.")
     if cfg.base_dir is None or cfg.base_dir == "none":
         LOGGER.warning(f"No base data directory provided. Trying to find one in {cfg.study_dir}")
-        base_data_path = find_matching_base_dir(cfg)
+        base_data_path = path_to_object_level(
+            study_dir=cfg.study_dir,
+            language_model=cfg.language_model.model,
+            prompt_method=cfg.prompt.method,
+            task_name=cfg.task.name,
+            task_set=cfg.task.set,
+            note=cfg.note,
+        )
+        # base_data_path = find_matching_base_dir(cfg)
     else:
         base_data_path = Path(cfg.base_dir)
     base_data_path = base_data_path / f"data{cfg.base_seed}.csv"
