@@ -865,14 +865,29 @@ def plot_without_comparison(
 
 # )
 
-object_model = "gpt-4o-2024-05-13"
-meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-exp_folder = EXP_DIR / "jun20_training_on_everything"
+# object_model = "gpt-4o-2024-05-13"
+# meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+# exp_folder = EXP_DIR / "jun20_training_on_everything"
+
+object_model: str = "gpt-3.5-turbo-0125"
+meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# postfinetune_model: str = "gpt-3.5-turbo-0125"
+exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+show_only: set[str] = {
+    "first_word",
+    "writing_stories/main_character_name",
+    "is_even",
+    "matches_survival_instinct",
+    "matches_myopic_reward",
+    MICRO_AVERAGE_LABEL,
+}
+
 calculate_shift_results(
     to_compare_before=object_model,
     to_compare_after=meta_model,
-    shifting="only_shifted",
+    shifting="all",
     prefinetuned_model=object_model,
     postfinetuned_model=meta_model,
     exp_folder=exp_folder,
+    only_response_properties=show_only,
 )
