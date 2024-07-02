@@ -258,7 +258,7 @@ def setup_data_file(cfg, exp_dir, filename):
         base_data_path = path_to_object_level(
             study_dir=cfg.study_dir,
             language_model=cfg.language_model.model,
-            prompt_method=cfg.prompt.method,
+            prompt_method=cfg.prompt.method.replace("meta_level", "object_level"),
             task_name=cfg.task.name,
             task_set=cfg.task.set,
             note=cfg.note,
