@@ -1,3 +1,4 @@
+import asyncio
 import typing
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,37 +19,19 @@ from evals.analysis.loading_data import (
     load_meta_dfs,
     modal_baseline,
 )
+from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
+from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
+from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
+from other_evals.counterfactuals.runners import BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, OtherEvalRunner, run_from_commands
+from evals.analysis.james.object_meta import FlatObjectMeta
+
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
 
 
-class FlatObjectMeta(BaseModel):
-    task: str
-    string: str
-    meta_predicted_correctly: bool
-    meta_response: str
-    response_property: str
-    meta_model: str
-    object_model: str
-    object_response_property_answer: str
-    object_response_raw_response: str
-    object_complied: bool
-    meta_complied: bool
-    shifted: Literal["shifted", "same", "not_compliant", "not_calculated"]
-    modal_response_property_answer: str
 
-    def rename_matches_behavior(self):
-        # if "matches" in self.response_property, rename to "matches behavior"
-        new = self.model_copy()
-        if "matches" in self.response_property:
-            new.response_property = "matches behavior"
-        return new
-
-    @property
-    def mode_is_correct(self) -> bool:
-        return self.object_response_property_answer == self.modal_response_property_answer
 
 
 @dataclass
@@ -369,7 +352,6 @@ def get_flat_object_meta(
     to_compare_after: str,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
-    add_micro_average: bool = True,
     exclude_noncompliant: bool = False,
 ) -> Slist[FlatObjectMeta]:
     # If shifted_only is True, only compares objects that have shifted.
@@ -518,7 +500,7 @@ def james_micro():
     print(f"Mode accuracy: {mode_acc}")
 
 
-def calculate_shift_results(
+async def calculate_shift_results(
     to_compare_before: str,
     to_compare_after: str,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
@@ -528,6 +510,20 @@ def calculate_shift_results(
     exclude_noncompliant: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
 ) -> None:
+    other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    if other_evals_to_run:
+        api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
+        results = await run_from_commands(
+            evals_to_run=other_evals_to_run,
+            object_and_meta=[(to_compare_before, to_compare_after), (to_compare_after,to_compare_after)],
+            limit=500,
+            api=api,
+        )
+        results_formated = results.map(
+            lambda x: x.to_james_analysis_format()
+        )
+    else:
+        results_formated = Slist()
     flats: Slist[FlatObjectMeta] = get_flat_object_meta(
         prefinetuned_model=prefinetuned_model,
         postfinetuned_model=postfinetuned_model,
@@ -539,6 +535,14 @@ def calculate_shift_results(
     flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
+
+    if other_evals_to_run:
+        flats = flats + results_formated
+    
+
+    
+
+    
     flats = flats.map(lambda x: x.rename_matches_behavior())
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
@@ -869,25 +873,31 @@ def plot_without_comparison(
 # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
 # exp_folder = EXP_DIR / "jun20_training_on_everything"
 
-object_model: str = "gpt-3.5-turbo-0125"
-meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-# postfinetune_model: str = "gpt-3.5-turbo-0125"
-exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
-show_only: set[str] = {
-    "first_word",
-    "writing_stories/main_character_name",
-    "is_even",
-    "matches_survival_instinct",
-    "matches_myopic_reward",
-    MICRO_AVERAGE_LABEL,
-}
 
-calculate_shift_results(
-    to_compare_before=object_model,
-    to_compare_after=meta_model,
-    shifting="all",
-    prefinetuned_model=object_model,
-    postfinetuned_model=meta_model,
-    exp_folder=exp_folder,
-    only_response_properties=show_only,
-)
+async def main():
+    object_model: str = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+    # postfinetune_model: str = "gpt-3.5-turbo-0125"
+    exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+    show_only: set[str] = {
+        "first_word",
+        "writing_stories/main_character_name",
+        "is_even",
+        "matches_survival_instinct",
+        "matches_myopic_reward",
+        MICRO_AVERAGE_LABEL,
+    }
+    setup_environment()
+
+    await calculate_shift_results(
+        to_compare_before=object_model,
+        to_compare_after=meta_model,
+        shifting="all",
+        prefinetuned_model=object_model,
+        postfinetuned_model=meta_model,
+        exp_folder=exp_folder,
+        only_response_properties=show_only,
+    )
+if __name__ == "__main__":
+    asyncio.run(main())
+

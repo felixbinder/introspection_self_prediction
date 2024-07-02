@@ -411,7 +411,7 @@ def test_cross_train():
     # eval_list = [WillYouGiveDeontology]
     eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 2000
+    limit = 1000
     # What models to run?
     # prefinetune_model: str = "gpt-3.5-turbo-1106"
     # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
@@ -423,8 +423,14 @@ def test_cross_train():
     # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
 
     # half held out, 2x more samples
-    first = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y")
-    second = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji")
+    # first = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y")
+    # second = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji")
+
+    # leave out only are you sure
+    first = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gTagbGV", "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gTagbGV")
+    second = ("gpt-3.5-turbo-0125","ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gTagbGV")
+
+
     # We want to run all the combinations of the models
     object_and_meta_models = [first, second]
     study_folder = EXP_DIR / "other_evals"
