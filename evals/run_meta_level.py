@@ -21,6 +21,7 @@ from evals.utils import (
     async_function_with_retry,
     collate_mode_of_n,
     get_current_git_hash,
+    sanitize_folder_name,
     setup_environment,
 )
 
@@ -239,7 +240,8 @@ async def async_main(cfg: DictConfig):
 
 def path_to_object_level(study_dir: str, language_model: str, prompt_method: str, task_name: str, task_set: str, note: str) -> Path:
     # {study_dir}/${sanitize:object_level_${language_model.model}_${prompt.method}_prompt_${task.name}_${task.set}_task}_${note}_note
-    return Path(f"{study_dir}/object_level_{language_model}_{prompt_method}_prompt_{task_name}_{task_set}_{note}")
+    sanitized = sanitize_folder_name(f"object_level_{language_model}_{prompt_method}_prompt_{task_name}_{task_set}_{note}")
+    return Path(f"{study_dir}/{sanitized}")
 
 def setup_data_file(cfg, exp_dir, filename):
     # we have to create the data{seed}.csv file
