@@ -44,44 +44,47 @@ class DatasetRunner:
         self.inference_api = inference_api
         self.print_prompt_and_response = print_prompt_and_response
         self.cache_manager = cache_manager
+        # hack to make it not explode
+        self.semaphore = asyncio.Semaphore(20)
 
     async def run(self, index: int, row: pd.Series) -> dict:
-        prompt = self.process_prompt(row)
+        with await self.semaphore:
+            prompt = self.process_prompt(row)
 
-        # load cache if available
-        if self.cache_manager is not None:
-            cache = self.cache_manager.maybe_load_cache(prompt, self.llm_params)
-            if cache is not None:
-                LOGGER.info(f"Loaded cache for row {index}")
-                return {
-                    "answer": cache.responses[0].completion,
-                    "logprobs": cache.responses[0].logprobs,
-                    f"{self.property_name}_complete": True,
-                }
-
-        try:
-            responses = await self.inference_api(
-                model_ids=self.llm_params.model,
-                prompt=prompt,
-                temperature=self.llm_params.temperature,
-                max_tokens=self.llm_params.max_tokens,
-                top_p=self.llm_params.top_p,
-                num_candidates_per_completion=self.llm_params.num_candidates_per_completion,
-                insufficient_valids_behaviour=self.llm_params.insufficient_valids_behaviour,
-                is_valid=lambda x: True,  # len(x) > 0 and len(x) < 10 and " " not in x, # x should be a single word
-                print_prompt_and_response=self.print_prompt_and_response,
-                logprobs=self.llm_params.logprobs,
-                seed=self.llm_params.seed,
-            )
-            # save successful prompt/response to file
+            # load cache if available
             if self.cache_manager is not None:
-                self.cache_manager.save_cache(prompt, self.llm_params, responses)
+                cache = self.cache_manager.maybe_load_cache(prompt, self.llm_params)
+                if cache is not None:
+                    LOGGER.info(f"Loaded cache for row {index}")
+                    return {
+                        "answer": cache.responses[0].completion,
+                        "logprobs": cache.responses[0].logprobs,
+                        f"{self.property_name}_complete": True,
+                    }
 
-            answer = responses[0].completion
-            logprobs = responses[0].logprobs
-            complete = True
-            self.inference_api.log_model_timings()
-            LOGGER.info(f"Completed row {index}\tRunning cost: ${self.inference_api.running_cost:.3f}")
+            try:
+                responses = await self.inference_api(
+                    model_ids=self.llm_params.model,
+                    prompt=prompt,
+                    temperature=self.llm_params.temperature,
+                    max_tokens=self.llm_params.max_tokens,
+                    top_p=self.llm_params.top_p,
+                    num_candidates_per_completion=self.llm_params.num_candidates_per_completion,
+                    insufficient_valids_behaviour=self.llm_params.insufficient_valids_behaviour,
+                    is_valid=lambda x: True,  # len(x) > 0 and len(x) < 10 and " " not in x, # x should be a single word
+                    print_prompt_and_response=self.print_prompt_and_response,
+                    logprobs=self.llm_params.logprobs,
+                    seed=self.llm_params.seed,
+                )
+                # save successful prompt/response to file
+                if self.cache_manager is not None:
+                    self.cache_manager.save_cache(prompt, self.llm_params, responses)
+
+                answer = responses[0].completion
+                logprobs = responses[0].logprobs
+                complete = True
+                self.inference_api.log_model_timings()
+                LOGGER.info(f"Completed row {index}\tRunning cost: ${self.inference_api.running_cost:.3f}")
         except RuntimeError as e:
             complete = False
             answer = traceback.format_exc()
