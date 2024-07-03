@@ -86,9 +86,28 @@ class OpenAIChatModel(OpenAIModel):
 
         prompt_file = self.create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)
         api_start = time.time()
-        api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
-            messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
-        )
+        try:
+            api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
+                messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
+            )
+        except openai.error.InvalidRequestError as e:
+            LOGGER.error(f"Invalid request error: {e} for prompt: {prompt.openai_format()}")
+            if "We've encountered an issue with repetitive patterns in your prompt" in str(e):
+                LOGGER.warning("It looks like there are repetitions in the prompt. Retrying with a truncated prompt to 1000 characters.")
+                # truncate prompt to get rid of repetitions
+                truncated_prompt = prompt.truncate_messages()
+                api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
+                    messages=truncated_prompt.openai_format(), model=model_id, organization=self.organization, **params
+                )
+                LOGGER.info(f"Successfully completed the request with a truncated prompt.")
+            else:
+                raise e
+        except Exception as e:
+            LOGGER.error(f"Error when getting response from OpenAI: {e}\nRetrying once before failing.\nThe prompt was: {prompt.openai_format()}")
+            time.sleep(1)
+            api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
+                messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
+            )
         api_duration = time.time() - api_start
         duration = time.time() - start_time
         context_token_cost, completion_token_cost = price_per_token(model_id)
