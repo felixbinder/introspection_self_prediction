@@ -20,6 +20,7 @@ from evals.generate_few_shot import generate_few_shot_data
 from evals.utils import (
     async_function_with_retry,
     collate_mode_of_n,
+    gather_max_par,
     get_current_git_hash,
     sanitize_folder_name,
     setup_environment,
@@ -44,8 +45,6 @@ class DatasetRunner:
         self.inference_api = inference_api
         self.print_prompt_and_response = print_prompt_and_response
         self.cache_manager = cache_manager
-        # hack to make it not explode
-        self.semaphore = asyncio.Semaphore(20)
 
     async def run(self, index: int, row: pd.Series) -> dict:
         prompt = self.process_prompt(row)
@@ -62,22 +61,20 @@ class DatasetRunner:
                 }
 
         try:
-            # hold semaphore to limit number of concurrent requests
-            async with self.semaphore:
-                responses = await self.inference_api(
-                    model_ids=self.llm_params.model,
-                    prompt=prompt,
-                    temperature=self.llm_params.temperature,
-                    max_tokens=self.llm_params.max_tokens,
-                    top_p=self.llm_params.top_p,
-                    num_candidates_per_completion=self.llm_params.num_candidates_per_completion,
-                    insufficient_valids_behaviour=self.llm_params.insufficient_valids_behaviour,
-                    is_valid=lambda x: True,  # len(x) > 0 and len(x) < 10 and " " not in x, # x should be a single word
-                    print_prompt_and_response=self.print_prompt_and_response,
-                    logprobs=self.llm_params.logprobs,
-                    seed=self.llm_params.seed,
-                    cais_path=self.llm_params.cais_path,
-                )
+            responses = await self.inference_api(
+                model_ids=self.llm_params.model,
+                prompt=prompt,
+                temperature=self.llm_params.temperature,
+                max_tokens=self.llm_params.max_tokens,
+                top_p=self.llm_params.top_p,
+                num_candidates_per_completion=self.llm_params.num_candidates_per_completion,
+                insufficient_valids_behaviour=self.llm_params.insufficient_valids_behaviour,
+                is_valid=lambda x: True,  # len(x) > 0 and len(x) < 10 and " " not in x, # x should be a single word
+                print_prompt_and_response=self.print_prompt_and_response,
+                logprobs=self.llm_params.logprobs,
+                seed=self.llm_params.seed,
+                cais_path=self.llm_params.cais_path,
+            )
             # save successful prompt/response to file
             if self.cache_manager is not None:
                 self.cache_manager.save_cache(prompt, self.llm_params, responses)
@@ -158,7 +155,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await asyncio.gather(*tasks)
+    results = await gather_max_par(100, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])
