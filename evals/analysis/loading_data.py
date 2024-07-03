@@ -519,8 +519,6 @@ def load_base_df_from_config(config: DictConfig, root_folder: Path = Path(os.get
     return base_df
 
 
-
-
 def find_matching_base_dir(config: DictConfig):
     """Finds the base dir for a config"""
     # check the config

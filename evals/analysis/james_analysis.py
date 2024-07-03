@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Literal
 
 import pandas as pd
-from pydantic import BaseModel
 from scipy import stats
 from slist import AverageStats, Group, Slist
 
+from evals.analysis.james.object_meta import FlatObjectMeta
 from evals.analysis.loading_data import (
     ComparedMeta,
     LoadedMeta,
@@ -21,17 +21,15 @@ from evals.analysis.loading_data import (
 )
 from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
-from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.runners import BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout, OtherEvalRunner, run_from_commands
-from evals.analysis.james.object_meta import FlatObjectMeta
-
+from other_evals.counterfactuals.runners import (
+    BiasDetectAreYouAffected,
+    BiasDetectWhatAnswerWithout,
+    run_from_commands,
+)
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
-
-
-
 
 
 @dataclass
@@ -348,8 +346,8 @@ def single_comparison_flat(
 
 def get_flat_object_meta(
     exp_folder: Path,
-    to_compare_before: str,
-    to_compare_after: str,
+    shift_before_model: str,
+    shift_after_model: str,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     exclude_noncompliant: bool = False,
@@ -395,11 +393,11 @@ def get_flat_object_meta(
 
     shift_model_objects, shift_model_metas = load_meta_dfs(
         Path(exp_folder),
-        {("task", "set"): ["val"], ("language_model", "model"): [to_compare_before, to_compare_after]},
+        {("task", "set"): ["val"], ("language_model", "model"): [shift_before_model, shift_after_model]},
         exclude_noncompliant=exclude_noncompliant,
     )
-    before_shift_objects = shift_model_objects.filter(lambda x: x.object_model == to_compare_before)
-    after_shift_objects = shift_model_objects.filter(lambda x: x.object_model == to_compare_after)
+    before_shift_objects = shift_model_objects.filter(lambda x: x.object_model == shift_before_model)
+    after_shift_objects = shift_model_objects.filter(lambda x: x.object_model == shift_after_model)
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
     assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
 
@@ -500,49 +498,51 @@ def james_micro():
     print(f"Mode accuracy: {mode_acc}")
 
 
-async def calculate_shift_results(
-    to_compare_before: str,
-    to_compare_after: str,
-    prefinetuned_model: str = "gpt-3.5-turbo-1106",
-    postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+def calculate_shift_results(
+    shift_before_model: str,
+    shift_after_model: str,
+    object_model: str = "gpt-3.5-turbo-1106",
+    meta_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     shifting: Literal["all", "only_shifted", "only_same"] = "all",
     exp_folder: Path = EXP_DIR / "may20_thrifty_sweep",
     exclude_noncompliant: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
+    include_identity: bool = False,
+    only_task: typing.AbstractSet[str] = set(),
+    micro_average: bool = True,
 ) -> None:
-    other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    other_evals_to_run = []
     if other_evals_to_run:
         api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
-        results = await run_from_commands(
+        results_co = run_from_commands(
             evals_to_run=other_evals_to_run,
-            object_and_meta=[(to_compare_before, to_compare_after), (to_compare_after,to_compare_after)],
+            object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
             limit=500,
             api=api,
         )
-        results_formated = results.map(
-            lambda x: x.to_james_analysis_format()
-        )
+        results = asyncio.run(results_co)
+        results_formated = results.map(lambda x: x.to_james_analysis_format())
     else:
         results_formated = Slist()
     flats: Slist[FlatObjectMeta] = get_flat_object_meta(
-        prefinetuned_model=prefinetuned_model,
-        postfinetuned_model=postfinetuned_model,
-        to_compare_before=to_compare_before,
-        to_compare_after=to_compare_after,
+        prefinetuned_model=object_model,
+        postfinetuned_model=meta_model,
+        shift_before_model=shift_before_model,
+        shift_after_model=shift_after_model,
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
     )
-    flats = flats.filter(lambda x: x.response_property != "identity")
+    if not include_identity:
+        flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
+    if only_task:
+        flats = flats.filter(lambda x: x.task in only_task)
 
     if other_evals_to_run:
         flats = flats + results_formated
-    
 
-    
-
-    
     flats = flats.map(lambda x: x.rename_matches_behavior())
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
@@ -550,12 +550,13 @@ async def calculate_shift_results(
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":
         pass
-    flats = add_micro_average(flats)
+    if micro_average:
+        flats = add_micro_average(flats)
 
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property:
-        response_property, object_model, meta_model = group
+        response_property, val_object_model, val_meta_model = group
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
         # print(f"Compliance rate: {compliance_rate}")
@@ -576,7 +577,7 @@ async def calculate_shift_results(
         # compliance_rate = f"{compliance_rate:1f}"
         label = (
             "Predicting behavior before training"
-            if object_model == prefinetuned_model
+            if object_model == val_object_model
             else "Predicting behavior after training"
         )
         result_row = {
@@ -588,8 +589,8 @@ async def calculate_shift_results(
             "mode_baseline": mode_baseline,
             "compliance_rate": compliance_rate,
             "count": len(values),
-            "object_model": object_model,
-            "meta_model": meta_model,
+            "object_model": val_object_model,
+            "meta_model": val_meta_model,
             "label": label,
         }
 
@@ -607,6 +608,7 @@ def plot_without_comparison(
     exclude_noncompliant: bool = False,
     include_identity: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
+    only_task_sets: typing.AbstractSet[str] = set(),
 ) -> None:
     flats: Slist[FlatObjectMeta] = single_comparison_flat(
         object_model=object_model,
@@ -618,7 +620,21 @@ def plot_without_comparison(
         flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
+    if only_task_sets:
+        flats = flats.filter(lambda x: x.task in only_task_sets)
     # flats = flats.map(lambda x: x.rename_matches_behavior())
+    other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    if other_evals_to_run:
+        api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
+        results_co = run_from_commands(
+            evals_to_run=other_evals_to_run,
+            object_and_meta=[(object_model, meta_model)],
+            limit=1_000,
+            api=api,
+        )
+        results = asyncio.run(results_co)
+        results_formated = results.map(lambda x: x.to_james_analysis_format())
+        flats = flats + results_formated
     flats = add_micro_average(flats)
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
@@ -874,30 +890,83 @@ def plot_without_comparison(
 # exp_folder = EXP_DIR / "jun20_training_on_everything"
 
 
-async def main():
-    object_model: str = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
-    # postfinetune_model: str = "gpt-3.5-turbo-0125"
-    exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
-    show_only: set[str] = {
-        "first_word",
-        "writing_stories/main_character_name",
-        "is_even",
-        "matches_survival_instinct",
-        "matches_myopic_reward",
-        MICRO_AVERAGE_LABEL,
-    }
-    setup_environment()
+# async def main_evidence_1():
+#     object_model: str = "gpt-3.5-turbo-0125"
+#     meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+#     # postfinetune_model: str = "gpt-3.5-turbo-0125"
+#     exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+#     show_only: set[str] = {
+#         "first_word",
+#         "writing_stories/main_character_name",
+#         "is_even",
+#         "matches_survival_instinct",
+#         "matches_myopic_reward",
+#         MICRO_AVERAGE_LABEL,
+#     }
+#     setup_environment()
 
-    await calculate_shift_results(
-        to_compare_before=object_model,
-        to_compare_after=meta_model,
-        shifting="all",
-        prefinetuned_model=object_model,
-        postfinetuned_model=meta_model,
-        exp_folder=exp_folder,
-        only_response_properties=show_only,
-    )
-if __name__ == "__main__":
-    asyncio.run(main())
+#     await calculate_shift_results(
+#         to_compare_before=object_model,
+#         to_compare_after=meta_model,
+#         shifting="all",
+#         prefinetuned_model=object_model,
+#         postfinetuned_model=meta_model,
+#         exp_folder=exp_folder,
+#         only_response_properties=show_only,
+#     )
+# if __name__ == "__main__":
+#     asyncio.run(main())
 
+
+# 2x more samples., and cross traiend
+# object_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+# meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+# meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji"
+# exp_folder = EXP_DIR / "jun26_leave_out_response_prop_2k_samples"
+# include_identity = True
+# show_only = {"identity"}
+# show_only: set[str] = {
+#     "first_word",
+#     "writing_stories/main_character_name",
+#     "is_even",
+#     "matches_survival_instinct",
+#     "matches_myopic_reward",
+#     MICRO_AVERAGE_LABEL,
+# }
+# setup_environment()
+# only_tasks = {"writing_stories", "mmlu_cot", "number_triplets", "survival_instinct", "myopic_reward"}
+# plot_without_comparison(
+#     object_model=object_model,
+#     meta_model=meta_model,
+#     exp_folder=exp_folder,
+#     exclude_noncompliant=False,
+#     include_identity=include_identity,
+#     only_response_properties=show_only,
+
+# )
+
+# shift on identity
+
+# cross trained on ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z
+# model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-gpt4o-sweep:9eFW626d
+
+# object_model: str = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+# meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji"
+
+
+exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+only_response_properties = {"identity"}
+calculate_shift_results(
+    shift_before_model="gpt-3.5-turbo-0125",
+    shift_after_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    shifting="all",
+    # object_model="gpt-3.5-turbo-0125",
+    # meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+    exp_folder=exp_folder,
+    include_identity=True,
+    only_response_properties=only_response_properties,
+    only_task={"wikipedia", "english_words", "daily_dialog", "personal_preferences", "self_referential"},
+    micro_average=False,
+)

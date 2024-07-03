@@ -10,10 +10,11 @@ def create_chart(df, title, sorted_properties):
 
     # Calculate bar positions
     n_properties = len(sorted_properties)
-    n_labels = len(df["label"].unique())
+    sorted_labels = sorted(df["label"].unique())
+    n_labels = len(sorted_labels)
     bar_width = 0.8 / n_labels
 
-    for i, label in enumerate(df["label"].unique()):
+    for i, label in enumerate(sorted_labels):
         mask = df["label"] == label
         df_label = df[mask].set_index("response_property")
 
@@ -72,7 +73,7 @@ def create_chart(df, title, sorted_properties):
 #     return macro_avg
 
 
-def main(csv_name: str):
+def main(csv_name: str, title: str = "Response Properties: Model Accuracy with Mode Baseline and 95% CI"):
     df = pd.read_csv(csv_name)
     # macro_avg = calculate_macro_average(df)
     # df = pd.concat([df, macro_avg])
@@ -83,9 +84,9 @@ def main(csv_name: str):
     # sorted_properties.append("Macro Average")
 
     # Create the chart
-    create_chart(df, "Response Properties: Model Accuracy with Mode Baseline and 95% CI", sorted_properties)
+    create_chart(df, title=title, sorted_properties=sorted_properties)
 
 
 # csv_name = "double_finetune.csv"
-csv_name = "response_property_results.csv"
-main(csv_name)
+csv_name = "response_property_results_evidence_2_all.csv"
+main(csv_name, title="Self/crossing prediction")
