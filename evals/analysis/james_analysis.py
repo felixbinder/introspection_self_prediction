@@ -601,15 +601,16 @@ def calculate_shift_results(
     df.to_csv("response_property_results.csv", index=False)
 
 
-def plot_without_comparison(
+def get_single_hue(
     object_model: str = "gpt-3.5-turbo-1106",
     meta_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     exp_folder: Path = EXP_DIR / "may20_thrifty_sweep",
     exclude_noncompliant: bool = False,
     include_identity: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
-    only_task_sets: typing.AbstractSet[str] = set(),
-) -> None:
+    only_tasks: typing.AbstractSet[str] = set(),
+    label: str = "Accuracy",
+) -> list[dict]:
     flats: Slist[FlatObjectMeta] = single_comparison_flat(
         object_model=object_model,
         meta_model=meta_model,
@@ -620,10 +621,11 @@ def plot_without_comparison(
         flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
-    if only_task_sets:
-        flats = flats.filter(lambda x: x.task in only_task_sets)
+    if only_tasks:
+        flats = flats.filter(lambda x: x.task in only_tasks)
     # flats = flats.map(lambda x: x.rename_matches_behavior())
-    other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    other_evals_to_run = []
     if other_evals_to_run:
         api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
         results_co = run_from_commands(
@@ -660,7 +662,6 @@ def plot_without_comparison(
         # error_formatted = f"{error:1f}"
         # mode_acc = f"{mode_acc:1f}"
         # compliance_rate = f"{compliance_rate:1f}"
-        label = "Accuracy"
         result_row = {
             "response_property": response_property,
             "accuracy": acc,
@@ -675,8 +676,29 @@ def plot_without_comparison(
         }
 
         dataframe_row.append(result_row)
+    return dataframe_row
 
-    df = pd.DataFrame(dataframe_row)
+
+def plot_without_comparison(
+    object_model: str = "gpt-3.5-turbo-1106",
+    meta_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep",
+    exclude_noncompliant: bool = False,
+    include_identity: bool = False,
+    only_response_properties: typing.AbstractSet[str] = set(),
+    only_task_sets: typing.AbstractSet[str] = set(),
+) -> None:
+    df = pd.DataFrame(
+        get_single_hue(
+            object_model=object_model,
+            meta_model=meta_model,
+            exp_folder=exp_folder,
+            exclude_noncompliant=exclude_noncompliant,
+            include_identity=include_identity,
+            only_response_properties=only_response_properties,
+            only_tasks=only_task_sets,
+        )
+    )
     # to csv inspect_response_property_results.csv
     df.to_csv("response_property_results.csv", index=False)
 
@@ -955,18 +977,40 @@ def plot_without_comparison(
 
 
 exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
-only_response_properties = {"identity"}
-calculate_shift_results(
-    shift_before_model="gpt-3.5-turbo-0125",
-    shift_after_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-    shifting="all",
-    # object_model="gpt-3.5-turbo-0125",
-    # meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+# only_response_properties = {"identity"}
+# calculate_shift_results(
+#     shift_before_model="gpt-3.5-turbo-0125",
+#     shift_after_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     shifting="all",
+#     # object_model="gpt-3.5-turbo-0125",
+#     # meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_response_properties=only_response_properties,
+#     only_task={"wikipedia", "english_words", "daily_dialog", "personal_preferences", "self_referential"},
+#     micro_average=False,
+# )
+
+## Evidence 2
+results = get_single_hue(
     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
     exp_folder=exp_folder,
     include_identity=True,
-    only_response_properties=only_response_properties,
-    only_task={"wikipedia", "english_words", "daily_dialog", "personal_preferences", "self_referential"},
-    micro_average=False,
+    only_tasks={"wikipedia", "english_words", "daily_dialog", "personal_preferences", "self_referential"},
+    only_response_properties={"identity"},
+    label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
+) + get_single_hue(
+    object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    exp_folder=exp_folder,
+    include_identity=True,
+    only_tasks={"wikipedia", "english_words", "daily_dialog", "personal_preferences", "self_referential"},
+    only_response_properties={"identity"},
+    label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
 )
+# dump to df
+df = pd.DataFrame(results)
+df.to_csv("response_property_results.csv", index=False)
