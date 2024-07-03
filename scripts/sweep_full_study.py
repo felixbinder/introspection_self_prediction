@@ -189,8 +189,11 @@ class StudyRunner:
         )
         self.args = parser.parse_args()
 
-    def run_command(self, command):
+    def run_command(self, command, n_try: int = 0):
         """Execute the given command in the shell, stream the output, and return the last line."""
+        if n_try > 2:
+            raise Exception(f"Failed to run {command} after {n_try} tries.")
+
         try:
             self.state["commands"].append(command)  # log the command
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -201,7 +204,15 @@ class StudyRunner:
                 output_lines.append(line.strip())
 
             process.wait()
-            if process.returncode != 0:
+
+            # handle errors
+            if process.returncode == 137:
+                print(f"❌ Memory error (137) executing {command}. Retrying...")
+                return self.run_command(command, n_try + 1)
+            elif process.returncode == 139:
+                print(f"❌ Segmentation fault (139) executing {command}. Retrying...")
+                return self.run_command(command, n_try + 1)
+            elif process.returncode != 0:
                 raise subprocess.CalledProcessError(process.returncode, command)
 
             last_line = output_lines[-1] if output_lines else ""
