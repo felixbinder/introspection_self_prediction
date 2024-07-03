@@ -993,48 +993,70 @@ exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 #     micro_average=False,
 # )
 
-resp_properties = {"first_character", "last_character", "writing_stories/main_character_name", "is_either_b_or_d", "matches_wealth_seeking", "matches_power_seeking"}
+resp_properties = {"identity", "first_character", "last_character", "writing_stories/main_character_name", "is_either_b_or_d", "matches_wealth_seeking", "matches_power_seeking"}
 only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "personal_preferences", "self_referential", "arc_challenge_non_cot", "wealth_seeking", "power_seeking"}
-## Evidence 2
-results = get_single_hue(
-    object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-    meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
-    exp_folder=exp_folder,
-    include_identity=True,    
-    only_response_properties=resp_properties,
-    only_tasks=only_tasks,
-    label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
-) + get_single_hue(
-    object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-    meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-    exp_folder=exp_folder,
-    include_identity=True,
-    only_tasks=only_tasks,
-    only_response_properties=resp_properties,
-    label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
-)
-# dump to df
-df = pd.DataFrame(results)
-df.to_csv("response_property_results.csv", index=False)
+# ## Evidence 2
+# results = get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+#     exp_folder=exp_folder,
+#     include_identity=True,    
+#     only_response_properties=resp_properties,
+#     only_tasks=only_tasks,
+#     label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
+# ) + get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_tasks=only_tasks,
+#     only_response_properties=resp_properties,
+#     label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
+# )
+# # dump to df
+# df = pd.DataFrame(results)
+# df.to_csv("response_property_results.csv", index=False)
+
+
+# results_evidence_1 = get_single_hue(
+#     object_model="gpt-3.5-turbo-0125",
+#     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     exp_folder=exp_folder,
+#     include_identity=True,    
+#     only_response_properties=resp_properties,
+#     only_tasks=only_tasks,
+#     label="Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
+# ) + get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_tasks=only_tasks,
+#     only_response_properties=resp_properties,
+#     label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
+# )
+# # dump to df
+# df_evidence_1 = pd.DataFrame(results_evidence_1)
+# df_evidence_1.to_csv("evidence_1_results.csv", index=False)
 
 
 results_evidence_1 = get_single_hue(
-    object_model="gpt-3.5-turbo-0125",
-    meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    object_model="gpt-4o-2024-05-13",
+    meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
     exp_folder=exp_folder,
     include_identity=True,    
     only_response_properties=resp_properties,
     only_tasks=only_tasks,
-    label="Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
+    label="1) Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
 ) + get_single_hue(
-    object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-    meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    object_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
+    meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
     exp_folder=exp_folder,
     include_identity=True,
     only_tasks=only_tasks,
     only_response_properties=resp_properties,
-    label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
+    label="2) Actual Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
 )
 # dump to df
-df_evidence_1 = pd.DataFrame(results)
+df_evidence_1 = pd.DataFrame(results_evidence_1)
 df_evidence_1.to_csv("evidence_1_results.csv", index=False)

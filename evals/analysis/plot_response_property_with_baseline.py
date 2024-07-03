@@ -88,5 +88,5 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
 
 
 # csv_name = "double_finetune.csv"
-csv_name = "response_property_results.csv"
-main(csv_name, title="Self/cross prediction")
+csv_name = "evidence_1_results.csv"
+main(csv_name, title="Actual / training prediction")
