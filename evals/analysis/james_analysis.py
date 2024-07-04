@@ -24,8 +24,6 @@ from evals.locations import EXP_DIR
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.runners import (
-    BiasDetectAreYouAffected,
-    BiasDetectWhatAnswerWithout,
     run_from_commands,
 )
 
@@ -576,9 +574,9 @@ def calculate_shift_results(
         # mode_acc = f"{mode_acc:1f}"
         # compliance_rate = f"{compliance_rate:1f}"
         label = (
-            "Predicting behavior before training"
+            "1) Predicting behavior before training"
             if object_model == val_object_model
-            else "Predicting behavior after training"
+            else "2) Predicting behavior after training"
         )
         result_row = {
             "response_property": response_property,
@@ -601,6 +599,15 @@ def calculate_shift_results(
     df.to_csv("response_property_results.csv", index=False)
 
 
+@dataclass
+class HueResult:
+    strings: set[str]
+    results: list[dict]
+
+    def __add__(self, other: "HueResult") -> "HueResult":
+        return HueResult(strings=self.strings.union(other.strings), results=self.results + other.results)
+
+
 def get_single_hue(
     object_model: str = "gpt-3.5-turbo-1106",
     meta_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
@@ -609,8 +616,9 @@ def get_single_hue(
     include_identity: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
     only_tasks: typing.AbstractSet[str] = set(),
+    only_strings: typing.AbstractSet[str] = set(),
     label: str = "Accuracy",
-) -> list[dict]:
+) -> HueResult:
     flats: Slist[FlatObjectMeta] = single_comparison_flat(
         object_model=object_model,
         meta_model=meta_model,
@@ -623,7 +631,7 @@ def get_single_hue(
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
     if only_tasks:
         flats = flats.filter(lambda x: x.task in only_tasks)
-    # flats = flats.map(lambda x: x.rename_matches_behavior())
+    flats = flats.map(lambda x: x.rename_matches_behavior())
     # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     other_evals_to_run = []
     if other_evals_to_run:
@@ -640,8 +648,11 @@ def get_single_hue(
     flats = add_micro_average(flats)
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
+    all_strings = set()
     for group, values in grouped_by_response_property:
         response_property, object_model, meta_model = group
+        if only_strings:
+            values = values.filter(lambda x: x.string in only_strings)
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
         if response_property == "first_word":
@@ -656,6 +667,8 @@ def get_single_hue(
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
         mode_baseline = values.map(lambda x: x.mode_is_correct).average_or_raise()
+        strings = values.map(lambda x: x.string).to_set()
+        all_strings.update(strings)
 
         # acc * 100 1 d.p
         # acc_formatted = f"{acc:1f}"
@@ -676,7 +689,7 @@ def get_single_hue(
         }
 
         dataframe_row.append(result_row)
-    return dataframe_row
+    return HueResult(strings=all_strings, results=dataframe_row)
 
 
 def plot_without_comparison(
@@ -897,19 +910,144 @@ def plot_without_comparison(
 # object_model = "gpt-3.5-turbo-0125"
 # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
 # exp_folder = EXP_DIR / "jun20_training_on_everything"
-# calculate_shift_results(
-#     to_compare_before=object_model,
-#     to_compare_after=meta_model,
-#     shifting="all",
-#     prefinetuned_model=object_model,
-#     postfinetuned_model=meta_model,
+# first_bar = get_single_hue(
+#     object_model="gpt-3.5-turbo-0125",
+#     meta_model="gpt-3.5-turbo-0125",
 #     exp_folder=exp_folder,
-
+#     include_identity=False,
+#     # only_response_properties={},
+#     # only_tasks={},
+#     label="GPT 3.5 predicting GPT 3.5",
+# )
+# second_bar  = get_single_hue(
+#     object_model=object_model,
+#     meta_model=meta_model,
+#     exp_folder=exp_folder,
+#     include_identity=False,
+#     # only_response_properties={},
+#     # only_tasks={},
+#     label="GPT 3.5_fton_GPT3.5 predicting GPT 3.5 fted on GPT3.5",
+# )
+# items = (first_bar + second_bar).results
+# df = pd.DataFrame(items)
+# df.to_csv("response_property_results.csv", index=False)
+# calculate_shift_results(
+#     shift_before_model=object_model,
+#     shift_after_model=meta_model,
+#     shifting="all",
+#     # include_identity=True,
+#     include_identity=False,
+#     object_model=object_model,
+#     meta_model=meta_model,
+#     exp_folder=exp_folder,
 # )
 
-# object_model = "gpt-4o-2024-05-13"
-# meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-# exp_folder = EXP_DIR / "jun20_training_on_everything"
+
+def gpt35_on_better_responses():
+    exp_folder = EXP_DIR / "jun20_training_on_everything"
+    only_response_properties = {
+        "first_character",
+        "first_word",
+        "last_character",
+        "is_either_b_or_d",
+        "matches_behavior",
+    }
+    first_bar = get_single_hue(
+        object_model="gpt-3.5-turbo-0125",
+        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="1) GPT3.5_fton_GPT3.5 predicting GPT3.5",
+    )
+    second_bar = get_single_hue(
+        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="2) GPT3.5_fton_GPT3.5 predicting GPT3.5_fton_GPT3.5",
+    )
+    items = (first_bar + second_bar).results
+    df = pd.DataFrame(items)
+    df.to_csv("response_property_results.csv", index=False)
+
+
+# gpt35_on_better_responses()
+
+
+def gpt4o_on_better_responses():
+    exp_folder = EXP_DIR / "jun20_training_on_everything"
+    only_response_properties = {
+        "first_character",
+        "last_character",
+        "is_either_a_or_c",
+        "is_either_b_or_d",
+        "matches_behavior",
+    }
+    first_bar = get_single_hue(
+        object_model="gpt-4o-2024-05-13",
+        meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="1) GPT 4o_fton_GPT4o predicting GPT4o",
+    )
+    second_bar = get_single_hue(
+        object_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM",
+        meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="2) GPT 4o_fton_GPT4o predicting GPT4o_fton_GPT4o",
+    )
+    items = (first_bar + second_bar).results
+
+    df = pd.DataFrame(items)
+    df.to_csv("response_property_results.csv", index=False)
+
+
+def gpt35_compliance():
+    exp_folder = EXP_DIR / "jun20_training_on_everything"
+    only_response_properties = set()
+    first_bar = get_single_hue(
+        object_model="gpt-3.5-turbo-0125",
+        meta_model="gpt-3.5-turbo-0125",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="1) GPT3.5 predicting GPT3.5",
+    )
+    second_bar = get_single_hue(
+        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="2) GPT3.5_fton_GPT3.5 predicting GPT3.5_fton_GPT3.5",
+    )
+    items = (first_bar + second_bar).results
+    df = pd.DataFrame(items)
+    df.to_csv("response_property_results.csv", index=False)
+
+
+# gpt35_compliance()
+# calculate_shift_results(
+#     shift_before_model=object_model,
+#     shift_after_model=meta_model,
+#     shifting="all",
+#     # include_identity=True,
+#     include_identity=False,
+#     object_model=object_model,
+#     meta_model=meta_model,
+#     exp_folder=exp_folder,
+# )
 
 
 # async def main_evidence_1():
@@ -976,7 +1114,7 @@ def plot_without_comparison(
 # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji"
 
 
-exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+# exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 # only_response_properties = {"identity"}
 # calculate_shift_results(
 #     shift_before_model="gpt-3.5-turbo-0125",
@@ -993,14 +1131,21 @@ exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
 #     micro_average=False,
 # )
 
-resp_properties = {"identity", "first_character", "last_character", "writing_stories/main_character_name", "is_either_b_or_d", "matches_wealth_seeking", "matches_power_seeking"}
-only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "personal_preferences", "self_referential", "arc_challenge_non_cot", "wealth_seeking", "power_seeking"}
-# ## Evidence 2
+# resp_properties = {"identity", "first_character", "last_character", "writing_stories/main_character_name", "is_either_b_or_d", "matches_wealth_seeking", "matches_power_seeking"}
+# only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "personal_preferences", "self_referential", "arc_challenge_non_cot", "wealth_seeking", "power_seeking"}
+# resp_properties = {"first_character", "last_character", "writing_stories/main_character_name", "is_either_b_or_d", "matches_wealth_seeking", "matches_power_seeking"}
+
+
+# only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "personal_preferences", "self_referential", "arc_challenge_non_cot", "wealth_seeking", "power_seeking"}
+# # resp_properties = {"identity"}
+# # only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "personal_preferences", "self_referential"}
+
+# ## Evidence 2, held out prompts
 # results = get_single_hue(
 #     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
 #     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
 #     exp_folder=exp_folder,
-#     include_identity=True,    
+#     include_identity=True,
 #     only_response_properties=resp_properties,
 #     only_tasks=only_tasks,
 #     label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
@@ -1017,12 +1162,51 @@ only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "persona
 # df = pd.DataFrame(results)
 # df.to_csv("response_property_results.csv", index=False)
 
+# resp_properties = set()
+# only_tasks={"writing_stories", "mmlu_cot", "number_triplets", "survival_instinct", "myopic_reward"}
+
+# first_bar = get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_response_properties=resp_properties,
+#     only_tasks=only_tasks,
+#     label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
+# )
+# second_bar = get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_tasks=only_tasks,
+#     only_response_properties=resp_properties,
+#     label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
+#     only_strings=first_bar.strings,
+# )
+# # run it again to filter lol
+# first_bar = get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+#     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_response_properties=resp_properties,
+#     only_tasks=only_tasks,
+#     label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
+#     only_strings=second_bar.strings,
+# )
+# ## Evidence 2, held out prompts
+# results = first_bar.results + second_bar.results
+# # dump to df
+# df = pd.DataFrame(results)
+# df.to_csv("response_property_results.csv", index=False)
+
 
 # results_evidence_1 = get_single_hue(
 #     object_model="gpt-3.5-turbo-0125",
 #     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
 #     exp_folder=exp_folder,
-#     include_identity=True,    
+#     include_identity=True,
 #     only_response_properties=resp_properties,
 #     only_tasks=only_tasks,
 #     label="Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
@@ -1040,23 +1224,62 @@ only_tasks={"wikipedia", "dear_abbie", "english_words", "dialy_dialog", "persona
 # df_evidence_1.to_csv("evidence_1_results.csv", index=False)
 
 
-results_evidence_1 = get_single_hue(
-    object_model="gpt-4o-2024-05-13",
-    meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
-    exp_folder=exp_folder,
-    include_identity=True,    
-    only_response_properties=resp_properties,
-    only_tasks=only_tasks,
-    label="1) Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
-) + get_single_hue(
-    object_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
-    meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
-    exp_folder=exp_folder,
-    include_identity=True,
-    only_tasks=only_tasks,
-    only_response_properties=resp_properties,
-    label="2) Actual Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
-)
-# dump to df
-df_evidence_1 = pd.DataFrame(results_evidence_1)
-df_evidence_1.to_csv("evidence_1_results.csv", index=False)
+# results_evidence_1 = get_single_hue(
+#     object_model="gpt-4o-2024-05-13",
+#     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_response_properties=resp_properties,
+#     only_tasks=only_tasks,
+#     label="1) Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
+# ) + get_single_hue(
+#     object_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
+#     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9gXElCb8",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     only_tasks=only_tasks,
+#     only_response_properties=resp_properties,
+#     label="2) Actual Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
+# )
+# # dump to df
+# df_evidence_1 = pd.DataFrame(results_evidence_1)
+# df_evidence_1.to_csv("evidence_1_results.csv", index=False)
+
+
+## YOLO run
+
+exp_folder = EXP_DIR / "3_jul_yolo_more_samples"
+# results_evidence_1 = get_single_hue(
+#     object_model="gpt-3.5-turbo-0125",
+#     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gsWGQZZ",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     # only_response_properties=resp_properties,
+#     # only_tasks=only_tasks,
+#     label="1) Training Prediction: (fted GPT 3.5) predicting (GPT 3.5)",
+# ) + get_single_hue(
+#     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gsWGQZZ",
+#     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gsWGQZZ",
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     # only_tasks=only_tasks,
+#     # only_response_properties=resp_properties,
+#     label="2) Actual Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
+# )
+# # dump to df
+# df_evidence_1 = pd.DataFrame(results_evidence_1.results)
+# df_evidence_1.to_csv("evidence_1_results.csv", index=False)
+
+# object_model="gpt-3.5-turbo-0125"
+# meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gsWGQZZ"
+# calculate_shift_results(
+#     shift_before_model=object_model,
+#     shift_after_model=meta_model,
+#     shifting="all",
+#     object_model=object_model,
+#     meta_model=meta_model,
+#     exp_folder=exp_folder,
+#     include_identity=True,
+#     # on trained tasks
+#     only_task={"wikipedia", "dear_abbie", "english_words", "daily_dialog", "personal_preferences", "self_referential"},
+# )

@@ -28,34 +28,34 @@ def create_chart(df, title, sorted_properties):
             sorted_properties.index(prop) + (i - (n_labels - 1) / 2) * bar_width for prop in available_properties
         ]
 
-        # Accuracy bars
+        # compliance_rate bars
         fig.add_trace(
             go.Bar(
                 x=x_positions,
-                y=df_sorted["accuracy"] * 100,
+                y=df_sorted["compliance_rate"] * 100,
                 name=label,
-                text=df_sorted["accuracy"].apply(lambda x: f"{x*100:.1f}%"),
+                text=df_sorted["compliance_rate"].apply(lambda x: f"{x*100:.2f}%"),
                 textposition="outside",
-                error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),
+                # error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),
                 width=bar_width,
             )
         )
 
-        # Mode baseline markers
-        fig.add_trace(
-            go.Scatter(
-                x=x_positions,
-                y=df_sorted["mode_baseline"] * 100,
-                mode="markers",
-                name="Mode Baseline",
-                marker=dict(symbol="x", size=8, color="red"),
-            )
-        )
+        # # Mode baseline markers
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=x_positions,
+        #         y=df_sorted["mode_baseline"] * 100,
+        #         mode="markers",
+        #         name="Mode Baseline",
+        #         marker=dict(symbol="x", size=8, color="red"),
+        #     )
+        # )
 
     fig.update_layout(
         title=title,
         xaxis_title="Response Property",
-        yaxis_title="Percentage",
+        yaxis_title="Compliance percentage",
         barmode="group",
         yaxis=dict(range=[0, 100]),
         legend=dict(traceorder="normal"),
@@ -68,12 +68,12 @@ def create_chart(df, title, sorted_properties):
 
 # # Calculate macro average
 # def calculate_macro_average(df):
-#     macro_avg = df.groupby("label").agg({"accuracy": "mean", "error": "mean", "mode_baseline": "mean"}).reset_index()
+#     macro_avg = df.groupby("label").agg({"compliance_rate": "mean", "error": "mean", "mode_baseline": "mean"}).reset_index()
 #     macro_avg["response_property"] = "Macro Average"
 #     return macro_avg
 
 
-def main(csv_name: str, title: str = "Response Properties: Model Accuracy with Mode Baseline and 95% CI"):
+def main(csv_name: str, title: str = "Response Properties: Model Compliance Rate"):
     df = pd.read_csv(csv_name)
     # macro_avg = calculate_macro_average(df)
     # df = pd.concat([df, macro_avg])
@@ -89,4 +89,4 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
 
 # csv_name = "double_finetune.csv"
 csv_name = "response_property_results.csv"
-main(csv_name, title="Actual / training prediction")
+main(csv_name, title="Compliance before and after training")
