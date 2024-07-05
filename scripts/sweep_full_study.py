@@ -535,6 +535,7 @@ class StudyRunner:
             for model in self.get_finetuned_model_configs():  # all the others should be done above
                 for task, _ in combine_dicts_of_lists([self.args.tasks, self.args.val_tasks]).items():
                     for prompt in self.args.prompt_configs:
+                        # We aren't passing the divergent strings here, but we are in the meta level comamnd
                         command = self.get_object_level_command(model, task, prompt, self.args.n_object_val, "val")
                         if command not in self.state["ft_object_val_runs"]:
                             self.state["ft_object_val_runs"].update(
@@ -570,7 +571,7 @@ class StudyRunner:
                                 prompt,
                                 self.args.n_meta_val,
                                 "val",
-                                divergent_strings_path,
+                                strings_path="none"
                             )
                             if command not in self.state["meta_val_runs"]:
                                 self.state["meta_val_runs"].update(
