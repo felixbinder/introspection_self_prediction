@@ -665,7 +665,7 @@ def get_single_hue(
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
         if response_property == "first_character" and log:
             # dump
-            write_jsonl_file_from_basemodel(f"{object_model}_first_word.jsonl", values)
+            write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", values)
         # print(f"Compliance rate: {compliance_rate}")
         # modal_baselines = modal_baseline(filtered_objects)
         # correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
@@ -976,8 +976,40 @@ def gpt35_on_better_responses():
     # )
 
 
-gpt35_on_better_responses()
+# gpt35_on_better_responses()
 
+def gpt35_number_triplets():
+    exp_folder = EXP_DIR / "5_jul_no_divergence"
+    only_response_properties = set()
+    object_model = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
+    first_bar = get_single_hue(
+        object_model="gpt-3.5-turbo-0125",
+        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="1) GPT3.5_fton_GPT3.5 predicting GPT3.5",
+        only_mode_not_answer=False,
+        log=True,
+    )
+    second_bar = get_single_hue(
+        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        exp_folder=exp_folder,
+        include_identity=False,
+        only_response_properties=only_response_properties,
+        # only_tasks={},
+        label="2) GPT3.5_fton_GPT3.5 predicting GPT3.5_fton_GPT3.5",
+        log=True,
+        only_mode_not_answer=False,
+    )
+    items = (first_bar + second_bar).results
+    df = pd.DataFrame(items)
+    df.to_csv("response_property_results.csv", index=False)
+
+gpt35_number_triplets()
 
 def gpt4o_on_better_responses():
     exp_folder = EXP_DIR / "jun20_training_on_everything"
