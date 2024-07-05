@@ -18,6 +18,10 @@ class FlatObjectMeta(BaseModel):
     shifted: Literal["shifted", "same", "not_compliant", "not_calculated"]
     modal_response_property_answer: str
 
+    @property
+    def is_predicting_mode(self) -> bool:
+        return self.meta_response == self.modal_response_property_answer
+
     def rename_matches_behavior(self):
         # if "matches" in self.response_property, rename to "matches behavior"
         new = self.model_copy()
