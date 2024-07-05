@@ -1,4 +1,5 @@
 import asyncio
+from math import log
 import typing
 from dataclasses import dataclass
 from pathlib import Path
@@ -171,9 +172,9 @@ def flat_object_meta(
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
             print(f"Key {key} not found in objects_grouped. Weird...")
-            # raise ValueError(f"Key {key} not found in objects_grouped")
+            raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
-            continue
+            # continue
         mode_objects = mode_grouping[(meta.task, meta.response_property)]
         modal_object_answer = mode_objects.map(lambda x: x.response_property_answer).mode_or_raise()
         objects_for_meta = objects_grouped[key]
@@ -662,9 +663,9 @@ def get_single_hue(
                 print(f"No values for {response_property} for {object_model}")
                 continue
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
-        if response_property == "first_word" and log:
+        if response_property == "first_character" and log:
             # dump
-            write_jsonl_file_from_basemodel("first_word.jsonl", values)
+            write_jsonl_file_from_basemodel(f"{object_model}_first_word.jsonl", values)
         # print(f"Compliance rate: {compliance_rate}")
         # modal_baselines = modal_baseline(filtered_objects)
         # correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
@@ -937,16 +938,17 @@ def gpt35_on_better_responses():
     }
     object_model = "gpt-3.5-turbo-0125"
     meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
-    first_bar = get_single_hue(
-        object_model="gpt-3.5-turbo-0125",
-        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
-        exp_folder=exp_folder,
-        include_identity=False,
-        only_response_properties=only_response_properties,
-        # only_tasks={},
-        label="1) GPT3.5_fton_GPT3.5 predicting GPT3.5",
-        only_mode_not_answer=True,
-    )
+    # first_bar = get_single_hue(
+    #     object_model="gpt-3.5-turbo-0125",
+    #     meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+    #     exp_folder=exp_folder,
+    #     include_identity=False,
+    #     only_response_properties=only_response_properties,
+    #     # only_tasks={},
+    #     label="1) GPT3.5_fton_GPT3.5 predicting GPT3.5",
+    #     only_mode_not_answer=False,
+    #     log=True,
+    # )
     second_bar = get_single_hue(
         object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
         meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
@@ -956,11 +958,11 @@ def gpt35_on_better_responses():
         # only_tasks={},
         label="2) GPT3.5_fton_GPT3.5 predicting GPT3.5_fton_GPT3.5",
         log=True,
-        only_mode_not_answer=True,
+        only_mode_not_answer=False,
     )
-    items = (first_bar + second_bar).results
-    df = pd.DataFrame(items)
-    df.to_csv("response_property_results.csv", index=False)
+    # items = (first_bar + second_bar).results
+    # df = pd.DataFrame(items)
+    # df.to_csv("response_property_results.csv", index=False)
     # calculate_shift_results(
     #     shift_before_model=object_model,
     #     shift_after_model=meta_model,

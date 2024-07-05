@@ -464,9 +464,9 @@ def load_meta_dfs(
         for i, row in df.iterrows():
             for response_property in required_response_properties:
                 if response_property not in row:
-                    # raise ValueError(
-                    #     f"Response property {response_property} not found in row {row}, {required_response_properties=}"
-                    # )
+                    raise ValueError(
+                        f"Response property {response_property} not found in row {row}, {required_response_properties=}"
+                    )
                     print(f"WARN: Response property {response_property} not found in row {row}, skipping")
                     continue
                 object_level_response = row[response_property]
@@ -557,36 +557,6 @@ def clean_for_comparison(string: str) -> str:
     return string.lower().strip()
 
 
-def calc_inspect_rows(objects: Slist[LoadedObject], metas: Slist[LoadedMeta]) -> Slist[dict]:
-    # group objects by task + string + response_property
-    objects_grouped: Dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
-        lambda x: (x.task, x.string, x.response_property)
-    ).to_dict()
-    compared: Slist[dict] = Slist()
-    for meta in metas:
-        key = (meta.task, meta.string, meta.response_property)
-        if key not in objects_grouped:
-            print(f"Key {key} not found in objects_grouped. Weird...")
-            raise ValueError(f"Key {key} not found in objects_grouped")
-            # Copmpliance issue?
-            # continue
-        for obj in objects_grouped[key]:
-            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
-            cleaned_meta_response = clean_for_comparison(meta.response)
-            predicted_correctly = cleaned_object_response == cleaned_meta_response
-            compared.append(
-                {
-                    "predicted_correctly": predicted_correctly,
-                    "task": meta.task,
-                    "string": meta.string,
-                    "response_property": meta.response_property,
-                    "meta_model": meta.meta_model,
-                    "object_model": obj.object_model,
-                    "object_response_property_answer": obj.response_property_answer,
-                    "object_response_raw_response": obj.raw_response,
-                }
-            )
-    return compared
 
 
 def modal_baseline(objects: Slist[LoadedObject]) -> Slist[ComparedMode]:
