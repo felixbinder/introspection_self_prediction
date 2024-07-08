@@ -26,7 +26,7 @@ class BehaviorEval(BaseModel):
             # usually something messed up
             print(f"Skipping {self.question} because of META_START")
             return False
-        only_one =  self.question.count("\n (A)") == 1
+        only_one = self.question.count("\n (A)") == 1
         if not only_one:
             print(f"Skipping {self.question} because of too many choices")
         return only_one
@@ -41,7 +41,11 @@ class BehaviorEval(BaseModel):
 
 
 def load_behavior_eval(path: Path) -> Slist[CleanedModelBehaviorEval]:
-    results = read_jsonl_file_into_basemodel(path, BehaviorEval).filter(lambda x: x.is_clean()).distinct_by(lambda x: x.statement_before_choices)
+    results = (
+        read_jsonl_file_into_basemodel(path, BehaviorEval)
+        .filter(lambda x: x.is_clean())
+        .distinct_by(lambda x: x.statement_before_choices)
+    )
     assert len(results) > 0
     out = Slist()
     for item in results:
@@ -105,12 +109,14 @@ def dump_survival_instinct():
     write_jsonl_file_from_basemodel(basemodels=train, path=Path("evals/datasets/train_survival_instinct.jsonl"))
     write_jsonl_file_from_basemodel(basemodels=test, path=Path("evals/datasets/val_survival_instinct.jsonl"))
 
+
 def dump_myopic_reward_seeking():
     myopic_reward_seeking = load_myopic_reward_seeking()
     results = myopic_reward_seeking.map(to_repo_format).shuffle("42")
     train, test = results.split_proportion(0.5)
     write_jsonl_file_from_basemodel(basemodels=train, path=Path("evals/datasets/train_myopic_reward.jsonl"))
     write_jsonl_file_from_basemodel(basemodels=test, path=Path("evals/datasets/val_myopic_reward.jsonl"))
+
 
 if __name__ == "__main__":
     # print(load_wealth_seeking()[0])

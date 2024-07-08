@@ -28,9 +28,7 @@ from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversati
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
 
 
-round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
-)
+round_1_answer_format = "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 
 
 def get_meta_question() -> Slist[str]:
@@ -263,6 +261,7 @@ async def run_single_ask_if_correct_answer(
     meta_model: str = chosen_model,
     number_samples: int = 50,
     object_model: str = chosen_model,
+    balance_data: bool = True,
 ) -> Slist[AskIfCorrectResult]:
     print(f"Running mmlu accuracy calibration with {meta_model=} on {object_model=}")
     caller = RepoCompatCaller(api=api)
@@ -305,12 +304,14 @@ async def run_single_ask_if_correct_answer(
         .to_slist()
     )
     predicted = results.filter(lambda x: x.both_successful)
-    print('Filtered out ', results.length - predicted.length, '/', number_samples, 'unsucessful results')
-
-    object_correct, object_incorrect = predicted.split_by(lambda x: x.object_level_correct)
-    minimum_both = min(object_correct.length, object_incorrect.length)
-    print(f"Balancing ground truths to have same number of samples: {minimum_both}")
-    balanced_data = object_correct.take(minimum_both) + object_incorrect.take(minimum_both)
+    print("Filtered out ", results.length - predicted.length, "/", number_samples, "unsucessful results")
+    if balance_data:
+        object_correct, object_incorrect = predicted.split_by(lambda x: x.object_level_correct)
+        minimum_both = min(object_correct.length, object_incorrect.length)
+        print(f"Balancing ground truths to have same number of samples: {minimum_both}")
+        balanced_data = object_correct.take(minimum_both) + object_incorrect.take(minimum_both)
+    else:
+        balanced_data = predicted
 
     acc = balanced_data.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
     acc_correct = object_correct.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
@@ -347,6 +348,7 @@ async def run_single_ask_if_correct_answer(
     # ).formatted()
 
     # print(f"Micro average switch accuracy: {micro_av_switch_accuracy}")
+
 
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected4")
 

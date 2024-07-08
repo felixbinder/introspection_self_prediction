@@ -13,8 +13,7 @@ class OtherEvalCSVFormat(BaseModel):
     meta_predicted_correctly: bool
     eval_name: str
 
-
-    def to_james_analysis_format(self) ->ObjectAndMeta:
+    def to_james_analysis_format(self) -> ObjectAndMeta:
         return ObjectAndMeta(
             task=self.eval_name,
             string=self.object_history,
@@ -28,7 +27,7 @@ class OtherEvalCSVFormat(BaseModel):
             object_complied=True,
             meta_complied=True,
             shifted="not_calculated",
-            modal_response_property_answer=self.meta_history
+            modal_response_property_answer=self.meta_history,
         )
 
 

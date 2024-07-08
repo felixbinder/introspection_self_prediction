@@ -32,9 +32,7 @@ from other_evals.counterfactuals.stat_utils import average_with_95_ci
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
 
 
-round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
-)
+round_1_answer_format = "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 round_2_answer_format = "\nAnswer Y for yes or N for no."
 
 
@@ -336,6 +334,7 @@ async def run_single_ask_if_affected(
     api: CachedInferenceAPI,
     bias_on_wrong_answer_only: bool = False,
     number_samples: int = 500,
+    balance_data: bool = True,
 ) -> Slist[AskIfAffectedSecondRound]:
     caller = RepoCompatCaller(api=api)
     object_config = InferenceConfig(
@@ -380,11 +379,13 @@ async def run_single_ask_if_affected(
         max_tokens=1,
         top_p=0.0,
     )
-
-    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
-    min_length = min(affected.length, unaffected.length)
-    print(f"Balancing ground truths to have same number of samples: {min_length}")
-    balanced_data = affected.take(min_length) + unaffected.take(min_length)
+    if balance_data:
+        affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+        min_length = min(affected.length, unaffected.length)
+        print(f"Balancing ground truths to have same number of samples: {min_length}")
+        balanced_data = affected.take(min_length) + unaffected.take(min_length)
+    else:
+        balanced_data = parsed_answers
 
     # run the second round where we ask if the model would
     second_round_results: Slist[AskIfAffectedSecondRound] = (

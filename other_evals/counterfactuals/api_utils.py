@@ -119,7 +119,6 @@ class InferenceResponse(BaseModel):
             return True
         return False
 
-
     @property
     def has_multiple_responses(self) -> bool:
         return len(self.raw_responses) > 1
