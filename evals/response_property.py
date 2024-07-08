@@ -141,6 +141,7 @@ def first_character(row: pd.Series):
         first_character = None
     return first_character
 
+
 def second_character(row: pd.Series):
     """Extract the second character of the response."""
     response = row["response"]
