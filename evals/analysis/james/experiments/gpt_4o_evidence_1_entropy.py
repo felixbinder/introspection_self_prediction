@@ -6,8 +6,8 @@ def gpt4o_july_5():
     exp_folder = EXP_DIR / "5_jul_no_divergence_more_samples"
     only_response_properties = {
         "first_character",
-        "is_either_a_or_c",
-        "is_either_b_or_d",
+        # "is_either_a_or_c",
+        "is_one_of_given_options",
         "matches behavior",
         "last_character",
         # "first_word", # gpt-4o finetuned is very collasply in first word, so we omit it
@@ -37,6 +37,7 @@ def gpt4o_july_5():
         "BiasDetectWhatAnswerWithout",
         "BiasDetectAddAreYouSure",
         "KwikWillYouBeCorrect",
+        "sentiment",
     }
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"

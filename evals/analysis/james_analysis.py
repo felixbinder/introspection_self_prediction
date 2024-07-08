@@ -796,7 +796,7 @@ def calculate_evidence_1(
         BiasDetectAddAreYouSure,
         KwikWillYouBeCorrect,
     ]
-    # other_evals_to_run = []
+    other_evals_to_run = []
     if other_evals_to_run:
         setup_environment()
         api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
@@ -820,7 +820,7 @@ def calculate_evidence_1(
     )
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
-    flats = flats.map(lambda x: x.rename_matches_behavior())
+    flats = flats.map(lambda x: x.rename_properties())
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
     if only_tasks:
@@ -915,7 +915,7 @@ def get_single_hue(
     )
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
-    flats = flats.map(lambda x: x.rename_matches_behavior())
+    flats = flats.map(lambda x: x.rename_properties())
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
     if only_tasks:

@@ -409,9 +409,9 @@ def test_main():
 def test_cross_train():
     # What evals to run?
     # eval_list = [WillYouGiveDeontology]
-    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout]
+    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 1000
+    limit = 2500
     # What models to run?
     # prefinetune_model: str = "gpt-3.5-turbo-1106"
     # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
@@ -427,8 +427,10 @@ def test_cross_train():
     # second = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji")
 
     # leave out only are you sure
-    first = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gTagbGV", "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gTagbGV")
-    second = ("gpt-3.5-turbo-0125","ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9gTagbGV")
+    object_model = "gpt-4o-2024-05-13"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+    first = (object_model, meta_model)
+    second = (meta_model, meta_model)
 
 
     # We want to run all the combinations of the models
@@ -441,8 +443,7 @@ def test_cross_train():
         limit=limit,
         study_folder=study_folder,
         show_plot=True,
-        
-        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/cache"
+        cache_path="exp/cached_dir"
     )
 
 
