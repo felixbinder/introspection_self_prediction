@@ -2,8 +2,9 @@ import asyncio
 import typing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Sequence
 
+import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ValidationError
 from scipy import stats
@@ -666,6 +667,96 @@ def james_micro():
     print(f"Mode accuracy: {mode_acc}")
 
 
+def calculate_entropy(string_list: Sequence[str]) -> float:
+    # Get unique values and their probabilities
+    _, counts = np.unique(string_list, return_counts=True)
+    probabilities = counts / len(string_list)
+
+    # Calculate entropy
+    entropy = stats.entropy(probabilities, base=2)
+
+    return entropy
+
+
+def recalculate_mode(items: Slist[ObjectAndMeta]) -> Slist[ObjectAndMeta]:
+    mode: str = items.map(lambda x: x.object_response_property_answer).mode_or_raise()
+    output = Slist()
+    for item in items:
+        new = item.model_copy()
+        new.modal_response_property_answer = mode
+        output.append(new)
+    return output
+
+
+def take_category_limit(
+    first_bar: Slist[ObjectAndMeta],
+    second_bar: Slist[ObjectAndMeta],
+    categories_limit: Slist[tuple[str, int]],
+    seed: str = "42",
+) -> tuple[Slist[ObjectAndMeta], Slist[ObjectAndMeta]]:
+    first_bar_results = Slist()
+    second_bar_results = Slist()
+    for categories_limit_item in categories_limit:
+        category, limit = categories_limit_item
+        first_bar_items: Slist[ObjectAndMeta] = (
+            first_bar.filter(lambda x: x.object_response_property_answer == category).shuffle(seed=seed).take(limit)
+        )
+        second_bar_items = (
+            second_bar.filter(lambda x: x.object_response_property_answer == category).shuffle(seed=seed).take(limit)
+        )
+        assert len(first_bar_items) == len(
+            second_bar_items
+        ), f"Lengths don't match {len(first_bar_items)} != {len(second_bar_items)}"
+        assert len(first_bar_items) == limit, f"Lengths don't match {len(first_bar_items)} != {limit} for {category=}"
+        first_bar_results.extend(first_bar_items)
+        second_bar_results.extend(second_bar_items)
+    # we map to a new distribution, so we need to recalculate the mode
+    return recalculate_mode(first_bar_results), recalculate_mode(second_bar_results)
+
+
+def adjust_for_entropy(
+    object_model: str, meta_model: str, items: Slist[ObjectAndMeta], seed: str = "42"
+) -> Slist[ObjectAndMeta]:
+    # first bar is A_fton_A predicting A
+    # second bar is A_fton_A predicting A_fton_A
+    #
+    # group by task + response property, we'll rebalance within each
+    to_work_on: Slist[Group[tuple[str, str], Slist[ObjectAndMeta]]] = items.group_by(
+        lambda x: (x.task, x.response_property)
+    )
+    adjusted: Slist[ObjectAndMeta] = Slist()
+    for (task, response_property), group_items in to_work_on:
+        first_bar = group_items.filter(lambda x: x.object_model == object_model).filter(
+            lambda x: x.meta_model == meta_model
+        )
+        second_bar = group_items.filter(lambda x: x.meta_model == meta_model).filter(
+            lambda x: x.object_model == meta_model
+        )
+        assert len(first_bar) == len(second_bar), f"Lengths don't match {len(first_bar)} != {len(second_bar)}"
+        # we want to adjust both distributions to have the same entropy
+        # we'll find the top 10 most common strings in the first bar
+        # and take the min(first_bar, second_bar) for both
+        first_bar_counts = (
+            first_bar.group_by(lambda x: x.object_response_property_answer)
+            .map_on_group_values(len)
+            .sort_by(lambda x: x.values, reverse=True)
+        )
+        second_bar_counts = (
+            second_bar.group_by(lambda x: x.object_response_property_answer).map_on_group_values(len).to_dict()
+        )
+        top_10_first = first_bar_counts.take(10)
+        categories_limit: Slist[tuple[str, int]] = top_10_first.map_2(
+            lambda key, value: (key, min(value, second_bar_counts.get(key, 0)))
+        )
+        print(f"Categories limit: {categories_limit} for {task} {response_property}")
+        adjustedfirst_bar, adjusted_second_bar = take_category_limit(
+            first_bar=first_bar, second_bar=second_bar, categories_limit=categories_limit, seed=seed
+        )
+        adjusted.extend(adjustedfirst_bar)
+        adjusted.extend(adjusted_second_bar)
+    return adjusted
+
+
 def calculate_evidence_1(
     shift_before_model: str,
     shift_after_model: str,
@@ -679,6 +770,7 @@ def calculate_evidence_1(
     only_task: typing.AbstractSet[str] = set(),
     micro_average: bool = True,
     log: bool = False,
+    adjust_entropy: bool = False,
 ) -> None:
     # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     other_evals_to_run = []
@@ -715,6 +807,8 @@ def calculate_evidence_1(
 
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
+    if adjust_for_entropy:
+        flats = adjust_for_entropy(object_model=object_model, meta_model=meta_model, items=flats)
     if shifting == "only_same":
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":
@@ -727,9 +821,11 @@ def calculate_evidence_1(
         write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", first_plot)
         write_jsonl_file_from_basemodel(f"{meta_model}_first_character.jsonl", second_plot)
 
-    grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
+    grouped_by_response_property_and_model = flats.group_by(
+        lambda x: (x.response_property, x.object_model, x.meta_model)
+    )
     dataframe_row: list[dict] = []
-    for group, values in grouped_by_response_property:
+    for group, values in grouped_by_response_property_and_model:
         response_property, val_object_model, val_meta_model = group
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
@@ -1181,8 +1277,9 @@ def gpt4o_number_triplets():
         # include_identity=True,
         include_identity=False,
         object_model=object_model,
-        log=True,
+        # log=True,
         meta_model=meta_model,
+        adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         micro_average=False,
