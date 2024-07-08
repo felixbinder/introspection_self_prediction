@@ -9,7 +9,7 @@ from pydantic import BaseModel, ValidationError
 from scipy import stats
 from slist import AverageStats, Group, Slist
 
-from evals.analysis.james.object_meta import FlatObjectMeta
+from evals.analysis.james.object_meta import ObjectAndMeta
 from evals.analysis.loading_data import (
     get_data_path,
     get_folders_matching_config_key,
@@ -335,12 +335,12 @@ def flat_object_meta(
     objects: Slist[LoadedObject],
     metas: Slist[LoadedMeta],
     shifted_result: ShiftResult | None = None,
-) -> Slist[FlatObjectMeta]:
+) -> Slist[ObjectAndMeta]:
     # group objects by task + string + response_property
     objects_grouped: dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
         lambda x: (x.task, x.string, x.response_property)
     ).to_dict()
-    compared: Slist[FlatObjectMeta] = Slist()
+    compared: Slist[ObjectAndMeta] = Slist()
     # for mode, group by task + response_property
     mode_grouping = objects.group_by(lambda x: (x.task, x.response_property)).to_dict()
     for meta in metas:
@@ -368,7 +368,7 @@ def flat_object_meta(
                 shifted = "not_calculated"
 
             compared.append(
-                FlatObjectMeta(
+                ObjectAndMeta(
                     meta_predicted_correctly=predicted_correctly,
                     task=meta.task,
                     string=meta.string,
@@ -422,11 +422,11 @@ def compare_objects_and_metas(objects: Slist[LoadedObject], metas: Slist[LoadedM
     return compared
 
 
-def add_micro_average(items: Slist[FlatObjectMeta]) -> Slist[FlatObjectMeta]:
+def add_micro_average(items: Slist[ObjectAndMeta]) -> Slist[ObjectAndMeta]:
     output = Slist()
     for compared in items:
         output.append(
-            FlatObjectMeta(
+            ObjectAndMeta(
                 meta_predicted_correctly=compared.meta_predicted_correctly,
                 task=compared.task,
                 string=compared.string,
@@ -450,7 +450,7 @@ def single_comparison_flat(
     object_model: str,
     meta_model: str,
     exclude_noncompliant: bool = False,
-) -> Slist[FlatObjectMeta]:
+) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
     # exp_folder = EXP_DIR /"evaluation_suite"
@@ -482,7 +482,7 @@ def single_comparison_flat(
         exclude_noncompliant=exclude_noncompliant,
     )
 
-    result_rows: Slist[FlatObjectMeta] = Slist()
+    result_rows: Slist[ObjectAndMeta] = Slist()
     for item in object_meta_pairs:
         print(f"Comparing {item.object_model} and {item.meta_model}")
         object_model = item.object_model
@@ -516,14 +516,14 @@ def single_comparison_flat(
     return result_rows
 
 
-def get_flat_object_meta(
+def get_object_and_meta(
     exp_folder: Path,
     shift_before_model: str,
     shift_after_model: str,
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     exclude_noncompliant: bool = False,
-) -> Slist[FlatObjectMeta]:
+) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
     # exp_folder = EXP_DIR /"evaluation_suite"
@@ -573,7 +573,7 @@ def get_flat_object_meta(
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
     assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
 
-    result_rows: Slist[FlatObjectMeta] = Slist()
+    result_rows: Slist[ObjectAndMeta] = Slist()
     for item in object_meta_pairs:
         print(f"Comparing {item.object_model} and {item.meta_model}")
         object_model = item.object_model
@@ -698,7 +698,7 @@ def calculate_shift_results(
         results_formated = results.map(lambda x: x.to_james_analysis_format())
     else:
         results_formated = Slist()
-    flats: Slist[FlatObjectMeta] = get_flat_object_meta(
+    flats: Slist[ObjectAndMeta] = get_object_and_meta(
         prefinetuned_model=object_model,
         postfinetuned_model=meta_model,
         shift_before_model=shift_before_model,
@@ -801,7 +801,7 @@ def get_single_hue(
     only_mode_not_answer: bool = False,
     log: bool = False,
 ) -> HueResult:
-    flats: Slist[FlatObjectMeta] = single_comparison_flat(
+    flats: Slist[ObjectAndMeta] = single_comparison_flat(
         object_model=object_model,
         meta_model=meta_model,
         exp_folder=exp_folder,
@@ -836,7 +836,7 @@ def get_single_hue(
         if only_strings:
             values = values.filter(lambda x: x.string in only_strings)
         if only_mode_not_answer:
-            values: Slist[FlatObjectMeta] = values.filter(lambda x: not x.mode_is_correct)
+            values: Slist[ObjectAndMeta] = values.filter(lambda x: not x.mode_is_correct)
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
         if response_property == "first_character" and log:
             # dump

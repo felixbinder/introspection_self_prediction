@@ -1,15 +1,15 @@
 # open in pandas exp/jun20_training_on_everything/object_level_ft_gpt-3.5-turbo-0125_dcevals-kokotajlo__9da15ENS_object_level_minimal_prompt_number_triplets_val_task__note/data0.csv
 import pandas as pd
 
-from evals.analysis.james.object_meta import FlatObjectMeta
+from evals.analysis.james.object_meta import ObjectAndMeta
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
 #
 # before_finetune = read_jsonl_file_into_basemodel("gpt-3.5-turbo-0125_first_character_filtered.jsonl", FlatObjectMeta)
-before_finetune = read_jsonl_file_into_basemodel("entropy_new_before_finetune.jsonl", FlatObjectMeta)
+before_finetune = read_jsonl_file_into_basemodel("entropy_new_before_finetune.jsonl", ObjectAndMeta)
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
-after_finetune = read_jsonl_file_into_basemodel("entropy_new_after_finetune.jsonl", FlatObjectMeta)
+after_finetune = read_jsonl_file_into_basemodel("entropy_new_after_finetune.jsonl", ObjectAndMeta)
 
 before_finetune_object_response_property_answer: list[str] = before_finetune.map(
     lambda x: x.object_response_property_answer

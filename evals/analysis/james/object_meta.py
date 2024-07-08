@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 
-class FlatObjectMeta(BaseModel):
+class ObjectAndMeta(BaseModel):
     task: str
     string: str
     meta_predicted_correctly: bool

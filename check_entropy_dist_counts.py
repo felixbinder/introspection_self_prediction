@@ -1,13 +1,13 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-from evals.analysis.james.object_meta import FlatObjectMeta
+from evals.analysis.james.object_meta import ObjectAndMeta
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
 # Read the data
-before_finetune = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", FlatObjectMeta)
+before_finetune = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", ObjectAndMeta)
 after_finetune = read_jsonl_file_into_basemodel(
-    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM_first_character.jsonl", FlatObjectMeta
+    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM_first_character.jsonl", ObjectAndMeta
 )
 
 # Extract the object_response_property_answer

@@ -1,15 +1,15 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-from evals.analysis.james.object_meta import FlatObjectMeta
+from evals.analysis.james.object_meta import ObjectAndMeta
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
 # Read the data
 # before_finetune = read_jsonl_file_into_basemodel("gpt-3.5-turbo-0125_first_character_filtered.jsonl", FlatObjectMeta)
-before_finetune = read_jsonl_file_into_basemodel("entropy_new_before_finetune.jsonl", FlatObjectMeta)
+before_finetune = read_jsonl_file_into_basemodel("entropy_new_before_finetune.jsonl", ObjectAndMeta)
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
-after_finetune = read_jsonl_file_into_basemodel("entropy_new_after_finetune.jsonl", FlatObjectMeta)
+after_finetune = read_jsonl_file_into_basemodel("entropy_new_after_finetune.jsonl", ObjectAndMeta)
 
 # Extract the object_response_property_answer
 before_finetune_object_response_property_answer: list[str] = before_finetune.map(

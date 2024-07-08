@@ -6,7 +6,7 @@ from git import Sequence
 from scipy import stats
 from slist import AverageStats, Group, Slist
 
-from evals.analysis.james.object_meta import FlatObjectMeta
+from evals.analysis.james.object_meta import ObjectAndMeta
 from evals.analysis.plot_response_property_with_baseline import create_chart
 from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
@@ -26,11 +26,11 @@ def calculate_entropy(string_list: Sequence[str]) -> float:
 
 
 #
-before_finetune = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", FlatObjectMeta)
+before_finetune = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", ObjectAndMeta)
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
 after_finetune = read_jsonl_file_into_basemodel(
-    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM_first_character.jsonl", FlatObjectMeta
+    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM_first_character.jsonl", ObjectAndMeta
 )
 
 only_shifted = True
@@ -53,10 +53,10 @@ print(f"Entropy before fine-tuning: {entropy_before_finetune:.2f}")
 print(f"Entropy after fine-tuning: {entropy_after_finetune:.2f}")
 
 # map of counts
-before_finetune_map: Slist[Group[str, Slist[FlatObjectMeta]]] = before_finetune.group_by(
+before_finetune_map: Slist[Group[str, Slist[ObjectAndMeta]]] = before_finetune.group_by(
     lambda x: x.object_response_property_answer
 ).sort_by(lambda x: x.key)
-after_finetune_map: Slist[Group[str, Slist[FlatObjectMeta]]] = after_finetune.group_by(
+after_finetune_map: Slist[Group[str, Slist[ObjectAndMeta]]] = after_finetune.group_by(
     lambda x: x.object_response_property_answer
 ).sort_by(lambda x: x.key)
 # counts per unique string
@@ -87,7 +87,7 @@ write_jsonl_file_from_basemodel("entropy_new_before_finetune.jsonl", new_before_
 write_jsonl_file_from_basemodel("entropy_new_after_finetune.jsonl", new_after_finetune)
 
 
-def make_row(values: Slist[FlatObjectMeta], label: str) -> dict:
+def make_row(values: Slist[ObjectAndMeta], label: str) -> dict:
     stats: AverageStats = values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
     acc = stats.average
     error = stats.upper_confidence_interval_95 - acc

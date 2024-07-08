@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from evals.analysis.james.object_meta import FlatObjectMeta
+from evals.analysis.james.object_meta import ObjectAndMeta
 
 
 class OtherEvalCSVFormat(BaseModel):
@@ -14,8 +14,8 @@ class OtherEvalCSVFormat(BaseModel):
     eval_name: str
 
 
-    def to_james_analysis_format(self) ->FlatObjectMeta:
-        return FlatObjectMeta(
+    def to_james_analysis_format(self) ->ObjectAndMeta:
+        return ObjectAndMeta(
             task=self.eval_name,
             string=self.object_history,
             meta_predicted_correctly=self.meta_predicted_correctly,
