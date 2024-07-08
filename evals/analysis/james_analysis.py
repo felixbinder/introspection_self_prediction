@@ -622,7 +622,6 @@ def get_single_hue(
     only_tasks: typing.AbstractSet[str] = set(),
     only_strings: typing.AbstractSet[str] = set(),
     label: str = "Accuracy",
-    only_not_predicting_mode: bool = False,
     only_mode_not_answer: bool = False,
     log: bool = False,
 ) -> HueResult:
@@ -662,11 +661,6 @@ def get_single_hue(
             values = values.filter(lambda x: x.string in only_strings)
         if only_mode_not_answer:
             values: Slist[FlatObjectMeta] = values.filter(lambda x: not x.mode_is_correct)
-        if only_not_predicting_mode:
-            values: Slist[FlatObjectMeta] = values.filter(lambda x: not x.is_predicting_mode)
-            if not values:
-                print(f"No values for {response_property} for {object_model}")
-                continue
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
         if response_property == "first_character" and log:
             # dump
