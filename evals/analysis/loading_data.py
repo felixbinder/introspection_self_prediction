@@ -557,8 +557,6 @@ def clean_for_comparison(string: str) -> str:
     return string.lower().strip()
 
 
-
-
 def modal_baseline(objects: Slist[LoadedObject]) -> Slist[ComparedMode]:
     # group objects by task  + response_property
     objects_grouped: Dict[tuple[str, str], str] = (

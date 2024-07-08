@@ -5,7 +5,11 @@ import plotly.graph_objects as go
 
 
 # Function to create and show the chart
-def create_chart(df, title, sorted_properties):
+def create_chart(df, title, _sorted_properties=None):
+    if _sorted_properties is None:
+        sorted_properties = sorted(df["response_property"].unique())
+    else:
+        sorted_properties = _sorted_properties
     fig = go.Figure()
 
     # Calculate bar positions
@@ -84,9 +88,12 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
     # sorted_properties.append("Macro Average")
 
     # Create the chart
-    create_chart(df, title=title, sorted_properties=sorted_properties)
+    create_chart(df, title=title, _sorted_properties=sorted_properties)
 
 
+if __name__ == "__main__":
+    csv_name = "response_property_results.csv"
+    main(csv_name, title="Actual / training prediction")
 # csv_name = "double_finetune.csv"
-csv_name = "response_property_results.csv"
-main(csv_name, title="Actual / training prediction")
+# csv_name = "response_property_results.csv"
+# main(csv_name, title="Actual / training prediction")

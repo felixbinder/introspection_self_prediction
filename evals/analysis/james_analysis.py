@@ -1,5 +1,4 @@
 import asyncio
-from math import log
 import typing
 from dataclasses import dataclass
 from pathlib import Path
@@ -507,6 +506,7 @@ def calculate_shift_results(
     include_identity: bool = False,
     only_task: typing.AbstractSet[str] = set(),
     micro_average: bool = True,
+    log: bool = False,
 ) -> None:
     # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     other_evals_to_run = []
@@ -549,6 +549,11 @@ def calculate_shift_results(
         pass
     if micro_average:
         flats = add_micro_average(flats)
+    if log:
+        first_plot = flats.filter(lambda x: x.object_model == object_model).filter(lambda x: x.meta_model == meta_model)
+        second_plot = flats.filter(lambda x: x.meta_model == meta_model).filter(lambda x: x.object_model == meta_model)
+        write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", first_plot)
+        write_jsonl_file_from_basemodel(f"{meta_model}_first_character.jsonl", second_plot)
 
     grouped_by_response_property = flats.group_by(lambda x: (x.response_property, x.object_model, x.meta_model))
     dataframe_row: list[dict] = []
@@ -978,38 +983,49 @@ def gpt35_on_better_responses():
 
 # gpt35_on_better_responses()
 
+
 def gpt35_number_triplets():
-    exp_folder = EXP_DIR / "5_jul_no_divergence"
-    only_response_properties = set()
+    exp_folder = EXP_DIR / "5_jul_no_divergence_more_samples"
+    only_response_properties = {"first_character"}
     object_model = "gpt-3.5-turbo-0125"
     meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
-    first_bar = get_single_hue(
-        object_model="gpt-3.5-turbo-0125",
-        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
-        exp_folder=exp_folder,
+    calculate_shift_results(
+        shift_before_model=object_model,
+        shift_after_model=meta_model,
+        shifting="only_shifted",
+        # include_identity=True,
         include_identity=False,
-        only_response_properties=only_response_properties,
-        # only_tasks={},
-        label="1) GPT3.5_fton_GPT3.5 predicting GPT3.5",
-        only_mode_not_answer=False,
+        object_model=object_model,
         log=True,
-    )
-    second_bar = get_single_hue(
-        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
-        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS",
+        meta_model=meta_model,
         exp_folder=exp_folder,
-        include_identity=False,
         only_response_properties=only_response_properties,
-        # only_tasks={},
-        label="2) GPT3.5_fton_GPT3.5 predicting GPT3.5_fton_GPT3.5",
-        log=True,
-        only_mode_not_answer=False,
     )
-    items = (first_bar + second_bar).results
-    df = pd.DataFrame(items)
-    df.to_csv("response_property_results.csv", index=False)
 
-gpt35_number_triplets()
+
+def gpt4o_number_triplets():
+    exp_folder = EXP_DIR / "5_jul_no_divergence_more_samples_gpt4o"
+    only_response_properties = {"first_character"}
+    object_model = "gpt-4o-2024-05-13"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+    calculate_shift_results(
+        shift_before_model=object_model,
+        shift_after_model=meta_model,
+        shifting="only_shifted",
+        # include_identity=True,
+        include_identity=False,
+        object_model=object_model,
+        log=True,
+        meta_model=meta_model,
+        exp_folder=exp_folder,
+        only_response_properties=only_response_properties,
+        micro_average=False,
+    )
+
+
+gpt4o_number_triplets()
+# gpt35_number_triplets()
+
 
 def gpt4o_on_better_responses():
     exp_folder = EXP_DIR / "jun20_training_on_everything"

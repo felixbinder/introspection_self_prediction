@@ -6,11 +6,11 @@ from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
 #
 # before_finetune = read_jsonl_file_into_basemodel("gpt-3.5-turbo-0125_first_character_filtered.jsonl", FlatObjectMeta)
-before_finetune = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", FlatObjectMeta)
+before_finetune = read_jsonl_file_into_basemodel("entropy_new_before_finetune.jsonl", FlatObjectMeta)
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
 after_finetune = read_jsonl_file_into_basemodel(
-    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM_first_character.jsonl", FlatObjectMeta
+    "entropy_new_after_finetune.jsonl", FlatObjectMeta
 )
 
 before_finetune_object_response_property_answer: list[str] = before_finetune.map(
@@ -43,6 +43,8 @@ fig = go.Figure()
 # Add traces for each group
 for group in ["GPTo's distribution", "GPTo_fton_GPTo distribution"]:
     df_group = df_melted[df_melted["Group"] == group]
+    # sort by the response
+    df_group = df_group.sort_values(by="Response")
     fig.add_trace(
         go.Bar(
             x=df_group["Response"],
@@ -51,7 +53,7 @@ for group in ["GPTo's distribution", "GPTo_fton_GPTo distribution"]:
             text=df_group["Percentage"].round(2).astype(str) + "%",
             textposition="auto",
             # color by group, "636efa" and "rgb(0 204 150)"
-            marker=dict(color="rgb(99,110,250)" if group == "GPTo's distribution" else "rgb(0,204,150)"),
+            marker=dict(color="rgb(99,110,250)" if group == "GPTo's distribution" else "rgb(0,204,150)")
         )
     )
 
