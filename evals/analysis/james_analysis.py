@@ -5,19 +5,17 @@ from pathlib import Path
 from typing import Literal
 
 import pandas as pd
+from pydantic import BaseModel, ValidationError
 from scipy import stats
 from slist import AverageStats, Group, Slist
 
 from evals.analysis.james.object_meta import FlatObjectMeta
 from evals.analysis.loading_data import (
-    ComparedMeta,
-    LoadedMeta,
-    LoadedObject,
-    ObjectMetaPair,
-    clean_for_comparison,
-    filter_for_specific_models,
-    load_meta_dfs,
-    modal_baseline,
+    get_data_path,
+    get_folders_matching_config_key,
+    get_hydra_config,
+    is_object_level,
+    load_and_prep_dfs,
 )
 from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
@@ -26,6 +24,184 @@ from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.runners import run_from_commands
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
+
+
+class LoadedObject(BaseModel):
+    string: str
+    response: str
+    raw_response: str
+    prompt_method: str
+    compliance: bool
+    task: str
+    object_model: str
+    response_property: str
+    response_property_answer: str
+    # is_meta: bool
+
+
+class LoadedMeta(BaseModel):
+    string: str
+    response: str
+    raw_response: str
+    response_property: str
+    prompt_method: str
+    compliance: bool
+    task: str
+    meta_model: str
+    task_set: str
+
+
+## Step 1: Load the meta things.
+## Step 2: Get all the required meta response properties
+## Step 3: Convert the object things in a long format, each with the string and single response property
+## Step 4: Join meta to object. By matching on the response property + string + the object level response???
+## Check if meta's response is the same as expected
+## Calculate accuracy
+
+
+def load_meta_dfs(
+    exp_folder: Path, conditions: dict, exclude_noncompliant: bool = True
+) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
+    """Loads and preps all dataframes from the experiment folder that match the conditions.
+
+    Args:
+        exp_folder: Path to the experiment folder.
+        conditions: Dictionary of conditions that the experiment folders must match.
+            For example, `conditions={"language_model": "gpt-3.5-turbo", "limit": [500,1000]}` will return all experiment folders that have a config for a gpt-3.5-turbo model and a limit of 500 or 1000.
+    """
+    matching_folders_ = get_folders_matching_config_key(exp_folder, conditions)
+    matching_folders = [folder for folder in matching_folders_ if get_data_path(folder) is not None]
+    data_paths = [get_data_path(folder) for folder in matching_folders]
+    print(f"Found {len(data_paths)} data entries")
+    configs = [get_hydra_config(folder) for folder in matching_folders]
+    dfs = load_and_prep_dfs(data_paths, configs=configs, exclude_noncompliant=exclude_noncompliant)
+
+    final_metas: Slist[LoadedMeta] = Slist()
+    meta_only_dfs = {config: df for config, df in dfs.items() if not is_object_level(config)}
+    object_only_dfs = {config: df for config, df in dfs.items() if is_object_level(config)}
+    for config_key, df in meta_only_dfs.items():
+        task_set = config_key["task"]["set"]
+        model_name = config_key["language_model"]["model"]
+        task = config_key["task"]["name"]
+        response_property = config_key.response_property.name
+        for i, row in df.iterrows():
+            try:
+                # sometimes its a list when it fails
+                compliance_is_true = row["compliance"] is True
+                final_metas.append(
+                    LoadedMeta(
+                        string=row["string"],
+                        response=clean_for_comparison(row["response"]),
+                        raw_response=row["raw_response"],
+                        response_property=response_property,
+                        prompt_method=config_key["prompt"]["method"],
+                        compliance=compliance_is_true,
+                        task=task,
+                        meta_model=model_name,
+                        # is_meta=not df_is_object_level
+                        task_set=task_set,
+                    )
+                )
+            except ValidationError as e:
+                raise ValueError(f"Got error {e} for row {row}")
+    # key: task, values: [response_property1, response_property2, ...]
+    response_properties_mapping: dict[str, set[str]] = (
+        final_metas.group_by(lambda x: x.task)
+        .map_on_group_values(lambda values: values.map(lambda x: x.response_property).to_set())
+        .to_dict()
+    )
+
+    final_objects: Slist[LoadedObject] = Slist()
+    for config_key, df in object_only_dfs.items():
+        model_name = config_key["language_model"]["model"]
+        task = config_key["task"]["name"]
+        assert task in response_properties_mapping, f"Task {task} not found in response properties mapping"
+        required_response_properties = response_properties_mapping[task]
+        for i, row in df.iterrows():
+            for response_property in required_response_properties:
+                if response_property not in row:
+                    raise ValueError(
+                        f"Response property {response_property} not found in row {row}, {required_response_properties=}"
+                    )
+                    print(f"WARN: Response property {response_property} not found in row {row}, skipping")
+                    continue
+                object_level_response = row[response_property]
+                # sometimes its a list when it fails
+                compliance_is_true = row["compliance"] is True
+                final_objects.append(
+                    LoadedObject(
+                        string=row["string"],
+                        response=clean_for_comparison(row["response"]),
+                        raw_response=row["raw_response"],
+                        prompt_method=config_key["prompt"]["method"],
+                        compliance=compliance_is_true,
+                        task=task,
+                        object_model=model_name,
+                        response_property=response_property,
+                        response_property_answer=clean_for_comparison(object_level_response),
+                    )
+                )
+
+    return final_objects, final_metas
+
+
+class ComparedMeta(BaseModel):
+    object_level: LoadedObject
+    meta_level: LoadedMeta
+    meta_predicts_correctly: bool
+
+    def all_compliant(self):
+        return self.object_level.compliance and self.meta_level.compliance
+
+
+class ComparedMode(BaseModel):
+    object_level: LoadedObject
+    mode: str
+    meta_predicts_correctly: bool
+
+
+def clean_for_comparison(string: str) -> str:
+    return string.lower().strip()
+
+
+def modal_baseline(objects: Slist[LoadedObject]) -> Slist[ComparedMode]:
+    # group objects by task  + response_property
+    objects_grouped: Dict[tuple[str, str], str] = (
+        objects.group_by(lambda x: (x.task, x.response_property))
+        .map_on_group_values(
+            lambda objects: objects.map(
+                lambda object: clean_for_comparison(object.response_property_answer)
+            ).mode_or_raise()
+        )
+        .to_dict()
+    )
+
+    results = Slist()
+    for item in objects:
+        key = (item.task, item.response_property)
+        mode = objects_grouped[key]
+        results.append(
+            ComparedMode(
+                object_level=item,
+                mode=mode,
+                meta_predicts_correctly=clean_for_comparison(item.response_property_answer) == mode,
+            )
+        )
+    return results
+
+
+def filter_for_specific_models(
+    object_level_model: str, meta_level_model: str, objects: Slist[LoadedObject], metas: Slist[LoadedMeta]
+) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
+    filtered_objects = objects.filter(lambda x: x.object_model == object_level_model)
+    filtered_metas = metas.filter(lambda x: x.meta_model == meta_level_model)
+    return filtered_objects, filtered_metas
+
+
+class ObjectMetaPair(BaseModel):
+    object_model: str
+    meta_model: str
+    label: str
 
 
 @dataclass

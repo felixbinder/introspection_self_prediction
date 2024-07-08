@@ -1,6 +1,6 @@
-
 import pandas as pd
 import plotly.graph_objects as go
+
 from evals.analysis.james.object_meta import FlatObjectMeta
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
@@ -45,7 +45,7 @@ for group in ["GPTo's distribution", "GPTo_fton_GPTo distribution"]:
             name=group,
             text=df_group["Count"],
             textposition="auto",
-            marker=dict(color="rgb(99,110,250)" if group == "GPTo's distribution" else "rgb(0,204,150)")
+            marker=dict(color="rgb(99,110,250)" if group == "GPTo's distribution" else "rgb(0,204,150)"),
         )
     )
 

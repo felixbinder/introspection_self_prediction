@@ -9,9 +9,7 @@ from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 before_finetune = read_jsonl_file_into_basemodel("entropy_new_before_finetune.jsonl", FlatObjectMeta)
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
-after_finetune = read_jsonl_file_into_basemodel(
-    "entropy_new_after_finetune.jsonl", FlatObjectMeta
-)
+after_finetune = read_jsonl_file_into_basemodel("entropy_new_after_finetune.jsonl", FlatObjectMeta)
 
 before_finetune_object_response_property_answer: list[str] = before_finetune.map(
     lambda x: x.object_response_property_answer
@@ -53,7 +51,7 @@ for group in ["GPTo's distribution", "GPTo_fton_GPTo distribution"]:
             text=df_group["Percentage"].round(2).astype(str) + "%",
             textposition="auto",
             # color by group, "636efa" and "rgb(0 204 150)"
-            marker=dict(color="rgb(99,110,250)" if group == "GPTo's distribution" else "rgb(0,204,150)")
+            marker=dict(color="rgb(99,110,250)" if group == "GPTo's distribution" else "rgb(0,204,150)"),
         )
     )
 
