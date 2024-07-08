@@ -165,3 +165,11 @@ class Prompt(HashableBaseModel):
             cprint(f"==RESPONSE {i + 1} ({response.model_id}):", "white")
             cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
         print()
+
+    def truncate_messages(self, max_length: int = 1000) -> "Prompt":
+        truncated_prompt = Prompt(messages=[])
+        for msg in self.messages:
+            if len(msg.content) > max_length:
+                msg = ChatMessage(role=msg.role, content=msg.content[:max_length])
+            truncated_prompt.messages.append(msg)
+        return truncated_prompt

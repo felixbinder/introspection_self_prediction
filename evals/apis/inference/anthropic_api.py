@@ -20,6 +20,7 @@ ANTHROPIC_MODELS = {
     "claude-3-haiku-20240307",
     "claude-3-sonnet-20240229",
     "claude-3-opus-20240229",
+    "claude-3-5-sonnet-20240620",
 }
 
 LOGGER = logging.getLogger(__name__)
@@ -32,6 +33,8 @@ def price_per_token(model_id: str) -> tuple[float, float]:
     if model_id == "claude-3-haiku-20240307":
         prices = 0.25, 1.25
     elif model_id == "claude-3-sonnet-20240229":
+        prices = 3.0, 15.0
+    elif model_id == "claude-3-5-sonnet-20240620":
         prices = 3.0, 15.0
     elif model_id == "claude-3-opus-20240229":
         prices = 15.0, 75.0

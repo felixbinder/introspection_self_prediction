@@ -231,7 +231,6 @@ def remove_repetive_responses(df):
     """
     Sometimes models repeat the same word over and over. To prevent the OpenAI API, we truncate the responses/identity
     """
-
     # find responses that repeat the same word
     def is_repetitive(response):
         response = str(response)  # make sure it's a string

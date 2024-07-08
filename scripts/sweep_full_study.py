@@ -23,6 +23,7 @@ python -m scripts.sweep_full_study
 --study_name="full_sweep_demo"
 --model_configs="gpt-3.5-turbo"
 --val_only_model_configs="gpt-4"
+--doubly_trained_model_configs='{"finetuned/jun20_training_on_everything/gpt-3.5-turbo/ft_gpt-3.5-turbo-0125_dcevals-kokotajlo__9da15ENS": ["gpt-3.5-turbo","gpt-4"]}'
 --tasks='{"wikipedia": ["identity", "sentiment"], "dear_abbie": ["identity", "sentiment", "dear_abbie/sympathetic_advice"]}'
 --val_tasks='{"number_triplets": ["identity", "is_even"], "english_words": ["identity", "first_character"]}'
 --other_evals='["BiasDetectAddAreYouSure", "BiasDetectAreYouAffected", "BiasDetectWhatAnswerWithout", "KwikWillYouBeCorrect"]'
@@ -50,7 +51,7 @@ from typing import Dict, Sequence, Type, Union
 from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
-from evals.utils import MODEL_TO_FAMILY_MAP, get_current_git_hash
+from evals.utils import MODEL_TO_FAMILY_MAP, get_current_git_hash, safe_model_name
 from other_evals.counterfactuals.get_finetuning_samples import (
     add_new_samples_to_existing_jsonl_and_shuffle,
     get_other_evals_finetuning_samples,
@@ -101,10 +102,9 @@ class StudyRunner:
             "model_configs",
             "val_only_model_configs",
             "prompt_configs",
-            "inference_overrides",
             "skip_finetuning_for_models",
         ]
-        dict_args = ["tasks", "val_tasks"]
+        dict_args = ["tasks", "val_tasks", "doubly_trained_model_configs"]
         if getattr(self.args, "finetuning_overrides") and getattr(self.args, "finetuning_overrides").strip().startswith(
             "{"
         ):
@@ -143,6 +143,12 @@ class StudyRunner:
             type=str,
             help="Comma-separated list of model configurations for validation only.",
             default="",
+        )
+        parser.add_argument(
+            "--doubly_trained_model_configs",
+            type=str,
+            help="JSON string of doubly trained model configurations. e.g. {'ft_model_config': ['model1', 'model2']}. We only train these combinations rather than all possible combinations.",
+            default="{}",
         )
         parser.add_argument("--tasks", type=str, help="JSON string of tasks configuration")
         parser.add_argument("--val_tasks", type=str, help="JSON string of validation tasks configuration", default="{}")
@@ -192,8 +198,11 @@ class StudyRunner:
         )
         self.args = parser.parse_args()
 
-    def run_command(self, command):
+    def run_command(self, command, n_try: int = 0):
         """Execute the given command in the shell, stream the output, and return the last line."""
+        if n_try > 2:
+            raise Exception(f"Failed to run {command} after {n_try} tries.")
+
         try:
             self.state["commands"].append(command)  # log the command
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -204,7 +213,15 @@ class StudyRunner:
                 output_lines.append(line.strip())
 
             process.wait()
-            if process.returncode != 0:
+
+            # handle errors
+            if process.returncode == 137:
+                print(f"❌ Memory error (137) executing {command}. Retrying...")
+                return self.run_command(command, n_try + 1)
+            elif process.returncode == 139:
+                print(f"❌ Segmentation fault (139) executing {command}. Retrying...")
+                return self.run_command(command, n_try + 1)
+            elif process.returncode != 0:
                 raise subprocess.CalledProcessError(process.returncode, command)
 
             last_line = output_lines[-1] if output_lines else ""
@@ -220,7 +237,6 @@ class StudyRunner:
             "model_configs",
             "val_only_model_configs",
             "prompt_configs",
-            "inference_overrides",
             "finetuning_overrides",
             "skip_finetuning_for_models",
         ]:
@@ -319,7 +335,7 @@ class StudyRunner:
         #### run object level completions on train ####
         object_train_commands = []
         with self.state_lock:
-            for model in self.args.model_configs:
+            for model in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
                 for task in self.args.tasks.keys():
                     for prompt in self.args.prompt_configs:
                         command = self.get_object_level_command(model, task, prompt, self.args.n_object_train, "train")
@@ -344,7 +360,11 @@ class StudyRunner:
         object_val_commands = []
         # including validation only models here for the divergence calculation
         with self.state_lock:
-            for model in self.args.model_configs + self.args.val_only_model_configs:
+            for model in (
+                self.args.model_configs
+                + self.args.val_only_model_configs
+                + list(self.args.doubly_trained_model_configs.keys())
+            ):
                 for task in set(
                     list(self.args.tasks.keys()) + list(self.args.val_tasks.keys())
                 ):  # also running the validation tasks here since we'll need them later
@@ -393,7 +413,7 @@ class StudyRunner:
 
         #### run finetuning dataset creation ####
         finetuning_folder_paths = []
-        for model in self.args.model_configs:
+        for model in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
             for task, response_properties in self.args.tasks.items():
                 for response_property in response_properties:
                     for prompt in self.args.prompt_configs:
@@ -453,7 +473,7 @@ class StudyRunner:
             # tuple[model_config, list[FinetuneConversation]
             additional_samples: list[tuple[str, list[FinetuneConversation]]] = []
             # Generate other evals samples
-            for model_config in self.args.model_configs:
+            for model_config in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
                 other_eval_train_samples = get_other_evals_finetuning_samples(
                     evals_to_run=self.validated_other_evals,
                     object_model_config=model_config,
@@ -463,7 +483,7 @@ class StudyRunner:
                     limit_per_eval=self.args.n_finetuning,
                     cache_path=EXP_DIR / self.args.study_name / "other_evals_cache",
                 )
-                additional_samples.append((model_config, other_eval_train_samples))
+                additional_samples.append((safe_model_name(model_config), other_eval_train_samples))
 
             # Now add the samples to the existing jsonl files
             for model, model_samples in additional_samples:
@@ -489,6 +509,16 @@ class StudyRunner:
                     print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
                     continue
                 for ft_study in finetuning_study_names:
+                    # is the finetuning path only for doubly trained models?
+                    if (
+                        ft_study in [safe_model_name(m) for m in self.args.doubly_trained_model_configs.keys()]
+                        and ft_study not in self.args.model_configs
+                    ):
+                        print(
+                            f"Skipping finetuning {model} for {ft_study} here because it is only for doubly trained models."
+                        )
+                        continue
+
                     ft_study_path = f"{self.args.study_name}/{ft_study}"
                     finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
 
@@ -525,6 +555,46 @@ class StudyRunner:
                         continue
                     finetuning_commands.append(command)
         self.write_state_file()
+
+        #### run finetuning for doubly trained models ####
+        with self.state_lock:
+            for target_model, train_models in self.args.doubly_trained_model_configs.items():
+                # get the finetuning data for the target model
+                ft_study_path = f"{self.args.study_name}/{safe_model_name(target_model)}"
+                finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+                for train_model in train_models:
+                    ft_format = "-format_gemini" if MODEL_TO_FAMILY_MAP.get(train_model, "unknown") == "gemini" else ""
+                    default_train_fname = f"train_dataset{ft_format}.jsonl"
+                    default_val_fname = f"val_dataset{ft_format}.jsonl"
+                    other_evals_fname = f"other_evals_combined_train_dataset{ft_format}.jsonl"
+                    # Pass the correct train path, depending on whether we are have other evals or not
+                    train_path = (
+                        finetuned_folder_path / other_evals_fname
+                        if self.validated_other_evals
+                        else finetuned_folder_path / default_train_fname
+                    )
+                    # currently not adding other evals to the val dataset
+                    val_path = finetuned_folder_path / default_val_fname
+                    command = self.get_finetuning_command(
+                        train_model,
+                        ft_study_path,
+                        notes=f"DBL{ft_study[-3:0]}",
+                        val_path=val_path,
+                        train_path=train_path,
+                        overrides=self.args.finetuning_overrides,
+                    )
+                    if command not in self.state["finetuning_runs"]:
+                        self.state["finetuning_runs"].update(
+                            self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
+                        )
+                    elif self.state["finetuning_runs"][command]["status"] == "complete":
+                        print(f"Skipping {command} because it is already complete.")
+                        continue
+                    if self.args.skip_finetuning:
+                        print(f"Skipping finetuning for {train_model} because --skip_finetuning is set.")
+                        self.state["finetuning_runs"][command].update({"status": "skipped"})
+                        continue
+                    finetuning_commands.append(command)
 
         pool.map(partial(run_finetuning_command, state=self.state, state_lock=self.state_lock), finetuning_commands)
         self.write_state_file()
@@ -599,10 +669,17 @@ class StudyRunner:
 
         if self.validated_val_other_evals:
             print(f"Running evaluation on other evals... {self.validated_val_other_evals}")
-            object_level_configs: list[str] = self.args.model_configs + self.args.val_only_model_configs
+            object_level_configs: list[str] = (
+                self.args.model_configs
+                + self.args.val_only_model_configs
+                + list(self.args.doubly_trained_model_configs.keys())
+            )
 
             meta_level_configs: list[str] = (
-                self.args.model_configs + self.get_finetuned_model_configs() + self.args.val_only_model_configs
+                self.args.model_configs
+                + self.get_finetuned_model_configs()
+                + self.args.val_only_model_configs
+                + list(self.args.doubly_trained_model_configs.keys())
             )
 
             object_and_meta = [
