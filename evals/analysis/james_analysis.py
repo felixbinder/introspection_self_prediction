@@ -20,9 +20,16 @@ from evals.analysis.loading_data import (
 )
 from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
+from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
-from other_evals.counterfactuals.runners import run_from_commands
+from other_evals.counterfactuals.runners import (
+    BiasDetectAddAreYouSure,
+    BiasDetectAreYouAffected,
+    BiasDetectWhatAnswerWithout,
+    KwikWillYouBeCorrect,
+    run_from_commands,
+)
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
 
@@ -89,10 +96,11 @@ def load_meta_dfs(
             try:
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
+                response = clean_for_comparison(row["response"])
                 final_metas.append(
                     LoadedMeta(
                         string=row["string"],
-                        response=clean_for_comparison(row["response"]),
+                        response=response,
                         raw_response=row["raw_response"],
                         response_property=response_property,
                         prompt_method=config_key["prompt"]["method"],
@@ -126,13 +134,18 @@ def load_meta_dfs(
                     )
                     print(f"WARN: Response property {response_property} not found in row {row}, skipping")
                     continue
-                object_level_response = row[response_property]
+                object_level_response = str(row[response_property])
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
+                response = clean_for_comparison(row["response"])
+                if response_property == "second_character":
+                    # sometimes its saved as a float e.g. 8.0 lol
+                    if object_level_response:
+                        object_level_response = object_level_response[0]
                 final_objects.append(
                     LoadedObject(
                         string=row["string"],
-                        response=clean_for_comparison(row["response"]),
+                        response=response,
                         raw_response=row["raw_response"],
                         prompt_method=config_key["prompt"]["method"],
                         compliance=compliance_is_true,
@@ -736,23 +749,28 @@ def adjust_for_entropy(
         # we want to adjust both distributions to have the same entropy
         # we'll find the top 10 most common strings in the first bar
         # and take the min(first_bar, second_bar) for both
-        first_bar_counts = (
+        first_bar_groups = (
             first_bar.group_by(lambda x: x.object_response_property_answer)
             .map_on_group_values(len)
             .sort_by(lambda x: x.values, reverse=True)
         )
-        second_bar_counts = (
-            second_bar.group_by(lambda x: x.object_response_property_answer).map_on_group_values(len).to_dict()
+
+        second_bar_groups = (
+            second_bar.group_by(lambda x: x.object_response_property_answer)
+            .map_on_group_values(len)
+            .sort_by(lambda x: x.values, reverse=True)
         )
-        top_10_first = first_bar_counts.take(10)
+        second_bar_counts = second_bar_groups.to_dict()
+        top_10_first = first_bar_groups.take(10)
         categories_limit: Slist[tuple[str, int]] = top_10_first.map_2(
             lambda key, value: (key, min(value, second_bar_counts.get(key, 0)))
         )
-        print(f"Categories limit: {categories_limit} for {task} {response_property}")
-        adjustedfirst_bar, adjusted_second_bar = take_category_limit(
+        print(f"Comparing {task=} {response_property=}, {first_bar_groups=} {second_bar_groups=}")
+        print(f"{categories_limit=} for {task} {response_property}")
+        adjusted_first_bar, adjusted_second_bar = take_category_limit(
             first_bar=first_bar, second_bar=second_bar, categories_limit=categories_limit, seed=seed
         )
-        adjusted.extend(adjustedfirst_bar)
+        adjusted.extend(adjusted_first_bar)
         adjusted.extend(adjusted_second_bar)
     return adjusted
 
@@ -772,14 +790,20 @@ def calculate_evidence_1(
     log: bool = False,
     adjust_entropy: bool = False,
 ) -> None:
-    # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
-    other_evals_to_run = []
+    other_evals_to_run = [
+        BiasDetectAreYouAffected,
+        BiasDetectWhatAnswerWithout,
+        BiasDetectAddAreYouSure,
+        KwikWillYouBeCorrect,
+    ]
+    # other_evals_to_run = []
     if other_evals_to_run:
+        setup_environment()
         api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
         results_co = run_from_commands(
             evals_to_run=other_evals_to_run,
             object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
-            limit=500,
+            limit=2000,
             api=api,
         )
         results = asyncio.run(results_co)
@@ -829,22 +853,12 @@ def calculate_evidence_1(
         response_property, val_object_model, val_meta_model = group
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
-        # print(f"Compliance rate: {compliance_rate}")
-        # modal_baselines = modal_baseline(filtered_objects)
-        # correct_modes = modal_baselines.map(lambda x: x.meta_predicts_correctly)
-        # mode_acc = correct_modes.average_or_raise()
-        # print(f"Mode accuracy: {mode_acc}")
         stats: AverageStats = values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
         mode_baseline = values.map(lambda x: x.mode_is_correct).average_or_raise()
         shift_percentage = values.map(lambda x: x.shifted == "shifted").average_or_raise()
 
-        # acc * 100 1 d.p
-        # acc_formatted = f"{acc:1f}"
-        # error_formatted = f"{error:1f}"
-        # mode_acc = f"{mode_acc:1f}"
-        # compliance_rate = f"{compliance_rate:1f}"
         label = (
             "1) Predicting behavior before training"
             if object_model == val_object_model
@@ -1244,52 +1258,6 @@ def gpt35_on_better_responses():
 
 
 # gpt35_on_better_responses()
-
-
-def gpt35_number_triplets():
-    exp_folder = EXP_DIR / "5_jul_no_divergence_more_samples"
-    only_response_properties = {"first_character"}
-    object_model = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
-    calculate_evidence_1(
-        shift_before_model=object_model,
-        shift_after_model=meta_model,
-        shifting="only_shifted",
-        # include_identity=True,
-        include_identity=False,
-        object_model=object_model,
-        log=True,
-        meta_model=meta_model,
-        exp_folder=exp_folder,
-        only_response_properties=only_response_properties,
-    )
-
-
-def gpt4o_number_triplets():
-    exp_folder = EXP_DIR / "5_jul_no_divergence_more_samples_gpt4o"
-    only_response_properties = {"first_character", "second_character", "last_character"}
-    only_tasks = {"number_triplets"}
-    object_model = "gpt-4o-2024-05-13"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-    calculate_evidence_1(
-        shift_before_model=object_model,
-        shift_after_model=meta_model,
-        shifting="only_shifted",
-        # include_identity=True,
-        include_identity=False,
-        object_model=object_model,
-        # log=True,
-        meta_model=meta_model,
-        adjust_entropy=True,
-        exp_folder=exp_folder,
-        only_response_properties=only_response_properties,
-        only_tasks=only_tasks,
-        micro_average=False,
-    )
-
-
-gpt4o_number_triplets()
-# gpt35_number_triplets()
 
 
 def gpt4o_on_better_responses():
