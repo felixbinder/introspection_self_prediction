@@ -19,6 +19,7 @@ from evals.data_models.inference import LLMParams
 from evals.data_models.messages import ChatMessage, Prompt, PromptTemplate
 from evals.utils import (
     async_function_with_retry,
+    gather_max_par,
     get_current_git_hash,
     import_function_from_string,
     setup_environment,
@@ -128,7 +129,7 @@ async def run_dataset(filename: str, property_name: str, dataset_runner: Dataset
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await asyncio.gather(*tasks)
+    results = await gather_max_par(100, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result[f"{property_name}_complete"]) for result in results])

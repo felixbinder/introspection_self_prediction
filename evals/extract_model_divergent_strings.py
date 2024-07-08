@@ -105,12 +105,14 @@ if __name__ == "__main__":
     `python evals/extract_model_divergent_strings.py exp/num_35 exp/num_4 --n 100 --output exp/random_numbers_basic/model_divergent_strings_35_4`
     """
     import argparse
+    import sys
 
     logging.basicConfig(level=logging.INFO)
+    max_size = sys.maxsize
 
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=str, nargs="+", help="Paths to the input directories.")
-    parser.add_argument("--n", type=int, default=float("inf"), help="Number of strings to extract.")
+    parser.add_argument("--n", type=int, default=max_size, help="Number of strings to extract.")
     parser.add_argument("--output", type=str, default=None, help="Path to save the output file.")
     parser.add_argument(
         "--response_properties",
