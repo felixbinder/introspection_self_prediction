@@ -767,7 +767,7 @@ def calculate_evidence_1(
     exclude_noncompliant: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
     include_identity: bool = False,
-    only_task: typing.AbstractSet[str] = set(),
+    only_tasks: typing.AbstractSet[str] = set(),
     micro_average: bool = True,
     log: bool = False,
     adjust_entropy: bool = False,
@@ -799,15 +799,15 @@ def calculate_evidence_1(
     flats = flats.map(lambda x: x.rename_matches_behavior())
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
-    if only_task:
-        flats = flats.filter(lambda x: x.task in only_task)
+    if only_tasks:
+        flats = flats.filter(lambda x: x.task in only_tasks)
 
     if other_evals_to_run:
         flats = flats + results_formated
 
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
-    if adjust_for_entropy:
+    if adjust_entropy:
         flats = adjust_for_entropy(object_model=object_model, meta_model=meta_model, items=flats)
     if shifting == "only_same":
         flats = flats.filter(lambda x: x.shifted == "same")
@@ -1267,7 +1267,8 @@ def gpt35_number_triplets():
 
 def gpt4o_number_triplets():
     exp_folder = EXP_DIR / "5_jul_no_divergence_more_samples_gpt4o"
-    only_response_properties = {"first_character"}
+    only_response_properties = {"first_character", "second_character", "last_character"}
+    only_tasks = {"number_triplets"}
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
     calculate_evidence_1(
@@ -1282,6 +1283,7 @@ def gpt4o_number_triplets():
         adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
+        only_tasks=only_tasks,
         micro_average=False,
     )
 
