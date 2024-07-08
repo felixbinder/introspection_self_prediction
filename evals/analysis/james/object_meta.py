@@ -4,14 +4,15 @@ from pydantic import BaseModel
 
 
 class ObjectAndMeta(BaseModel):
+    # For James' analysis
     task: str
     string: str
-    meta_predicted_correctly: bool
-    meta_response: str
+    meta_predicted_correctly: bool | None
+    meta_response: str | None
     response_property: str
     meta_model: str
     object_model: str
-    object_response_property_answer: str
+    object_response_property_answer: str | None
     object_response_raw_response: str
     object_complied: bool
     meta_complied: bool

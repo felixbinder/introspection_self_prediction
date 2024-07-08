@@ -89,6 +89,7 @@ class AskIfCorrectResult(BaseModel):
 
     def to_other_eval_format(self, eval_name: str = "are_you_sure") -> OtherEvalCSVFormat:
         return OtherEvalCSVFormat(
+            original_prompt=self.test_data.original_question,
             object_history=display_conversation(self.object_new_history),
             object_model=self.object_config.model,
             object_parsed_result="correct" if self.object_level_correct else "incorrect",
@@ -314,10 +315,7 @@ async def run_single_ask_if_correct_answer(
         balanced_data = predicted
 
     acc = balanced_data.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
-    acc_correct = object_correct.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
-    acc_incorrect = object_incorrect.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
-    print(f"Accuracy: {acc}, {acc_correct=}, {acc_incorrect=}")
-
+    
     # dump_conversations(path="exp/results.txt", messages=results.map(lambda x: x.meta_new_history))
     return balanced_data
     # dump_conversations(

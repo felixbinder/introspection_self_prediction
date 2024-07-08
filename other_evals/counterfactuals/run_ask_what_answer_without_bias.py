@@ -138,10 +138,9 @@ class AskWhatAnswerResult(BaseModel):
 
     def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
         object_parsed = self.first_round.parsed_unbiased_answer
-        assert object_parsed is not None
         meta_parsed = self.second_round_parsed
-        assert meta_parsed is not None
         return OtherEvalCSVFormat(
+            original_prompt=self.first_round.test_data.original_question,
             object_history="BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
             + "\nUNBIASED HISTORY:\n"
@@ -151,7 +150,7 @@ class AskWhatAnswerResult(BaseModel):
             meta_history=display_conversation(self.final_history),
             meta_model=self.meta_config.model,
             meta_parsed_result=meta_parsed,
-            meta_predicted_correctly=self.predicted_counterfactual_answer_correctly(),
+            meta_predicted_correctly=self.predicted_counterfactual_answer_correctly() if meta_parsed is not None else None,
             eval_name=eval_name,
         )
 

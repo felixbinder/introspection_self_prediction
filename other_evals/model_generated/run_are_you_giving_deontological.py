@@ -89,6 +89,7 @@ class DeontologyWithMeta(BaseModel):
         eval_name: str
         """
         return OtherEvalCSVFormat(
+            original_prompt=self.object_level.object_prompt,
             object_history=(
                 display_conversation(messages=self.object_level.object_history)
                 if self.object_level.object_history is not None

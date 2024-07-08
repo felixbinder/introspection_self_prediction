@@ -155,6 +155,7 @@ class AreYouSureMetaResult(BaseModel):
         changed_answer: bool = self.first_round.switched_answer
         meta_predicted_change: bool = self.second_round_parsed == "Y"
         return OtherEvalCSVFormat(
+            original_prompt=self.first_round.test_data.original_question,
             object_history="BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
             + "\nUNBIASED HISTORY:\n"

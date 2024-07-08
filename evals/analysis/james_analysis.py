@@ -1,4 +1,5 @@
 import asyncio
+from re import A
 import typing
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +29,7 @@ from other_evals.counterfactuals.runners import (
     BiasDetectAreYouAffected,
     BiasDetectWhatAnswerWithout,
     KwikWillYouBeCorrect,
+    OtherEvalRunner,
     run_from_commands,
 )
 
@@ -775,6 +777,52 @@ def adjust_for_entropy(
     return adjusted
 
 
+def calculate_shift_v2(
+    shift_before_model: str, shift_after_model: str, items: Slist[ObjectAndMeta]
+) -> Slist[ObjectAndMeta]:
+    # group by task + response_property
+    to_work_on: Slist[Group[tuple[str, str], Slist[ObjectAndMeta]]] = items.group_by(
+        lambda x: (x.task, x.response_property)
+    )
+    output: Slist[ObjectAndMeta] = Slist()
+    for (task, response_property), group_items in to_work_on:
+        first_bar = (
+            group_items.filter(lambda x: x.object_model == shift_before_model)
+            .filter(lambda x: x.meta_model == shift_after_model)   
+        )
+        second_bar = (
+            group_items.filter(lambda x: x.meta_model == shift_after_model)
+            .filter(lambda x: x.object_model == shift_after_model)
+        )
+        # because the other evals filters out a small number of non-compliant items, we should have the same number of items in both bars
+        shared_strings = first_bar.map(lambda x: x.string).to_set().intersection(
+            second_bar.map(lambda x: x.string).to_set()
+        )
+        first_bar = first_bar.filter(lambda x: x.string in shared_strings)
+        second_bar = second_bar.filter(lambda x: x.string in shared_strings)
+        assert len(first_bar) == len(second_bar), f"Lengths don't match {len(first_bar)} != {len(second_bar)} for {task=} {response_property=}"
+        # Ok we have the same number of items in both bars
+        # we want to find the items that are different between the two
+        # If they are the same, we'll mark them as same
+        # If they are different, we'll mark them as shifted
+        # If they are not compliant, we'll mark them as not compliant
+        # sort by string
+        for first, second in first_bar.zip(second_bar):
+            assert first.string == second.string, f"Strings don't match {first.string} != {second.string}"
+            if not first.object_complied or not second.object_complied:
+                shifted = "not_compliant"
+            elif first.object_response_property_answer == second.object_response_property_answer:
+                shifted = "same"
+            else:
+                shifted = "shifted"
+            new_first = first.model_copy()
+            new_first.shifted = shifted
+            new_second = second.model_copy()
+            new_second.shifted = shifted
+            output.append(new_first)
+            output.append(new_second)
+    return output
+
 def calculate_evidence_1(
     shift_before_model: str,
     shift_after_model: str,
@@ -789,14 +837,13 @@ def calculate_evidence_1(
     micro_average: bool = True,
     log: bool = False,
     adjust_entropy: bool = False,
-) -> None:
-    other_evals_to_run = [
+    other_evals_to_run: Sequence[type[OtherEvalRunner]] = [
         BiasDetectAreYouAffected,
         BiasDetectWhatAnswerWithout,
         BiasDetectAddAreYouSure,
         KwikWillYouBeCorrect,
-    ]
-    other_evals_to_run = []
+    ],
+) -> None:
     if other_evals_to_run:
         setup_environment()
         api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
@@ -805,11 +852,14 @@ def calculate_evidence_1(
             object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
             limit=2000,
             api=api,
+            balance_data=False, # don't balance data, we need to calculate the shift. entropy will be adjusted
         )
-        results = asyncio.run(results_co)
-        results_formated = results.map(lambda x: x.to_james_analysis_format())
+        _results_from_other_evals = (asyncio.run(results_co)).map(lambda x: x.to_james_analysis_format())
+        results_from_other_evals = calculate_shift_v2(
+            shift_before_model=shift_before_model, shift_after_model=shift_after_model, items=_results_from_other_evals
+        )
     else:
-        results_formated = Slist()
+        results_from_other_evals = Slist()
     flats: Slist[ObjectAndMeta] = get_evidence_1_object_and_meta(
         prefinetuned_model=object_model,
         postfinetuned_model=meta_model,
@@ -827,7 +877,7 @@ def calculate_evidence_1(
         flats = flats.filter(lambda x: x.task in only_tasks)
 
     if other_evals_to_run:
-        flats = flats + results_formated
+        flats = flats + results_from_other_evals
 
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")

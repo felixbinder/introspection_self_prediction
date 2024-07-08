@@ -147,7 +147,7 @@ class AskIfAffectedSecondRound(BaseModel):
         return self.first_round.switched_answer
 
     def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
-        changed_answer: bool = self.first_round.switched_answer
+        changed_answer= self.first_round.switched_answer if self.first_round.both_successful else None
         object_history: str = (
             "BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
@@ -155,12 +155,19 @@ class AskIfAffectedSecondRound(BaseModel):
             + display_conversation(self.first_round.unbiased_new_history)
         )
         object_model: str = self.first_round.config.model
-        object_parsed_result: str = "changed answer" if changed_answer else "did not change answer"
+        if changed_answer is None:
+            object_parsed_result = None
+        else:
+            object_parsed_result = "changed answer" if changed_answer else "did not change answer"
         meta_history: str = display_conversation(self.final_history)
         meta_model: str = self.meta_config.model
         meta_parsed_result: str = "changed answer" if self.second_round_parsed == "Y" else "did not change answer"
-        meta_predicted_correctly: bool = self.predicted_switched_answer_correctly()
+        if self.second_round_parsed is None or changed_answer is None:
+            meta_predicted_correctly = None
+        else:
+            meta_predicted_correctly = self.predicted_switched_answer_correctly()
         return OtherEvalCSVFormat(
+            original_prompt=self.first_round.test_data.original_question,
             object_history=object_history,
             object_model=object_model,
             object_parsed_result=object_parsed_result,
@@ -366,11 +373,8 @@ async def run_single_ask_if_affected(
     )
 
     # Get the average % of parsed answers that match the bias
-    parsed_answers = results.filter(lambda x: x.both_successful)
-    print(
-        f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
-    )
-    average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
+    parsed_answers = results
+    average_affected_by_text: float = parsed_answers.filter(lambda x: x.both_successful).map(lambda x: x.switched_answer).average_or_raise()
     print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
     meta_config = InferenceConfig(
