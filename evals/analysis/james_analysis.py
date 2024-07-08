@@ -516,7 +516,7 @@ def single_comparison_flat(
     return result_rows
 
 
-def get_object_and_meta(
+def get_evidence_1_object_and_meta(
     exp_folder: Path,
     shift_before_model: str,
     shift_after_model: str,
@@ -587,10 +587,6 @@ def get_object_and_meta(
         )
 
         unique_response_properties = filtered_metas.map(lambda x: x.response_property).to_set()
-
-        # # remove identity
-        # assert "identity" in unique_response_properties, "Identity not found in response properties"
-        # unique_response_properties.remove("identity")
 
         for response_property in unique_response_properties:
             new_filtered_objects = filtered_objects.filter(
@@ -670,7 +666,7 @@ def james_micro():
     print(f"Mode accuracy: {mode_acc}")
 
 
-def calculate_shift_results(
+def calculate_evidence_1(
     shift_before_model: str,
     shift_after_model: str,
     object_model: str = "gpt-3.5-turbo-1106",
@@ -698,7 +694,7 @@ def calculate_shift_results(
         results_formated = results.map(lambda x: x.to_james_analysis_format())
     else:
         results_formated = Slist()
-    flats: Slist[ObjectAndMeta] = get_object_and_meta(
+    flats: Slist[ObjectAndMeta] = get_evidence_1_object_and_meta(
         prefinetuned_model=object_model,
         postfinetuned_model=meta_model,
         shift_before_model=shift_before_model,
@@ -1159,7 +1155,7 @@ def gpt35_number_triplets():
     only_response_properties = {"first_character"}
     object_model = "gpt-3.5-turbo-0125"
     meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
-    calculate_shift_results(
+    calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
         shifting="only_shifted",
@@ -1178,7 +1174,7 @@ def gpt4o_number_triplets():
     only_response_properties = {"first_character"}
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-    calculate_shift_results(
+    calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
         shifting="only_shifted",
