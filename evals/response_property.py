@@ -141,6 +141,15 @@ def first_character(row: pd.Series):
         first_character = None
     return first_character
 
+def second_character(row: pd.Series):
+    """Extract the second character of the response."""
+    response = row["response"]
+    try:
+        second_character = response[1]
+    except (TypeError, IndexError):
+        second_character = None
+    return second_character
+
 
 def last_character(row: pd.Series):
     """Extract the last character of the response."""
