@@ -150,7 +150,9 @@ class AskWhatAnswerResult(BaseModel):
             meta_history=display_conversation(self.final_history),
             meta_model=self.meta_config.model,
             meta_parsed_result=meta_parsed,
-            meta_predicted_correctly=self.predicted_counterfactual_answer_correctly() if meta_parsed is not None else None,
+            meta_predicted_correctly=(
+                self.predicted_counterfactual_answer_correctly() if meta_parsed is not None else None
+            ),
             eval_name=eval_name,
         )
 

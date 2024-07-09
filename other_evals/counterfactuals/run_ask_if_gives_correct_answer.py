@@ -315,7 +315,7 @@ async def run_single_ask_if_correct_answer(
         balanced_data = predicted
 
     acc = balanced_data.map(lambda x: x.predicted_correctly_that_can_answer_correctly).average()
-    
+
     # dump_conversations(path="exp/results.txt", messages=results.map(lambda x: x.meta_new_history))
     return balanced_data
     # dump_conversations(

@@ -1,5 +1,4 @@
 import asyncio
-from re import A
 import typing
 from dataclasses import dataclass
 from pathlib import Path
@@ -786,21 +785,24 @@ def calculate_shift_v2(
     )
     output: Slist[ObjectAndMeta] = Slist()
     for (task, response_property), group_items in to_work_on:
-        first_bar = (
-            group_items.filter(lambda x: x.object_model == shift_before_model)
-            .filter(lambda x: x.meta_model == shift_after_model)   
+        first_bar = group_items.filter(lambda x: x.object_model == shift_before_model).filter(
+            lambda x: x.meta_model == shift_after_model
         )
-        second_bar = (
-            group_items.filter(lambda x: x.meta_model == shift_after_model)
-            .filter(lambda x: x.object_model == shift_after_model)
+        second_bar = group_items.filter(lambda x: x.meta_model == shift_after_model).filter(
+            lambda x: x.object_model == shift_after_model
         )
         # because the other evals filters out a small number of non-compliant items, we should have the same number of items in both bars
-        shared_strings = first_bar.map(lambda x: x.string).to_set().intersection(
-            second_bar.map(lambda x: x.string).to_set()
+        shared_strings = (
+            first_bar.map(lambda x: x.string).to_set().intersection(second_bar.map(lambda x: x.string).to_set())
         )
         first_bar = first_bar.filter(lambda x: x.string in shared_strings)
         second_bar = second_bar.filter(lambda x: x.string in shared_strings)
-        assert len(first_bar) == len(second_bar), f"Lengths don't match {len(first_bar)} != {len(second_bar)} for {task=} {response_property=}"
+        assert len(first_bar) == len(
+            second_bar
+        ), f"Lengths don't match {len(first_bar)} != {len(second_bar)} for {task=} {response_property=}"
+        # calculate modal answers
+        intermediate_first = Slist()
+        intermediate_second = Slist()
         # Ok we have the same number of items in both bars
         # we want to find the items that are different between the two
         # If they are the same, we'll mark them as same
@@ -819,9 +821,13 @@ def calculate_shift_v2(
             new_first.shifted = shifted
             new_second = second.model_copy()
             new_second.shifted = shifted
-            output.append(new_first)
-            output.append(new_second)
+            intermediate_first.append(new_first)
+            intermediate_second.append(new_second)
+        output.extend(recalculate_mode(intermediate_first))
+        output.extend(recalculate_mode(intermediate_second))
+
     return output
+
 
 def calculate_evidence_1(
     shift_before_model: str,
@@ -852,7 +858,7 @@ def calculate_evidence_1(
             object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
             limit=2000,
             api=api,
-            balance_data=False, # don't balance data, we need to calculate the shift. entropy will be adjusted
+            balance_data=False,  # don't balance data, we need to calculate the shift. entropy will be adjusted
         )
         _results_from_other_evals = (asyncio.run(results_co)).map(lambda x: x.to_james_analysis_format())
         results_from_other_evals = calculate_shift_v2(
@@ -903,11 +909,12 @@ def calculate_evidence_1(
         response_property, val_object_model, val_meta_model = group
 
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
-        stats: AverageStats = values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
+        non_none_values = values.filter(lambda x: x.meta_predicted_correctly is not None)
+        stats: AverageStats = non_none_values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
-        mode_baseline = values.map(lambda x: x.mode_is_correct).average_or_raise()
-        shift_percentage = values.map(lambda x: x.shifted == "shifted").average_or_raise()
+        mode_baseline = non_none_values.map(lambda x: x.mode_is_correct).average_or_raise()
+        shift_percentage = non_none_values.map(lambda x: x.shifted == "shifted").average_or_raise()
 
         label = (
             "1) Predicting behavior before training"
@@ -923,6 +930,7 @@ def calculate_evidence_1(
             "mode_baseline": mode_baseline,
             "compliance_rate": compliance_rate,
             "count": len(values),
+            "complied_count": len(non_none_values),
             "object_model": val_object_model,
             "meta_model": val_meta_model,
             "label": label,

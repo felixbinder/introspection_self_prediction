@@ -147,7 +147,7 @@ class AskIfAffectedSecondRound(BaseModel):
         return self.first_round.switched_answer
 
     def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
-        changed_answer= self.first_round.switched_answer if self.first_round.both_successful else None
+        changed_answer = self.first_round.switched_answer if self.first_round.both_successful else None
         object_history: str = (
             "BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
@@ -374,7 +374,9 @@ async def run_single_ask_if_affected(
 
     # Get the average % of parsed answers that match the bias
     parsed_answers = results
-    average_affected_by_text: float = parsed_answers.filter(lambda x: x.both_successful).map(lambda x: x.switched_answer).average_or_raise()
+    average_affected_by_text: float = (
+        parsed_answers.filter(lambda x: x.both_successful).map(lambda x: x.switched_answer).average_or_raise()
+    )
     print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
     meta_config = InferenceConfig(

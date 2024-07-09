@@ -13,7 +13,11 @@ from other_evals.counterfactuals.api_utils import RepoCompatCaller
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, OtherEvalCSVFormat
 from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci
-from other_evals.counterfactuals.run_ask_are_you_sure import are_you_sure_finetune_samples, run_single_are_you_sure
+from other_evals.counterfactuals.run_ask_are_you_sure import (
+    AreYouSureMetaResult,
+    are_you_sure_finetune_samples,
+    run_single_are_you_sure,
+)
 from other_evals.counterfactuals.run_ask_if_affected import finetune_samples_ask_if_affected, run_single_ask_if_affected
 from other_evals.counterfactuals.run_ask_if_gives_correct_answer import (
     kwik_finetune_samples,
@@ -148,7 +152,7 @@ class BiasDetectAddAreYouSure(OtherEvalRunner):
         balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it would change its prediction if we ask 'ask you sure'. Y/N answers"""
-        result = await run_single_are_you_sure(
+        result: Slist[AreYouSureMetaResult] = await run_single_are_you_sure(
             object_model=object_model,
             meta_model=meta_model,
             api=api,
