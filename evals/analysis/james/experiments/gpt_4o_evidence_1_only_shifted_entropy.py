@@ -1,4 +1,4 @@
-from evals.analysis.james_analysis import calculate_evidence_1
+from evals.analysis.james.james_analysis import calculate_evidence_1
 from evals.locations import EXP_DIR
 
 
