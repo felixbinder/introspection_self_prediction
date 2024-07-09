@@ -911,7 +911,6 @@ def calculate_evidence_1(
     if only_tasks:
         flats = flats.filter(lambda x: x.task in only_tasks)
 
-    
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
     if adjust_entropy:
@@ -1068,7 +1067,6 @@ def get_single_hue(
 
         dataframe_row.append(result_row)
     return HueResult(strings=all_strings, results=dataframe_row)
-
 
 
 def cross_training():

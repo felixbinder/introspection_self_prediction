@@ -1,8 +1,8 @@
 import pandas as pd
+import plotly.graph_objects as go
 
 from evals.analysis.james.object_meta import ObjectAndMeta
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
-import plotly.graph_objects as go
 
 #
 # before_finetune = read_jsonl_file_into_basemodel("gpt-3.5-turbo-0125_first_character_filtered.jsonl", FlatObjectMeta)
@@ -19,7 +19,6 @@ before_finetune_object_response_property_answer: list[str] = before_finetune.map
 after_finetune_object_response_property_answer: list[str] = after_finetune.map(
     lambda x: x.object_response_property_answer
 )
-
 
 
 # Convert lists to pandas Series

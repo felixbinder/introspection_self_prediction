@@ -7,7 +7,9 @@ from scipy import stats
 from slist import AverageStats, Group, Slist
 
 from evals.analysis.james.object_meta import ObjectAndMeta
-from evals.analysis.james.plotting.plot_response_property_with_baseline import create_chart
+from evals.analysis.james.plotting.plot_response_property_with_baseline import (
+    create_chart,
+)
 from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
     write_jsonl_file_from_basemodel,
