@@ -152,6 +152,36 @@ def second_character(row: pd.Series):
     return second_character
 
 
+def second_and_third_character(row: pd.Series):
+    """e.g. abc => bc"""
+    response = row["response"]
+    try:
+        characters = response[1] + response[2]
+    except (TypeError, IndexError):
+        characters = None
+    return characters
+
+
+def first_and_second_character(row: pd.Series):
+    """e.g. abc => ab"""
+    response = row["response"]
+    try:
+        characters = response[0] + response[1]
+    except (TypeError, IndexError):
+        characters = None
+    return characters
+
+
+def third_character(row: pd.Series):
+    """Extract the third character of the response."""
+    response = row["response"]
+    try:
+        third_character = response[2]
+    except (TypeError, IndexError):
+        third_character = None
+    return third_character
+
+
 def last_character(row: pd.Series):
     """Extract the last character of the response."""
     response = row["response"]
@@ -172,6 +202,27 @@ def first_word(row: pd.Series):
     return first_word
 
 
+def second_word(row: pd.Series):
+    """Extract the second word of the response."""
+    response = row["response"]
+    try:
+        second_word = response.split()[1]
+    except (TypeError, IndexError):
+        second_word = None
+    return second_word
+
+
+def first_word_reversed(row: pd.Series):
+    """Extract the first word of the response in reverse order."""
+    response = row["response"]
+    try:
+        first_word = response.split()[0]
+        first_word_reversed = first_word[::-1]
+    except (TypeError, IndexError):
+        first_word_reversed = None
+    return first_word_reversed
+
+
 def last_word(row: pd.Series):
     """Extract the last word of the response."""
     response = row["response"]
@@ -180,6 +231,42 @@ def last_word(row: pd.Series):
     except (TypeError, IndexError):
         last_word = None
     return last_word
+
+
+## numeric only
+
+
+def sum_of_digits(row: pd.Series):
+    """Extract the sum of the digits in the response."""
+    response = row["response"]
+    try:
+        digits = response.strip()
+        sum_of_digits = sum(int(digit) for digit in digits)
+    except (TypeError, IndexError):
+        sum_of_digits = None
+    return str(sum_of_digits)
+
+
+def sum_of_first_two_digits(row: pd.Series):
+    """Extract the sum of the first two digits in the response."""
+    response = row["response"]
+    try:
+        digits = response.strip()
+        sum_of_digits = sum(int(digit) for digit in digits[:2])
+    except (TypeError, IndexError):
+        sum_of_digits = None
+    return str(sum_of_digits)
+
+
+def sum_of_last_two_digits(row: pd.Series):
+    """Extract the sum of the last two digits in the response."""
+    response = row["response"]
+    try:
+        digits = response.strip()
+        sum_of_digits = sum(int(digit) for digit in digits[-2:])
+    except (TypeError, IndexError):
+        sum_of_digits = None
+    return str(sum_of_digits)
 
 
 def starts_with_vowel(row: pd.Series):
