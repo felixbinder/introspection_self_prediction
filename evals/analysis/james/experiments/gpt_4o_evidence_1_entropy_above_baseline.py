@@ -1,4 +1,5 @@
 from evals.analysis.james.james_analysis import calculate_evidence_1
+from evals.analysis.james.plotting.plot_response_property_with_baseline import create_chart
 from evals.locations import EXP_DIR
 
 
@@ -41,7 +42,7 @@ def gpt4o_july_5():
     }
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-    calculate_evidence_1(
+    df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
         shifting="only_shifted",
@@ -56,6 +57,8 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=False,
     )
+    create_chart(df=df, title="GPT-4o Evidence 1, adjusted for entropy")
+
 
 
 gpt4o_july_5()
