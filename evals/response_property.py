@@ -216,7 +216,7 @@ def third_word(row: pd.Series):
     """Extract the third word of the response."""
     response = row["response"]
     try:
-        third_word = response.split()[1]
+        third_word = response.split()[2]
     except (TypeError, IndexError):
         third_word = None
     return third_word

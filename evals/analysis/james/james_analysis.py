@@ -101,8 +101,6 @@ def load_meta_dfs(
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
                 response = clean_for_comparison(row["response"])
-                if response_property == "second_word":
-                    print("break")
                 final_metas.append(
                     LoadedMeta(
                         string=row["string"],
@@ -140,9 +138,6 @@ def load_meta_dfs(
                     )
                     print(f"WARN: Response property {response_property} not found in row {row}, skipping")
                     continue
-                if response_property == "second_word":
-                    print("break")
-
                 object_level_response = str(row[response_property])
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
@@ -370,9 +365,9 @@ def flat_object_meta(
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
             print(f"Key {key} not found in objects_grouped. Weird...")
-            raise ValueError(f"Key {key} not found in objects_grouped")
+            # raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
-            # continue
+            continue
         mode_objects = mode_grouping[(meta.task, meta.response_property)]
         modal_object_answer = mode_objects.map(lambda x: x.response_property_answer).mode_or_raise()
         objects_for_meta = objects_grouped[key]

@@ -5,7 +5,7 @@ from evals.analysis.james.plotting.plot_response_property_with_baseline import (
 from evals.locations import EXP_DIR
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "9_jul_test_new_response_properties_2"
+    exp_folder = EXP_DIR / "9_jul_test_new_response_properties_3"
     only_response_properties = set()
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
@@ -28,7 +28,7 @@ def gpt4o_july_5():
         micro_average=False,
         other_evals_to_run=[],
     )
-    create_chart(df=df, title="GPT-4o Evidence 1, adjusted for entropy")
+    create_chart(df=df, title="GPT-4o Evidence 1")
 
 
 gpt4o_july_5()
