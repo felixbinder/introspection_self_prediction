@@ -212,6 +212,16 @@ def second_word(row: pd.Series):
     return second_word
 
 
+def third_word(row: pd.Series):
+    """Extract the third word of the response."""
+    response = row["response"]
+    try:
+        third_word = response.split()[1]
+    except (TypeError, IndexError):
+        third_word = None
+    return third_word
+
+
 def first_word_reversed(row: pd.Series):
     """Extract the first word of the response in reverse order."""
     response = row["response"]
@@ -234,6 +244,39 @@ def last_word(row: pd.Series):
 
 
 ## numeric only
+
+
+def is_first_digit_even(row: pd.Series):
+    """Extract whether the first digit in the response is even."""
+    response = row["response"]
+    try:
+        first_digit = int(response[0])
+        is_first_digit_even = first_digit % 2 == 0
+    except (TypeError, IndexError):
+        is_first_digit_even = None
+    return str(is_first_digit_even).lower()
+
+
+def is_second_digit_even(row: pd.Series):
+    """Extract whether the second digit in the response is even."""
+    response = row["response"]
+    try:
+        second_digit = int(response[1])
+        is_second_digit_even = second_digit % 2 == 0
+    except (TypeError, IndexError):
+        is_second_digit_even = None
+    return str(is_second_digit_even).lower()
+
+
+def is_third_digit_even(row: pd.Series):
+    """Extract whether the third digit in the response is even."""
+    response = row["response"]
+    try:
+        third_digit = int(response[2])
+        is_third_digit_even = third_digit % 2 == 0
+    except (TypeError, IndexError):
+        is_third_digit_even = None
+    return str(is_third_digit_even).lower()
 
 
 def sum_of_digits(row: pd.Series):

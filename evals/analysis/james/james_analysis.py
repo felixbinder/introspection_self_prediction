@@ -101,6 +101,8 @@ def load_meta_dfs(
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
                 response = clean_for_comparison(row["response"])
+                if response_property == "second_word":
+                    print("break")
                 final_metas.append(
                     LoadedMeta(
                         string=row["string"],
@@ -138,6 +140,9 @@ def load_meta_dfs(
                     )
                     print(f"WARN: Response property {response_property} not found in row {row}, skipping")
                     continue
+                if response_property == "second_word":
+                    print("break")
+
                 object_level_response = str(row[response_property])
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
