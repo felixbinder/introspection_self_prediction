@@ -829,6 +829,30 @@ def calculate_shift_v2(
     return output
 
 
+def bootstrap_accuracy(items: Sequence[bool], iterations: int = 1000, seed: int = 42) -> AverageStats:
+    """
+    average: float
+    standard_deviation: float
+    upper_confidence_interval_95: float
+    lower_confidence_interval_95: float
+    count: int
+    """
+    average: float = np.mean(items)
+    standard_deviation: float = np.std(items)
+    rng = np.random.default_rng(seed)
+    samples = rng.choice(items, size=(iterations, len(items)), replace=True)
+    sample_means = np.mean(samples, axis=1)
+
+    confidence_intervals = np.percentile(sample_means, [2.5, 97.5])
+    return AverageStats(
+        average=average,
+        standard_deviation=standard_deviation,
+        upper_confidence_interval_95=confidence_intervals[1],
+        lower_confidence_interval_95=confidence_intervals[0],
+        count=len(items),
+    )
+
+
 def calculate_evidence_1(
     shift_before_model: str,
     shift_after_model: str,
@@ -915,6 +939,7 @@ def calculate_evidence_1(
         error = stats.upper_confidence_interval_95 - acc
         mode_baseline = non_none_values.map(lambda x: x.mode_is_correct).average_or_raise()
         shift_percentage = non_none_values.map(lambda x: x.shifted == "shifted").average_or_raise()
+        bootstrap_results: AverageStats = bootstrap_accuracy(non_none_values.map(lambda x: x.meta_predicted_correctly))
 
         label = (
             "1) Predicting behavior before training"
@@ -925,6 +950,8 @@ def calculate_evidence_1(
             "response_property": response_property,
             "accuracy": acc,
             "error": error,
+            "bootstrap_upper": bootstrap_results.upper_confidence_interval_95,
+            "bootstrap_lower": bootstrap_results.lower_confidence_interval_95,
             "shifted": shift_percentage,
             # "mode_accuracy": mode_acc,
             "mode_baseline": mode_baseline,

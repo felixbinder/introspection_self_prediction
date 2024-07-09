@@ -40,7 +40,14 @@ def create_chart(df, title, _sorted_properties=None):
                 name=label,
                 text=df_sorted["accuracy"].apply(lambda x: f"{x*100:.1f}%"),
                 textposition="outside",
-                error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),
+                # plot with bootstrap_upper,bootstrap_lower
+                # error_y=dict(type="data", array=df_sorted["error"] * 100, visible=True),
+                error_y=dict(
+                    type="data",
+                    array=(df_sorted["accuracy"] - df_sorted["bootstrap_lower"]) * 100,
+                    arrayminus=(df_sorted["bootstrap_upper"] - df_sorted["accuracy"]) * 100,
+                    visible=True,
+                ),
                 width=bar_width,
             )
         )
