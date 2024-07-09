@@ -384,7 +384,6 @@ def load_dfs_with_filter(
     return dfs
 
 
-
 def load_single_df(df_path: Path, exclude_noncompliant: bool = True, verbose: bool = False) -> pd.DataFrame:
     """Loads and prepares a single dataframe"""
     dfs = load_and_prep_dfs([df_path], exclude_noncompliant=exclude_noncompliant, verbose=verbose)
