@@ -646,7 +646,7 @@ class StudyRunner:
                                 prompt,
                                 self.args.n_meta_val,
                                 "val",
-                                divergent_strings_path,
+                                strings_path="none",
                             )
                             if command not in self.state["meta_val_runs"]:
                                 self.state["meta_val_runs"].update(
