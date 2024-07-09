@@ -14,6 +14,7 @@ defaults: # these should be overwritten in the particular finetuning files, agai
   - task: wikipedia
   - prompt: meta_level/minimal
   - response_property: identity
+  - _self_
 
 study_dir: ${experiment_folder_location:/finetuning/${study_name}/${dataset_folder}} # the folder of the dataset which contains multiple experiments
 

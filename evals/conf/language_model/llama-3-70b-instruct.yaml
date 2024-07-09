@@ -1,0 +1,7 @@
+model: "llama-3-70b-instruct"
+cais_path: "/data/public_models/huggingface/meta-llama/Meta-Llama-3-70B-Instruct"
+temperature: 0.0
+top_p: 1.0
+max_tokens: null
+num_candidates_per_completion: 1
+insufficient_valids_behaviour: "error"

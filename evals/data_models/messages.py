@@ -96,7 +96,7 @@ class Prompt(HashableBaseModel):
         line = {"messages": msgs}
         return json.dumps(line)
 
-    def gemini_format(self) -> str:
+    def gemini_format(self) -> list[str]:
         if self.is_none_in_messages():
             raise ValueError(f"Gemini chat prompts cannot have a None role. Got {self.messages}")
         messages = []
@@ -109,6 +109,7 @@ class Prompt(HashableBaseModel):
             # Gemini uses the same format as OpenAI except uses 'model' instead of 'assistant'
             elif msg.role == MessageRole.assistant:
                 messages.append(Content(parts=[Part.from_text(msg.content)], role="model"))
+        assert len(messages) > 0, f"Somehow created an empty prompt for gemini. Using: {self}"
         return messages
 
     def gemini_format_text(self) -> str:
@@ -164,3 +165,11 @@ class Prompt(HashableBaseModel):
             cprint(f"==RESPONSE {i + 1} ({response.model_id}):", "white")
             cprint(response.completion, PRINT_COLORS["assistant"], attrs=["bold"])
         print()
+
+    def truncate_messages(self, max_length: int = 1000) -> "Prompt":
+        truncated_prompt = Prompt(messages=[])
+        for msg in self.messages:
+            if len(msg.content) > max_length:
+                msg = ChatMessage(role=msg.role, content=msg.content[:max_length])
+            truncated_prompt.messages.append(msg)
+        return truncated_prompt

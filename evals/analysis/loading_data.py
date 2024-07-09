@@ -38,7 +38,7 @@ def get_exp_folders(exp_dir: Path, exp_name_pattern: str) -> List[Path]:
 
 
 def load_and_prep_dfs(
-    df_paths: List[Path], configs: Optional[List[DictConfig]] = None, exclude_noncompliant: bool = True
+    df_paths: List[Path], configs: Optional[List[DictConfig]] = None, exclude_noncompliant: bool = True, verbose=False
 ) -> Dict[DictConfig, pd.DataFrame]:
     # TODO all of this should be small functions...
     """Loads and cleans a number of dataframes. Returns a dictionary of dataframes with the names as keys."""
@@ -61,13 +61,15 @@ def load_and_prep_dfs(
         # convert other columns to string
         other_cols = [col for col in dfs[name].columns if col != "complete"]
         dfs[name][other_cols] = dfs[name][other_cols].astype(str)
-        print(f"Loaded {len(dfs[name])} rows from {path}")
+        if verbose:
+            print(f"Loaded {len(dfs[name])} rows from {path}")
 
     # exclude rows with complete=False
     to_drop = []
     for name in dfs.keys():
         if "complete" not in dfs[name].columns:
-            print(f"[{pretty_names[name]}]:\n  No complete column found, dropping dataframe")
+            if verbose:
+                print(f"[{pretty_names[name]}]:\n  No complete column found, dropping dataframe")
             to_drop.append(name)
     for name in to_drop:
         dfs.pop(name)
@@ -76,7 +78,8 @@ def load_and_prep_dfs(
         old_len = len(dfs[name])
         dfs[name] = dfs[name][dfs[name]["complete"] == True]  # noqa: E712
         if len(dfs[name]) != old_len:
-            print(f"[{pretty_names[name]}]:\n  Excluded rows marked as not complete, leaving {len(dfs[name])} rows")
+            if verbose:
+                print(f"[{pretty_names[name]}]:\n  Excluded rows marked as not complete, leaving {len(dfs[name])} rows")
 
     # if response is not in the dataframe, remove the dataframe—it's still running
     to_remove = []
@@ -84,7 +87,8 @@ def load_and_prep_dfs(
         if "response" not in dfs[name].columns or len(dfs[name]) == 0:
             to_remove.append(name)
     for name in to_remove:
-        print(f"[{pretty_names[name]}]:\n  No response column found. Removing dataframe.")
+        if verbose:
+            print(f"[{pretty_names[name]}]:\n  No response column found. Removing dataframe.")
         dfs.pop(name)
 
     # clean the input strings (note that this might lead to the response and the tokens diverging)
@@ -98,9 +102,10 @@ def load_and_prep_dfs(
             join_on = name["task"]["join_on"]
         except KeyError:
             join_on = " "
-            print(
-                f"[{pretty_names[name]}]:\n  No join_on found, trying to extract first response anyway using '{join_on}' as join_on."
-            )
+            if verbose:
+                print(
+                    f"[{pretty_names[name]}]:\n  No join_on found, trying to extract first response anyway using '{join_on}' as join_on."
+                )
         # extract the first response
         # finally:
         #     old_responses = dfs[name]["response"]
@@ -108,7 +113,7 @@ def load_and_prep_dfs(
         #         lambda x: extract_first_of_multiple_responses(x, join_on)
         #     )
         #     if np.any(old_responses != dfs[name]["response"]):
-        #         print(
+        #         if verbose: print(
         #             f"[{pretty_names[name]}]:\n  Extracted first response on {np.sum(old_responses != dfs[name]['response'])} rows"
         #         )
 
@@ -124,7 +129,8 @@ def load_and_prep_dfs(
             dfs[name]["few-shot_string"] = dfs[name]["few-shot_string"].apply(eval)
             dfs[name]["few-shot_response"] = dfs[name]["few-shot_response"].apply(eval)
         except KeyError:
-            print(f"[{pretty_names[name]}]:\n  No few-shot columns found")
+            if verbose:
+                print(f"[{pretty_names[name]}]:\n  No few-shot columns found")
 
     # Run compliance checks. See `evals/compliance_checks.py` for more details.
     # The models like to repeat the last word. We flag it, but don't exclude it
@@ -138,7 +144,7 @@ def load_and_prep_dfs(
 
     for name in dfs.keys():
         dfs[name]["last_word_repeated"] = dfs[name].apply(last_word_repeated, axis=1)
-        # print(
+        # if verbose: print(
         #     f"[{pretty_names[name]}]:\n  {dfs[name]['last_word_repeated'].mean():.2%} of the responses repeat the last word"
         # )
 
@@ -154,7 +160,7 @@ def load_and_prep_dfs(
 
     for name in dfs.keys():
         dfs[name]["last_char_repeated"] = dfs[name].apply(last_char_repeated, axis=1)
-        # print(
+        # if verbose: print(
         #     f"[{pretty_names[name]}]:\n  {dfs[name]['last_char_repeated'].mean():.2%} of the responses repeat the last character"
         # )
 
@@ -169,7 +175,7 @@ def load_and_prep_dfs(
 
     for name in dfs.keys():
         dfs[name]["nonlast_word_repeated"] = dfs[name].apply(nonlast_word_repeated, axis=1)
-        # print(
+        # if verbose: print(
         #     f"[{pretty_names[name]}]:\n  {dfs[name]['nonlast_word_repeated'].mean():.2%} of the responses repeat a word other than the last word"
         # )
 
@@ -219,7 +225,10 @@ def load_and_prep_dfs(
         dfs[name]["compliance"] = dfs[name]["raw_response"].apply(
             lambda x: check_compliance(x, list(compliance_groups))
         )
-        print(f"[{pretty_names[name]}]:\n  Compliance: {(dfs[name]['compliance'] == True).mean():.2%}")  # noqa: E712
+        if verbose:
+            print(
+                f"[{pretty_names[name]}]:\n  Compliance: {(dfs[name]['compliance'] == True).mean():.2%}"  # noqa: E712
+            )
 
     # for name in dfs.keys():
     #     print(f"[{pretty_names[name]}]:\n  Most common non-compliant reasons:")
@@ -278,25 +287,37 @@ def get_hydra_config(exp_folder: Union[Path, str]) -> Union[DictConfig, ListConf
     if not logs:
         raise ValueError(f"No valid log directories found in {logs_folder}")
     logs.sort(key=lambda x: x.stat().st_ctime, reverse=True)
+
     log_day_folder = logs[0]
     # find most recent subfolder, ignoring .DS_Store
     log_time_folders = [f for f in log_day_folder.glob("*") if f.name != ".DS_Store"]
     if not log_time_folders:
         raise ValueError(f"No valid log time directories found in {log_day_folder}")
     log_time_folders.sort(key=lambda x: x.stat().st_ctime, reverse=True)
-    hydra_folder = log_time_folders[0] / ".hydra"
-    # use hydra to parse the yaml config
-    config = OmegaConf.load(hydra_folder / "config.yaml")
+
+    config = None
+    for folder in log_time_folders:
+        hydra_folder = folder / ".hydra"
+        config_path = hydra_folder / "config.yaml"
+        if os.path.exists(config_path):
+            # use hydra to parse the yaml config
+            config = OmegaConf.load(config_path)
+            break
+
+    if config is None:
+        raise ValueError("No config file found in any of the log time directories.")
     return config
 
 
-def get_data_path(exp_folder: Union[Path, str]) -> Path:
+def get_data_path(exp_folder: Union[Path, str]) -> Optional[Path]:
     """Pulls out the data*.csv file from the experiment folder.
     If more than one is found, returns the newest one.
     """
     if isinstance(exp_folder, str):
         exp_folder = Path(exp_folder)
     data_files = list(exp_folder.glob("data*.csv"))
+    # filter out raw data with multiple samples
+    data_files = [f for f in data_files if "raw_samples" not in f.name]
     data_files.sort(key=lambda x: x.stat().st_ctime, reverse=True)
     if len(data_files) == 0:
         print(f"No data*.csv files found in {exp_folder.absolute()}")
@@ -344,7 +365,7 @@ def get_folders_matching_config_key(exp_folder: Path, conditions: Dict) -> List[
 
 
 def load_dfs_with_filter(
-    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True
+    exp_folder: Path, conditions: Dict, exclude_noncompliant: bool = True, verbose=False
 ) -> Dict[str, pd.DataFrame]:
     """Loads and preps all dataframes from the experiment folder that match the conditions.
 
@@ -358,20 +379,18 @@ def load_dfs_with_filter(
     data_paths = [get_data_path(folder) for folder in matching_folders]
     LOGGER.info(f"Found {len(data_paths)} data entries")
     configs = [get_hydra_config(folder) for folder in matching_folders]
-    dfs = load_and_prep_dfs(data_paths, configs=configs, exclude_noncompliant=exclude_noncompliant)
+    dfs = load_and_prep_dfs(data_paths, configs=configs, exclude_noncompliant=exclude_noncompliant, verbose=verbose)
     LOGGER.info(f"Loaded {len(dfs)} dataframes")
     return dfs
 
 
-def is_object_level(config):
-    return config["prompt"]["method"].startswith("object") or config["prompt"]["method"].startswith("base")
 
-
-def load_single_df(df_path: Path, exclude_noncompliant: bool = True) -> pd.DataFrame:
+def load_single_df(df_path: Path, exclude_noncompliant: bool = True, verbose: bool = False) -> pd.DataFrame:
     """Loads and prepares a single dataframe"""
-    dfs = load_and_prep_dfs([df_path], exclude_noncompliant=exclude_noncompliant)
+    dfs = load_and_prep_dfs([df_path], exclude_noncompliant=exclude_noncompliant, verbose=verbose)
     if len(dfs) != 1:
-        LOGGER.warning(f"Expected 1 dataframe, found {len(dfs)}")
+        if verbose:
+            LOGGER.warning(f"Expected 1 dataframe, found {len(dfs)} at {df_path}")
     return list(dfs.values())[0]
 
 

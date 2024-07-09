@@ -9,10 +9,10 @@ hydra:
       level: INFO
 
 defaults:
-  - _self_
   - language_model: gpt-3.5-turbo
   - prompt: property_extraction/minimal
   - response_property: sentiment
+  - _self_
 
 dir: ??? # path to the directory containing the object level responses.
 exp_dir: ${dir}/property_extraction_${response_property.name}_${language_model.model}

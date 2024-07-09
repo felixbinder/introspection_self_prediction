@@ -9,11 +9,11 @@ hydra:
       level: INFO
 
 defaults:
-  - _self_
   - prompt: meta_level/minimal
   - language_model: gpt-3.5-turbo
   - task: wikipedia
   - response_property: identity
+  - _self_
 
 # Common Params
 study_name: ???
@@ -27,7 +27,7 @@ note: "" # natural language description of the note of this run. Can be anything
 seed: 0 # seed for the random number generator
 base_seed: 0 # seed for the random number generator for the base completion
 limit: 100 # how many?
-n_samples: 1 # for each input string, how many samples to generate
+n_samples: 5 # for each input string, how many samples to generate? We extract the mode from them to make model less non-deterministic.
 reset: false
 logging: INFO
 print_prompt_and_response: false
@@ -44,7 +44,7 @@ language_model:
   logprobs: 0
 
 task:
-  num: ${limit}1
+  num: ${limit}
   set: val # either all, train, or val. For meta level, use val.
 
 # API

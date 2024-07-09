@@ -15,7 +15,6 @@ from evals.analysis.loading_data import (
     get_data_path,
     get_folders_matching_config_key,
     get_hydra_config,
-    is_object_level,
     load_and_prep_dfs,
 )
 from evals.apis.inference.api import InferenceAPI
@@ -33,6 +32,9 @@ from other_evals.counterfactuals.runners import (
 )
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
+
+def is_object_level(config):
+    return config["prompt"]["method"].startswith("object") or config["prompt"]["method"].startswith("base")
 
 
 class LoadedObject(BaseModel):

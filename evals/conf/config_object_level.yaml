@@ -9,10 +9,10 @@ hydra:
       level: INFO
 
 defaults:
-  - _self_
   - prompt: object_level/minimal
   - language_model: gpt-3.5-turbo
   - task: wikipedia
+  - _self_
 
 # Common Params
 study_name: ???
@@ -20,8 +20,8 @@ study_dir: ${experiment_folder_location:/${study_name}}
 exp_dir: ${study_dir}/${sanitize:object_level_${language_model.model}_${prompt.method}_prompt_${task.name}_${task.set}_task}_${note}_note
 note: "" # natural language description of the note of this run. Can be anything.
 seed: 0
-limit: 500
-n_samples: 1 # for each input string, how many samples to generate
+limit: 500 # maximum number of strings to query. If set to ~, it will query all strings. This number is multiplied by `n_samples`.
+n_samples: 5 # for each input string, how many samples to generate? We extract the mode from them to make model less non-deterministic.
 strings_path: ~ # if set, use the strings from this file rather than generating them from the dataset
 filter_strings_path: ~ # if this is set, use this to filter the strings
 

@@ -19,6 +19,8 @@ from evals.data_models.messages import ChatMessage, MessageRole, Prompt, PromptT
 from evals.generate_few_shot import generate_few_shot_data
 from evals.utils import (
     async_function_with_retry,
+    collate_mode_of_n,
+    gather_max_par,
     get_current_git_hash,
     setup_environment,
 )
@@ -79,7 +81,7 @@ class DatasetRunner:
             answer = responses[0].completion
             logprobs = responses[0].logprobs
             complete = True
-            self.inference_api.log_model_timings()
+            # self.inference_api.log_model_timings()
             LOGGER.info(f"Completed row {index}\tRunning cost: ${self.inference_api.running_cost:.3f}")
         except RuntimeError as e:
             complete = False
@@ -134,11 +136,11 @@ class DatasetRunner:
         return Prompt(messages=messages)
 
 
-async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None) -> bool:
+async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int = None, n_samples: int = 1) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
     if limit is not None:
-        full_df = full_df.head(limit)
+        full_df = full_df.head(limit * n_samples)
     if dataset_runner.cfg.response_property.name not in full_df.columns:
         full_df[dataset_runner.cfg.response_property.name] = ""
     if "response" not in full_df.columns:
@@ -152,7 +154,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await asyncio.gather(*tasks)
+    results = await gather_max_par(100, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])
@@ -207,7 +209,7 @@ async def async_main(cfg: DictConfig):
     # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
-    filename = exp_dir / f"data{cfg.base_seed}.csv"
+    filename = exp_dir / f"raw_data{cfg.base_seed}.csv"
     if not filename.exists() or cfg.reset:
         # have to make the data_{seed}.csv file
         LOGGER.info(f"File {filename} does not exist. Creating...")
@@ -223,7 +225,9 @@ async def async_main(cfg: DictConfig):
         filename,
         dataset_runner,
         limit=cfg.limit,
+        n_samples=cfg.n_samples,
     )
+    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 
