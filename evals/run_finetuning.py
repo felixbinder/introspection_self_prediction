@@ -17,8 +17,8 @@ from evals.utils import (
     GPT_CHAT_MODELS,
     get_current_git_hash,
     load_secrets,
+    safe_model_name,
     setup_environment,
-    safe_model_name
 )
 
 LOGGER = logging.getLogger(__name__)
