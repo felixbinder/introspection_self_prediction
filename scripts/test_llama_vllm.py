@@ -16,9 +16,8 @@ openai.api_key = runpod_api_key
 async def test():
     result = await openai.ChatCompletion.acreate(  # type: ignore
         model="tomekkorbak/introspection-test2",
-        messages=[{"role": "user", "content": "Give me a random 3 digit number."}],
-        max_tokens=10,
-        temperature=0.0,
+        messages=[{"role": "user", "content": "Why is google's gemini so janky"}],
+        max_tokens=1000,
     )
 
     for choice in result["choices"]:
