@@ -142,10 +142,10 @@ def load_meta_dfs(
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
                 response = clean_for_comparison(row["response"])
-                if response_property == "second_character":
-                    # sometimes its saved as a float e.g. 8.0 lol
-                    if object_level_response:
-                        object_level_response = object_level_response[0]
+                # if response_property == "second_character":
+                #     # sometimes its saved as a float e.g. 8.0 lol
+                #     if object_level_response:
+                #         object_level_response = object_level_response[0]
                 final_objects.append(
                     LoadedObject(
                         string=row["string"],
