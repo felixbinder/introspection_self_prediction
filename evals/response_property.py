@@ -181,6 +181,7 @@ def third_character(row: pd.Series):
         third_character = None
     return third_character
 
+
 def fourth_character(row: pd.Series):
     """Extract the fourth character of the response."""
     response = row["response"]
@@ -189,6 +190,7 @@ def fourth_character(row: pd.Series):
     except (TypeError, IndexError):
         fourth_character = None
     return fourth_character
+
 
 def fifth_character(row: pd.Series):
     """Extract the fifth character of the response."""
@@ -199,6 +201,7 @@ def fifth_character(row: pd.Series):
         fifth_character = None
     return fifth_character
 
+
 def sixth_character(row: pd.Series):
     """Extract the sixth character of the response."""
     response = row["response"]
@@ -207,6 +210,7 @@ def sixth_character(row: pd.Series):
     except (TypeError, IndexError):
         sixth_character = None
     return sixth_character
+
 
 def last_character(row: pd.Series):
     """Extract the last character of the response."""

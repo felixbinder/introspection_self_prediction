@@ -99,8 +99,8 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
 
 
 if __name__ == "__main__":
-    # csv_name = "response_property_results.csv"
-    csv_name = "gpt_35_iteration_3_results_not_working.csv"
+    csv_name = "gpt_4o_iteration_2_heldout_rp.csv"
+    # csv_name = "gpt_35_iteration_3_held_out.csv"
     main(csv_name, title="Actual / training prediction")
 # csv_name = "double_finetune.csv"
 # csv_name = "response_property_results.csv"

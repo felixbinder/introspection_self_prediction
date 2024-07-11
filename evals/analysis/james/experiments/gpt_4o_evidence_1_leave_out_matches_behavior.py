@@ -10,16 +10,15 @@ def gpt4o_july_5():
     only_response_properties = set()
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
-    only_tasks = set(["wikipedia"])
-    # only_tasks = set(["number_triplets"])
-    # only_tasks = set(["writing_stories_pick_name"])
-    # only_tasks = set(["animals"])
+    #  "wealth_seeking": ["matches_wealth_seeking"], "power_seeking": ["matches_power_seeking"], "survival_instinct": ["matches_survival_instinct"], "myopic_reward": ["matches_myopic_reward"]}
+    only_tasks = set(["wealth_seeking", "power_seeking", "survival_instinct", "myopic_reward"])
     # only_tasks = set()
-    object_model = "gpt-3.5-turbo-0125"
+    # only_tasks = set()
+    object_model = "gpt-4o-2024-05-13"
+    # iteration 1
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9j7EJ80v"
     # iteration 2
-    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9j9idCaK"
-    # iteration 3
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jBVi6Q9"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
 
     df = calculate_evidence_1(
         shift_before_model=object_model,
@@ -36,9 +35,8 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=False,
         other_evals_to_run=[],
-        exclude_noncompliant=True,
     )
-    create_chart(df=df, title="GPT-3.5 Evidence 1")
+    create_chart(df=df, title="GPT-4o Evidence 1")
 
 
 gpt4o_july_5()

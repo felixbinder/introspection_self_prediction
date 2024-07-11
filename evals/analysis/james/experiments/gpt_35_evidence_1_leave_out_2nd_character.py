@@ -4,10 +4,9 @@ from evals.analysis.james.plotting.plot_response_property_with_baseline import (
 )
 from evals.locations import EXP_DIR
 
-
-def gpt4o_july_5():
-    exp_folder = EXP_DIR / "10_held_out_inference_only"
-    only_response_properties = set()
+def leave_out_2nd_character():
+    exp_folder = EXP_DIR / "10_jul_leave_out_2nd_character"
+    only_response_properties = set(["second_character"])
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
     only_tasks = set(["wikipedia"])
@@ -19,7 +18,7 @@ def gpt4o_july_5():
     # iteration 2
     # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9j9idCaK"
     # iteration 3
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jBVi6Q9"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
 
     df = calculate_evidence_1(
         shift_before_model=object_model,
@@ -41,4 +40,4 @@ def gpt4o_july_5():
     create_chart(df=df, title="GPT-3.5 Evidence 1")
 
 
-gpt4o_july_5()
+leave_out_2nd_character()

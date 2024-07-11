@@ -19,7 +19,7 @@ from evals.analysis.loading_data import (
 )
 from evals.apis.inference.api import InferenceAPI
 from evals.locations import EXP_DIR
-from evals.utils import setup_environment
+from evals.utils import import_function_from_string, setup_environment
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.runners import (
@@ -133,12 +133,19 @@ def load_meta_dfs(
         for i, row in df.iterrows():
             for response_property in required_response_properties:
                 if response_property not in row:
-                    raise ValueError(
-                        f"Response property {response_property} not found in row {row}, {required_response_properties=}"
+                    # raise ValueError(
+                    #     f"Response property {response_property} not found in row {row}, {required_response_properties=}"
+                    # )
+                    print(
+                        f"WARN: Response property {response_property} not found in row you've probably add more val response properties or something, DIY extract lol"
                     )
-                    print(f"WARN: Response property {response_property} not found in row {row}, skipping")
-                    continue
-                object_level_response = str(row[response_property])
+                    function = import_function_from_string("evals.response_property", response_property)
+                    object_level_response = function(row)
+                    # continue
+                    # DIY extract lol
+
+                else:
+                    object_level_response = str(row[response_property])
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
                 response = clean_for_comparison(row["response"])
