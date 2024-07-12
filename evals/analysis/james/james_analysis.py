@@ -1008,13 +1008,16 @@ def get_single_hue(
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
     )
+    assert len(flats) > 0, "No comparisons found"
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
     flats = flats.map(lambda x: x.rename_properties())
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
+        assert len(flats) > 0, f"No comparisons found after filtering for {only_response_properties=}"
     if only_tasks:
         flats = flats.filter(lambda x: x.task in only_tasks)
+        assert len(flats) > 0, f"No comparisons found after filtering for {only_tasks=}"
     # other_evals_to_run = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     other_evals_to_run = []
     if other_evals_to_run:
