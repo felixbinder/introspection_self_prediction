@@ -314,7 +314,7 @@ def get_data_path(exp_folder: Union[Path, str]) -> Optional[Path]:
         exp_folder = Path(exp_folder)
     data_files = list(exp_folder.glob("data*.csv"))
     # filter out raw data with multiple samples
-    data_files = [f for f in data_files if "raw_samples" not in f.name]
+    data_files = [f for f in data_files if "raw_data" not in f.name]
     data_files.sort(key=lambda x: x.stat().st_ctime, reverse=True)
     if len(data_files) == 0:
         print(f"No data*.csv files found in {exp_folder.absolute()}")
