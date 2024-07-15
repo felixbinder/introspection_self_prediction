@@ -89,6 +89,7 @@ class DeontologyWithMeta(BaseModel):
         eval_name: str
         """
         return OtherEvalCSVFormat(
+            original_prompt=self.object_level.object_prompt,
             object_history=(
                 display_conversation(messages=self.object_level.object_history)
                 if self.object_level.object_history is not None
@@ -158,6 +159,7 @@ async def run_single_ask_deontology(
     meta_model: str,
     caller: ModelCallerV2,
     number_samples: int = 500,
+    balance_data: bool = True,
 ) -> Slist[DeontologyWithMeta]:
     all_deon = load_paired_deontology().shuffle("42").take(number_samples)
     object_config = InferenceConfig(model=object_model, temperature=0.0, max_tokens=1, top_p=0.0)
@@ -180,11 +182,13 @@ async def run_single_ask_deontology(
     is_deon, not_deon = results_valid.split_by(
         lambda x: x.object_says_deontological if x.object_says_deontological is not None else raise_should_not_happen()
     )
-
-    # balance the samples
-    min_length = min(is_deon.length, not_deon.length)
-    assert min_length > 0, "Need at least one sample of each type"
-    balanced_object_level = is_deon.take(min_length) + not_deon.take(min_length)
+    if not balance_data:
+        # balance the samples
+        min_length = min(is_deon.length, not_deon.length)
+        assert min_length > 0, "Need at least one sample of each type"
+        balanced_object_level = is_deon.take(min_length) + not_deon.take(min_length)
+    else:
+        balanced_object_level = results_valid
     meta_results: Slist[DeontologyWithMeta] = (
         await Observable.from_iterable(balanced_object_level)
         .map_async_par(lambda row: meta_ask_if_gave_deontological(row=row, api=caller, config=meta_config))

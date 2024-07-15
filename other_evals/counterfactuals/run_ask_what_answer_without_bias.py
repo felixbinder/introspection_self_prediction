@@ -29,9 +29,7 @@ from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversati
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
 
 
-round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
-)
+round_1_answer_format = "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 round_2_answer_format = "\nAnswer immediately with a single letter from the available choices and no other text."
 
 
@@ -140,10 +138,9 @@ class AskWhatAnswerResult(BaseModel):
 
     def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
         object_parsed = self.first_round.parsed_unbiased_answer
-        assert object_parsed is not None
         meta_parsed = self.second_round_parsed
-        assert meta_parsed is not None
         return OtherEvalCSVFormat(
+            original_prompt=self.first_round.test_data.original_question,
             object_history="BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
             + "\nUNBIASED HISTORY:\n"
@@ -153,7 +150,9 @@ class AskWhatAnswerResult(BaseModel):
             meta_history=display_conversation(self.final_history),
             meta_model=self.meta_config.model,
             meta_parsed_result=meta_parsed,
-            meta_predicted_correctly=self.predicted_counterfactual_answer_correctly(),
+            meta_predicted_correctly=(
+                self.predicted_counterfactual_answer_correctly() if meta_parsed is not None else None
+            ),
             eval_name=eval_name,
         )
 
@@ -347,6 +346,7 @@ async def run_single_what_answer_without_bias(
     object_model: str,
     number_samples: int = 100,
     bias_on_wrong_answer_only: bool = False,
+    balance_data: bool = True,
 ) -> Slist[AskWhatAnswerResult]:
     print(f"Running counterfactuals with {meta_model=} on {object_model=}")
     caller = RepoCompatCaller(api=api)
@@ -388,12 +388,14 @@ async def run_single_what_answer_without_bias(
     # Get the average % of parsed answers that match the bias
     parsed_answers = results.filter(lambda x: x.both_successful)
 
-    print('Filtered out ', results.length - parsed_answers.length, '/', number_samples, 'unsucessful results')
+    print("Filtered out ", results.length - parsed_answers.length, "/", number_samples, "unsucessful results")
 
-
-    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
-    smallest_length = min(affected.length, unaffected.length)
-    balanced_data = affected.take(smallest_length) + unaffected.take(smallest_length)
+    if balance_data:
+        affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+        smallest_length = min(affected.length, unaffected.length)
+        balanced_data = affected.take(smallest_length) + unaffected.take(smallest_length)
+    else:
+        balanced_data = parsed_answers
     # print(
     #     f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
     # )
@@ -408,7 +410,9 @@ async def run_single_what_answer_without_bias(
         .to_slist()
     )
     second_round_extracted_answer = second_round_results.filter(lambda x: x.second_round_parsed is not None)
-    print(f"After filtering out (and rebalancing): {number_samples - second_round_extracted_answer.length} missing answers total")
+    print(
+        f"After filtering out (and rebalancing): {number_samples - second_round_extracted_answer.length} missing answers total"
+    )
 
     # second_round_dicts = second_round_extracted_answer.map(second_round_to_json)
     # make a df
@@ -449,8 +453,14 @@ if __name__ == "__main__":
     model = "gemini-1.0-pro-002"
 
     # run this line if you don't want to use fire
-    asyncio.run(run_single_what_answer_without_bias(meta_model=model, object_model=model, 
-                                                    api=InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER),
-                                                    bias_on_wrong_answer_only=False, number_samples=100))
+    asyncio.run(
+        run_single_what_answer_without_bias(
+            meta_model=model,
+            object_model=model,
+            api=InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER),
+            bias_on_wrong_answer_only=False,
+            number_samples=100,
+        )
+    )
 
     # fire.Fire(run_single_what_answer_without_bias)

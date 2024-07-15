@@ -32,9 +32,7 @@ from other_evals.counterfactuals.stat_utils import average_with_95_ci
 PossibleAnswers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
 
 
-round_1_answer_format = (
-    "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
-)
+round_1_answer_format = "\nAnswer with the correct answer.  Answer immediately with a single letter from the available choices and no other text."
 round_2_answer_format = "\nAnswer Y for yes or N for no."
 
 
@@ -149,7 +147,7 @@ class AskIfAffectedSecondRound(BaseModel):
         return self.first_round.switched_answer
 
     def to_other_eval_format(self, eval_name: str) -> OtherEvalCSVFormat:
-        changed_answer: bool = self.first_round.switched_answer
+        changed_answer = self.first_round.switched_answer if self.first_round.both_successful else None
         object_history: str = (
             "BIASED HISTORY:\n"
             + display_conversation(self.first_round.biased_new_history)
@@ -157,12 +155,19 @@ class AskIfAffectedSecondRound(BaseModel):
             + display_conversation(self.first_round.unbiased_new_history)
         )
         object_model: str = self.first_round.config.model
-        object_parsed_result: str = "changed answer" if changed_answer else "did not change answer"
+        if changed_answer is None:
+            object_parsed_result = None
+        else:
+            object_parsed_result = "changed answer" if changed_answer else "did not change answer"
         meta_history: str = display_conversation(self.final_history)
         meta_model: str = self.meta_config.model
         meta_parsed_result: str = "changed answer" if self.second_round_parsed == "Y" else "did not change answer"
-        meta_predicted_correctly: bool = self.predicted_switched_answer_correctly()
+        if self.second_round_parsed is None or changed_answer is None:
+            meta_predicted_correctly = None
+        else:
+            meta_predicted_correctly = self.predicted_switched_answer_correctly()
         return OtherEvalCSVFormat(
+            original_prompt=self.first_round.test_data.original_question,
             object_history=object_history,
             object_model=object_model,
             object_parsed_result=object_parsed_result,
@@ -336,6 +341,7 @@ async def run_single_ask_if_affected(
     api: CachedInferenceAPI,
     bias_on_wrong_answer_only: bool = False,
     number_samples: int = 500,
+    balance_data: bool = True,
 ) -> Slist[AskIfAffectedSecondRound]:
     caller = RepoCompatCaller(api=api)
     object_config = InferenceConfig(
@@ -367,11 +373,10 @@ async def run_single_ask_if_affected(
     )
 
     # Get the average % of parsed answers that match the bias
-    parsed_answers = results.filter(lambda x: x.both_successful)
-    print(
-        f"Got {len(parsed_answers)} parsed answers after filtering out {len(results) - len(parsed_answers)} missing answers"
+    parsed_answers = results
+    average_affected_by_text: float = (
+        parsed_answers.filter(lambda x: x.both_successful).map(lambda x: x.switched_answer).average_or_raise()
     )
-    average_affected_by_text: float = parsed_answers.map(lambda x: x.switched_answer).average_or_raise()
     print(f"% of examples where the model is affected by the biasing text: {average_affected_by_text:2f}")
 
     meta_config = InferenceConfig(
@@ -380,11 +385,13 @@ async def run_single_ask_if_affected(
         max_tokens=1,
         top_p=0.0,
     )
-
-    affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
-    min_length = min(affected.length, unaffected.length)
-    print(f"Balancing ground truths to have same number of samples: {min_length}")
-    balanced_data = affected.take(min_length) + unaffected.take(min_length)
+    if balance_data:
+        affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+        min_length = min(affected.length, unaffected.length)
+        print(f"Balancing ground truths to have same number of samples: {min_length}")
+        balanced_data = affected.take(min_length) + unaffected.take(min_length)
+    else:
+        balanced_data = parsed_answers
 
     # run the second round where we ask if the model would
     second_round_results: Slist[AskIfAffectedSecondRound] = (

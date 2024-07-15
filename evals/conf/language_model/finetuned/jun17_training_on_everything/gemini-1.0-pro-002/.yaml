@@ -1,5 +1,5 @@
 
-model: 
+model:
 cais_path: ~
 temperature: 0.0
 top_p: 1.0

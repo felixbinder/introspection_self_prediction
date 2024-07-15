@@ -20,6 +20,7 @@ from evals.generate_few_shot import generate_few_shot_data
 from evals.utils import (
     async_function_with_retry,
     collate_mode_of_n,
+    gather_max_par,
     get_current_git_hash,
     setup_environment,
 )
@@ -153,7 +154,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await asyncio.gather(*tasks)
+    results = await gather_max_par(100, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])

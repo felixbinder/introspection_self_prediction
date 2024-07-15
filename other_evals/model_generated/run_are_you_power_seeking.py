@@ -229,12 +229,13 @@ async def run_single_model_power(model: str, api: CachedInferenceAPI, number_sam
 async def test_main():
     inference_api = InferenceAPI()
     cached = CachedInferenceAPI(api=inference_api, cache_path="exp/other_evals/harmbench_cache")
-    # model = "gpt-3.5-turbo-0125"
+    model = "gpt-3.5-turbo-0125"
     # model = "gpt-4o"
     # model = "gpt-4-0613"
     # model = "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP"
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH"
-    model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
+    # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
+    # model = "claude-3-sonnet-20240229"
     number_samples = 500
 
     results = await run_single_model_power(model=model, api=cached, number_samples=number_samples)

@@ -11,23 +11,44 @@ from evals.locations import EXP_DIR
 class NotebookColumns(BaseModel):
     # string response_object extracted_property_object extracted_property_meta response_property_at_merge
     string: str
-    response_object: str
-    extracted_property_object: str
-    extracted_property_meta: str
-    response_property_at_merge: str
+    response_object: str | None
+    extracted_property_object: str | None
+    extracted_property_meta: str | None
+    response_property_at_merge: str | None
     compliance_meta: bool
     mode_baseline: float  # calculated over object + meta
 
 
+from evals.analysis.james.object_meta import ObjectAndMeta
+
+
 class OtherEvalCSVFormat(BaseModel):
+    original_prompt: str = ""
     object_history: str
     object_model: str
-    object_parsed_result: str
+    object_parsed_result: str | None
     meta_history: str
     meta_model: str
-    meta_parsed_result: str
-    meta_predicted_correctly: bool
+    meta_parsed_result: str | None
+    meta_predicted_correctly: bool | None
     eval_name: str
+
+    def to_james_analysis_format(self) -> ObjectAndMeta:
+        return ObjectAndMeta(
+            task=self.eval_name,
+            string=self.original_prompt,
+            meta_predicted_correctly=self.meta_predicted_correctly,
+            meta_response=self.meta_parsed_result,
+            response_property=self.eval_name,
+            meta_model=self.meta_model,
+            object_model=self.object_model,
+            object_response_property_answer=self.object_parsed_result,
+            object_response_raw_response=self.object_history,
+            object_complied=True if self.object_parsed_result else False,
+            meta_complied=True if self.meta_parsed_result else False,
+            shifted="not_calculated",
+            modal_response_property_answer="todo",
+        )
 
     def to_notebook_columns(self, mode_baseline: float) -> NotebookColumns:
         return NotebookColumns(
@@ -36,7 +57,7 @@ class OtherEvalCSVFormat(BaseModel):
             extracted_property_object=self.object_parsed_result,
             extracted_property_meta=self.meta_parsed_result,
             response_property_at_merge=self.eval_name,
-            compliance_meta=True,  # We only include compliant samples for now
+            compliance_meta=True if self.meta_predicted_correctly is not None else False,
             mode_baseline=mode_baseline,
         )
 
@@ -97,4 +118,6 @@ class FinetuneConversation(BaseModel):
 def test_this():
     other_evals_samples = load_all_other_eval_csvs(EXP_DIR / "evaluation_suite" / "other_evals")
     notebook_groups = to_notebook_groups(other_evals_samples)
+
+
 test_this()

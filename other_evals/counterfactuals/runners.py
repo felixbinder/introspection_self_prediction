@@ -13,7 +13,11 @@ from other_evals.counterfactuals.api_utils import RepoCompatCaller
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, OtherEvalCSVFormat
 from other_evals.counterfactuals.plotting.plot_heatmap import plot_heatmap_with_ci
-from other_evals.counterfactuals.run_ask_are_you_sure import are_you_sure_finetune_samples, run_single_are_you_sure
+from other_evals.counterfactuals.run_ask_are_you_sure import (
+    AreYouSureMetaResult,
+    are_you_sure_finetune_samples,
+    run_single_are_you_sure,
+)
 from other_evals.counterfactuals.run_ask_if_affected import finetune_samples_ask_if_affected, run_single_ask_if_affected
 from other_evals.counterfactuals.run_ask_if_gives_correct_answer import (
     kwik_finetune_samples,
@@ -36,6 +40,7 @@ class OtherEvalRunner(ABC):
         object_model: str,
         api: CachedInferenceAPI,
         limit: int = 100,
+        balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         # Run the evaluation and return the results in the OtherEvalCSVFormat format
         # A heatmap can be viewed with the plot_heatmap_with_ci function
@@ -59,7 +64,12 @@ class OtherEvalRunner(ABC):
 class BiasDetectAreYouAffected(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+        eval_name: str,
+        meta_model: str,
+        object_model: str,
+        api: CachedInferenceAPI,
+        limit: int = 100,
+        balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it was affected by the bias. Y/N answers"""
 
@@ -68,6 +78,7 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
             meta_model=meta_model,
             api=api,
             number_samples=limit,
+            balance_data=balance_data,
         )
         formatted: Slist[OtherEvalCSVFormat] = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
 
@@ -93,7 +104,12 @@ class BiasDetectAreYouAffected(OtherEvalRunner):
 class BiasDetectWhatAnswerWithout(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+        eval_name: str,
+        meta_model: str,
+        object_model: str,
+        api: CachedInferenceAPI,
+        limit: int = 100,
+        balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model what answer it would have given w/o the bias. A,B,C,D answers"""
 
@@ -102,6 +118,7 @@ class BiasDetectWhatAnswerWithout(OtherEvalRunner):
             meta_model=meta_model,
             api=api,
             number_samples=limit,
+            balance_data=balance_data,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
@@ -127,14 +144,20 @@ class BiasDetectWhatAnswerWithout(OtherEvalRunner):
 class BiasDetectAddAreYouSure(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+        eval_name: str,
+        meta_model: str,
+        object_model: str,
+        api: CachedInferenceAPI,
+        limit: int = 100,
+        balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it would change its prediction if we ask 'ask you sure'. Y/N answers"""
-        result = await run_single_are_you_sure(
+        result: Slist[AreYouSureMetaResult] = await run_single_are_you_sure(
             object_model=object_model,
             meta_model=meta_model,
             api=api,
             number_samples=limit,
+            balance_data=balance_data,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
         return formatted
@@ -161,7 +184,12 @@ class KwikWillYouBeCorrect(OtherEvalRunner):
 
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+        eval_name: str,
+        meta_model: str,
+        object_model: str,
+        api: CachedInferenceAPI,
+        limit: int = 100,
+        balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it is going to get the correct answer. Y/N answers"""
         result = await run_single_ask_if_correct_answer(
@@ -169,6 +197,7 @@ class KwikWillYouBeCorrect(OtherEvalRunner):
             meta_model=meta_model,
             api=api,
             number_samples=limit,
+            balance_data=balance_data,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
 
@@ -194,7 +223,12 @@ class KwikWillYouBeCorrect(OtherEvalRunner):
 class WillYouGiveDeontology(OtherEvalRunner):
     @staticmethod
     async def run(
-        eval_name: str, meta_model: str, object_model: str, api: CachedInferenceAPI, limit: int = 100
+        eval_name: str,
+        meta_model: str,
+        object_model: str,
+        api: CachedInferenceAPI,
+        limit: int = 100,
+        balance_data: bool = True,
     ) -> Sequence[OtherEvalCSVFormat]:
         """Ask the model if it is going to get the correct answer. Y/N answers"""
         result = await run_single_ask_deontology(
@@ -202,6 +236,7 @@ class WillYouGiveDeontology(OtherEvalRunner):
             meta_model=meta_model,
             caller=RepoCompatCaller(api=api),
             number_samples=limit,
+            balance_data=balance_data,
         )
         formatted = result.map(lambda x: x.to_other_eval_format(eval_name=eval_name))
 
@@ -231,6 +266,7 @@ async def run_from_commands(
     object_and_meta: Sequence[tuple[str, str]],
     limit: int,
     api: CachedInferenceAPI,
+    balance_data: bool = True,
 ) -> Slist[OtherEvalCSVFormat]:
     """Run the appropriate evaluation based on the dictionary"""
     # coorountines_to_run: Slist[Awaitable[Sequence[OtherEvalCSVFormat]]] = Slist()
@@ -245,6 +281,7 @@ async def run_from_commands(
                 object_model=object_model,
                 limit=limit,
                 api=api,
+                balance_data=balance_data,
             )
             gathered.append(result)
 
@@ -340,13 +377,33 @@ def run_sweep_over_other_evals_ids(
 
 def test_main():
     # What evals to run?
-    eval_list = [WillYouGiveDeontology]
-    # eval_list = [BiasDetectAddAreYouSure]
+    # eval_list = [WillYouGiveDeontology]
+    eval_list = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 500
+    limit = 1000
     # What models to run?
+    # prefinetune_model: str = "gpt-3.5-turbo-1106"
+    # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, doesn't work
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, 2x more samples
+    object_model = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
+
+    # train on all... Train does help!
+    # object_model = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
+    # object_model = "gpt-4o-2024-05-13"
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
     models = Slist(
         [
+            object_model,
+            meta_model,
             # "gpt-3.5-turbo",
             # "gpt-3.5-turbo-0125",
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH", # non mmlu sweep
@@ -359,7 +416,7 @@ def test_main():
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
             # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9YHdMAcl", # leave out are you sure
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
-            "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
+            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN", # baseline scrambled
             # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WOKeIsb", # 12,000 samples gpt-3.5
@@ -381,8 +438,49 @@ def test_main():
         limit=limit,
         study_folder=study_folder,
         show_plot=True,
+        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/cache",
+    )
+
+
+def test_cross_train():
+    # What evals to run?
+    # eval_list = [WillYouGiveDeontology]
+    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
+    print(f"Running evals: {[e.name() for e in eval_list]}")
+    limit = 2500
+    # What models to run?
+    # prefinetune_model: str = "gpt-3.5-turbo-1106"
+    # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, doesn't work
+    # object_model: str = "gpt-3.5-turbo-0125"
+    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+
+    # half held out, 2x more samples
+    # first = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y")
+    # second = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji")
+
+    # leave out only are you sure
+    object_model = "gpt-4o-2024-05-13"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+    first = (object_model, meta_model)
+    second = (meta_model, meta_model)
+
+    # We want to run all the combinations of the models
+    object_and_meta_models = [first, second]
+    study_folder = EXP_DIR / "other_evals"
+
+    run_sweep_over_other_evals_ids(
+        eval_list=eval_list,
+        object_and_meta_ids=object_and_meta_models,
+        limit=limit,
+        study_folder=study_folder,
+        show_plot=True,
+        cache_path="exp/cached_dir",
     )
 
 
 if __name__ == "__main__":
-    test_main()
+    test_cross_train()

@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from evals.locations import EXP_DIR
+from evals.utils import safe_model_name
 
 TEMPLATE = """
 name: $name
@@ -32,7 +33,7 @@ def create_finetuning_dataset_config(
     val_base_dir: str,
     overwrite: bool = True,
 ) -> Path:
-    model_config = model_config.replace("/", "-")
+    model_config = safe_model_name(model_config)
     # Finetuning folder—organized by source model. The folder then contains many different tasks etc.
     ft_exp_dir = EXP_DIR / "finetuning" / study_name / model_config
     ft_exp_dir.mkdir(parents=True, exist_ok=True)

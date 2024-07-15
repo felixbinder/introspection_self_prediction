@@ -21,7 +21,11 @@ from evals.analysis.loading_data import get_data_path, load_and_prep_dfs  # noqa
 
 
 def extract_most_uncertain_strings_from_base(
-    input_file_paths, n_out_strings=float("inf"), output_file_path=None, response_properties=["identity"]
+    input_file_paths,
+    n_out_strings=float("inf"),
+    output_file_path=None,
+    response_properties=["identity"],
+    overwrite=False,
 ) -> Path:
     """Extracts the strings that different models generate different base completions for. Saves a .csv with the strings into the same directory as the input file called `out_strings.csv`.
 
@@ -30,6 +34,7 @@ def extract_most_uncertain_strings_from_base(
         n_out_strings: Number of strings to extract. If we can't find enough strings, we will return all the strings we have.
         output_file_path: Path to save the output file. If None, will save to the same directory as the input file.
         response_properties: List of response properties to compare. Default is ['identity']. The strings that are different for **all** of the response properties will be included.
+        overwrite: If True, will overwrite the output file if it already exists.
 
     Returns:
         Path to the .csv with the extracted strings.
@@ -89,6 +94,9 @@ def extract_most_uncertain_strings_from_base(
     # ensure output dir exists
     output_file_path = Path(output_file_path)
     output_file_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_file_path.exists() and not overwrite:
+        LOGGER.warning(f"Model divergent strings at {output_file_path} already exist. Not overwriting.")
+        return output_file_path
 
     out_df[["string"]].to_csv(output_file_path, index=False, quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Saved {len(out_df)} strings to {output_file_path}")
@@ -101,12 +109,14 @@ if __name__ == "__main__":
     `python evals/extract_model_divergent_strings.py exp/num_35 exp/num_4 --n 100 --output exp/random_numbers_basic/model_divergent_strings_35_4`
     """
     import argparse
+    import sys
 
     logging.basicConfig(level=logging.INFO)
+    max_size = sys.maxsize
 
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=str, nargs="+", help="Paths to the input directories.")
-    parser.add_argument("--n", type=int, default=float("inf"), help="Number of strings to extract.")
+    parser.add_argument("--n", type=int, default=max_size, help="Number of strings to extract.")
     parser.add_argument("--output", type=str, default=None, help="Path to save the output file.")
     parser.add_argument(
         "--response_properties",
