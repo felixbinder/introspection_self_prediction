@@ -10,6 +10,7 @@ def create_chart(df, title, _sorted_properties=None):
         sorted_properties = sorted(df["response_property"].unique())
     else:
         sorted_properties = _sorted_properties
+
     fig = go.Figure()
 
     # Calculate bar positions
@@ -63,14 +64,18 @@ def create_chart(df, title, _sorted_properties=None):
             )
         )
 
+    renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
+    # rename "writing_stores/main_character_name" to "main_character_name"
+    renamed = [prop.replace("writing_stories/main_character_name", "main_character_name") for prop in renamed]
+
     fig.update_layout(
         title=title,
         xaxis_title="Response Property",
-        yaxis_title="Percentage",
+        yaxis_title="Accuracy",
         barmode="group",
         yaxis=dict(range=[0, 100]),
         legend=dict(traceorder="normal"),
-        xaxis=dict(tickangle=45, tickmode="array", tickvals=list(range(n_properties)), ticktext=sorted_properties),
+        xaxis=dict(tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed),
     )
     # save as png 1080p
     fig.write_image("response_property_results.png", width=1920, height=1080)
@@ -90,7 +95,14 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
     # df = pd.concat([df, macro_avg])
 
     # Sort the response properties alphabetically, but keep 'Macro Average' at the end
-    sorted_properties = sorted(df["response_property"].unique())
+    # sorted_properties = sorted(df["response_property"].unique())
+    sorted_properties = [
+        "first_character",
+        "second_character",
+        "third_character",
+        "is_one_of_given_options",
+        "matches behavior",
+    ]
     # sorted_properties.remove("Macro Average")
     # sorted_properties.append("Macro Average")
 
@@ -101,7 +113,7 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
 if __name__ == "__main__":
     csv_name = "gpt_4o_iteration_2_heldout_rp.csv"
     # csv_name = "gpt_35_iteration_3_held_out.csv"
-    main(csv_name, title="Actual / training prediction")
+    main(csv_name, title="GPT-4o before and after finetuning")
 # csv_name = "double_finetune.csv"
 # csv_name = "response_property_results.csv"
 # main(csv_name, title="Actual / training prediction")

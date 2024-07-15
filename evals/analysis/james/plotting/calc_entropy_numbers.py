@@ -32,7 +32,7 @@ before_finetune = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_charac
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
 after_finetune = read_jsonl_file_into_basemodel(
-    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM_first_character.jsonl", ObjectAndMeta
+    "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9kIFeXjU_first_character.jsonl", ObjectAndMeta
 )
 
 only_shifted = True

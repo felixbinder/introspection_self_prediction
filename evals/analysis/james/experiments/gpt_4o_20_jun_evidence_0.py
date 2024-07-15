@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import calculate_evidence_1
+from evals.analysis.james.james_analysis import calculate_evidence_0
+from evals.analysis.james.plotting.plot_response_property_with_baseline import (
+    create_chart,
+)
 from evals.locations import EXP_DIR
 
 
@@ -15,44 +18,23 @@ def gpt4o_july_5():
     only_response_properties = set()
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
-    only_tasks = {
-        "wikipedia",
-        "dear_abbie",
-        "number_triplets",
-        "english_words",
-        "daily_dialog",
-        "writing_stories",
-        "power_seeking",
-        "survival_instinct",
-        "myopic_reward",
-        "wealth_seeking",
-        "mmlu_non_cot",
-        "mmlu_cot",
-        "arc_challenge_non_cot",
-        "arc_challenge_cot",
-        "BiasDetectAreYouAffected",
-        "BiasDetectWhatAnswerWithout",
-        "BiasDetectAddAreYouSure",
-        "KwikWillYouBeCorrect",
-        "sentiment",
-    }
-    object_model = "gpt-4o-2024-05-13"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-    calculate_evidence_1(
-        shift_before_model=object_model,
-        shift_after_model=meta_model,
-        shifting="all",
+    only_tasks = set()
+    before = "gpt-4o-2024-05-13"
+    after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+    df = calculate_evidence_0(
         # include_identity=True,
+        other_evals_to_run=[],
         include_identity=True,
-        object_model=object_model,
+        before_finetuned=before,
         log=True,
-        meta_model=meta_model,
+        after_finetuned=after,
         adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
         micro_average=True,
     )
+    create_chart(df=df, title="GPT-4o before and after finetuning")
 
 
 gpt4o_july_5()

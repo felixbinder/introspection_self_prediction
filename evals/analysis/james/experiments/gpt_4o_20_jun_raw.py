@@ -15,27 +15,7 @@ def gpt4o_july_5():
     only_response_properties = set()
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
-    only_tasks = {
-        "wikipedia",
-        "dear_abbie",
-        "number_triplets",
-        "english_words",
-        "daily_dialog",
-        "writing_stories",
-        "power_seeking",
-        "survival_instinct",
-        "myopic_reward",
-        "wealth_seeking",
-        "mmlu_non_cot",
-        "mmlu_cot",
-        "arc_challenge_non_cot",
-        "arc_challenge_cot",
-        "BiasDetectAreYouAffected",
-        "BiasDetectWhatAnswerWithout",
-        "BiasDetectAddAreYouSure",
-        "KwikWillYouBeCorrect",
-        "sentiment",
-    }
+    only_tasks = set()
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
     calculate_evidence_1(
@@ -43,7 +23,7 @@ def gpt4o_july_5():
         shift_after_model=meta_model,
         shifting="all",
         # include_identity=True,
-        include_identity=True,
+        include_identity=False,
         object_model=object_model,
         log=True,
         meta_model=meta_model,
