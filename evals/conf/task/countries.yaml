@@ -1,0 +1,10 @@
+name: countries
+set: ?? # either all, train or val
+dataset_path: "evals/datasets/${task.set}_${task.name}.jsonl"
+item_descriptor: "country" # natural language descriptor of what one item is that can be inserted into the prompt
+filter_strings_path: ~ # if this is set, use this to filter the strings
+# is there a dataset specific prompt? This will only be applied when paired with a prompt that contains ${task.prompt}. It should contain $string.
+prompt: "What is the next country in the following text? Respond only with that single ${task.item_descriptor} and nothing else, including punctuation.\n$string"
+num: ~ # how many? ~ means all
+shuffle: true # shuffle the strings
+exclusion_rule_groups: [default,single_word, more_than_1_character] # list of exclusion rules to apply to the responses.

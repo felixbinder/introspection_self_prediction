@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 COMPLIANCE_CHECKS = {
     "NaN": lambda x: x is None or x == "nan" or np.isnan(x),
     "not_single_word": lambda x: len(x.split())
-    > 1,  # this will filter out base model responses that are otherwise fine
+    > 1,  # this will filter out base model responses that are otherwise fine,
     "sentence_response": lambda x: len(x.split()) > 1 and (x[-1] in [".", "!", "?"]),
     "no": lambda x: clean_string(x) in ["no", "nope"],
     "sorry": lambda x: clean_string(x) in ["sorry", "apologies", "apology", "apologize", "apologise"],
@@ -63,6 +63,7 @@ COMPLIANCE_CHECKS = {
     "not_true_false": lambda x: clean_string(x) not in ["true", "false"],
     "not_sympathetic": lambda x: clean_string(x) not in ["sympathetic", "unsymphathetic"],
     "not_single_character": lambda x: len(clean_string(x)) != 1,
+    "single_character": lambda x: len(clean_string(x)) == 1,
     "cauchy": lambda x: "Cauchy Cauchy Cauchy" in x,  # Gemini something just likes to output "Cauchy" over and over
     "not_multiple_choice_answer": lambda x: clean_string(x) not in set("abcdefghijklmnopqrstuvwxyz"),
 }
@@ -126,6 +127,7 @@ COMPLIANCE_CHECKS_GROUPS = {  # which groups of compliance checks to apply?
     "sympathetic": ["not_sympathetic"],
     "single_character": ["not_single_character"],
     "single_word": ["not_single_word", "sorry"],
+    "more_than_1_character": ["single_character"],
     "multiple_choice": ["not_multiple_choice_answer"],
 }
 

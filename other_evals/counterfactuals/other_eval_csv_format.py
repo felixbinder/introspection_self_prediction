@@ -118,6 +118,3 @@ class FinetuneConversation(BaseModel):
 def test_this():
     other_evals_samples = load_all_other_eval_csvs(EXP_DIR / "evaluation_suite" / "other_evals")
     notebook_groups = to_notebook_groups(other_evals_samples)
-
-
-test_this()
