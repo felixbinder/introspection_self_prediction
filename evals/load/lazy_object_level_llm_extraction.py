@@ -16,7 +16,7 @@ def lazy_add_response_property_to_object_level(object_df, object_cfg, response_p
         subprocess.run(run_property_extraction_command, shell=True, check=True, cwd=main_path)
         # now the file in the exp_dir should have the response property
         read_path = object_cfg.exp_dir + "/" + f"data{object_cfg.seed}.csv"
-        updated_object_df = pd.read_csv(read_path)
+        updated_object_df = pd.read_csv(read_path, dtype=str)
         assert (
             response_property_name in updated_object_df.columns
         ), f"Response property {response_property_name} not in {read_path}."
