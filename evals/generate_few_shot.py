@@ -67,6 +67,7 @@ def generate_few_shot_data(
     # load the data
     # base_df = pd.read_csv(base_data_path)
     object_df = list(load_and_prep_dfs([base_data_path]).values())[0]
+    assert len(object_df) > 0, f"No data found in {base_data_path}"
     LOGGER.info(f"Loaded {len(object_df)} rows from {base_data_path}")
     # load base config
     object_config = get_hydra_config(base_data_path.parent)
