@@ -4,6 +4,7 @@ from evals.analysis.james.plotting.plot_response_property_with_baseline import (
 )
 from evals.locations import EXP_DIR
 
+
 def leave_out_2nd_character():
     exp_folder = EXP_DIR / "10_jul_leave_out_2nd_character"
     only_response_properties = set(["second_character"])

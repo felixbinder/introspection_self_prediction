@@ -1053,7 +1053,7 @@ def calculate_evidence_1(
         df_dump = pd.concat([df_first, df_second])
 
         df_dump.to_csv("evidence_1.csv", index=False)
-        
+
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
     if adjust_entropy:
@@ -1064,7 +1064,6 @@ def calculate_evidence_1(
         pass
     if micro_average:
         flats = add_micro_average(flats)
-    
 
     grouped_by_response_property_and_model = flats.group_by(
         lambda x: (x.response_property, x.object_model, x.meta_model)
@@ -1164,10 +1163,9 @@ def calculate_evidence_0(
     )
     overlap_both = prefinetuned_strings.intersection(postfinetuned_strings)
     flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
-    
+
     if other_evals_to_run:
         flats = flats + results_from_other_evals
-
 
     if log:
         first_plot = flats.filter(lambda x: x.object_model == before_finetuned).filter(
@@ -1184,7 +1182,6 @@ def calculate_evidence_0(
 
         df_dump.to_csv("evidence_0.csv", index=False)
 
-
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
     flats = flats.map(lambda x: x.rename_properties())
@@ -1197,8 +1194,6 @@ def calculate_evidence_0(
         flats = adjust_for_entropy_evidence_0(object_model=before_finetuned, meta_model=after_finetuned, items=flats)
     if micro_average:
         flats = add_micro_average(flats)
-
-    
 
     grouped_by_response_property_and_model = flats.group_by(
         lambda x: (x.response_property, x.object_model, x.meta_model)

@@ -1,10 +1,13 @@
 import pandas as pd
 import plotly.graph_objects as go
 from slist import Slist
+
 from evals.analysis.james.object_meta import ObjectAndMeta
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
-before_finetune: Slist[ObjectAndMeta] = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", ObjectAndMeta)
+before_finetune: Slist[ObjectAndMeta] = read_jsonl_file_into_basemodel(
+    "gpt-4o-2024-05-13_first_character.jsonl", ObjectAndMeta
+)
 after_finetune = read_jsonl_file_into_basemodel(
     "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9kIFeXjU_first_character.jsonl", ObjectAndMeta
 )

@@ -1,7 +1,10 @@
-from curses import meta
 
 import pandas as pd
-from evals.analysis.james.james_analysis import HueResult, calculate_evidence_1, get_single_hue
+
+from evals.analysis.james.james_analysis import (
+    HueResult,
+    get_single_hue,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -35,7 +38,7 @@ def gpt4o_july_5():
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
         label="1) Vanilla prediction: GPT-4o predicting GPT-4o",
-        exclude_noncompliant=True
+        exclude_noncompliant=True,
     )
     assert len(first_bar.results) > 0
     second_bar: HueResult = get_single_hue(

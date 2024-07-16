@@ -1,6 +1,4 @@
-from evals.analysis.james.james_analysis import (
-    calculate_evidence_0,
-)
+from evals.analysis.james.james_analysis import calculate_evidence_0
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -8,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "test_numeric_2"
+    exp_folder = EXP_DIR / "test_numeric_6"
     # only_response_properties = {
     #     "first_character",
     #     "is_either_a_or_c",

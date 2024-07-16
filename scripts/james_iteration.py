@@ -48,7 +48,6 @@ from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict, Sequence, Type, Union
 
-from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
 from evals.locations import EXP_DIR
 from evals.utils import MODEL_TO_FAMILY_MAP, get_current_git_hash, safe_model_name
@@ -60,7 +59,6 @@ from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversati
 from other_evals.counterfactuals.runners import (
     OtherEvalRunner,
     eval_list_to_runner,
-    run_sweep_over_other_evals,
 )
 
 
@@ -335,16 +333,14 @@ class StudyRunner:
         model = starting_model
         #### run object level completions on train ####
         object_train_commands = []
-        
+
         for task in self.args.tasks.keys():
             for prompt in self.args.prompt_configs:
                 command = self.get_object_level_command(model, task, prompt, self.args.n_object_train, "train")
                 # check if we need to run this command and set up the state
                 if command not in self.state["object_train_runs"]:
                     self.state["object_train_runs"].update(
-                        self.turn_nested_dictionary_into_multiprocessing_dict(
-                            {command: {"status": "incomplete"}}
-                        )
+                        self.turn_nested_dictionary_into_multiprocessing_dict({command: {"status": "incomplete"}})
                     )
                 elif self.state["object_train_runs"][command]["status"] == "complete":
                     print(f"Skipping {command} because it is already complete.")
@@ -392,7 +388,7 @@ class StudyRunner:
         )  # we need the name of the subfolder
 
         finetuning_dataset_creation_commands = []
-        
+
         for data_folder in finetuning_study_names:
             command = f"python -m evals.create_finetuning_dataset study_name={self.args.study_name} dataset_folder={data_folder}"
             if command not in self.state["finetuning_dataset_creation"]:
@@ -449,7 +445,7 @@ class StudyRunner:
                     new_samples=model_samples,
                 )
 
-        #### run finetuning ####        
+        #### run finetuning ####
         for ft_study in finetuning_study_names:
             ft_study_path = f"{self.args.study_name}/{ft_study}"
             finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
@@ -488,9 +484,7 @@ class StudyRunner:
             # run the command
             run_finetuning_command(state=self.state, state_lock=self.state_lock, command=command)
 
-        
         self.write_state_file()
-
 
         print("Finished running all commands.")
 

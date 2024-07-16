@@ -7,7 +7,9 @@ from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 
 #
 # before_finetune = read_jsonl_file_into_basemodel("gpt-3.5-turbo-0125_first_character_filtered.jsonl", FlatObjectMeta)
-before_finetune: Slist[ObjectAndMeta] = read_jsonl_file_into_basemodel("gpt-4o-2024-05-13_first_character.jsonl", ObjectAndMeta)
+before_finetune: Slist[ObjectAndMeta] = read_jsonl_file_into_basemodel(
+    "gpt-4o-2024-05-13_first_character.jsonl", ObjectAndMeta
+)
 
 # ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS_first_character.jsonl
 after_finetune = read_jsonl_file_into_basemodel(

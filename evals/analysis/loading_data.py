@@ -55,6 +55,7 @@ def load_and_prep_dfs(
     dfs = {}
     for path, name in zip(df_paths, configs):
         try:
+            print(f"Loading {path}")
             dfs[name] = pd.read_csv(path, dtype=str)
         except pd.errors.EmptyDataError:
             raise ValueError(f"Empty data file found at {path}")
