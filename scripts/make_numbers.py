@@ -1,5 +1,6 @@
-import random
 import json
+import random
+
 
 def generate_number_combinations(num_combinations):
     combinations = set()
@@ -9,12 +10,14 @@ def generate_number_combinations(num_combinations):
         combinations.add(sampled_digits)
     return combinations
 
+
 def write_jsonl(filename, combinations):
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         for combo in combinations:
             number_string = " ".join(map(str, combo))
             json.dump({"string": number_string}, f)
-            f.write('\n')
+            f.write("\n")
+
 
 # Generate non-overlapping combinations for train and validation sets
 train_combinations = generate_number_combinations(5000)
@@ -29,8 +32,8 @@ while len(val_combinations) < 5000:
         val_combinations.add(new_combination)
 
 # Write train and validation sets to separate files
-write_jsonl('evals/datasets/train_numbers.jsonl', train_combinations)
-write_jsonl('evals/datasets/val_numbers.jsonl', val_combinations)
+write_jsonl("evals/datasets/train_numbers.jsonl", train_combinations)
+write_jsonl("evals/datasets/val_numbers.jsonl", val_combinations)
 
 print("JSONL file 'train_numbers.jsonl' has been created with 5000 rows.")
 print("JSONL file 'val_numbers.jsonl' has been created with 5000 rows.")

@@ -8,7 +8,7 @@ from evals.locations import EXP_DIR
 def gpt4o_july_5():
     exp_folder = EXP_DIR / "15_jul_only_things_that_work_v2"
     only_response_properties = set()
-    only_tasks = set(["number_triplets"])
+    only_tasks = set(["animals", "english_words"])
     object_model = "gpt-3.5-turbo-0125"
     meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lLvr3MG"
     df = calculate_evidence_1(
@@ -26,6 +26,7 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=False,
         other_evals_to_run=[],
+        exclude_noncompliant=True,
     )
     create_chart(df=df, title="GPT-3.5 Evidence 1, adjusted for entropy")
 

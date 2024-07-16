@@ -56,10 +56,7 @@ from other_evals.counterfactuals.get_finetuning_samples import (
     get_other_evals_finetuning_samples,
 )
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
-from other_evals.counterfactuals.runners import (
-    OtherEvalRunner,
-    eval_list_to_runner,
-)
+from other_evals.counterfactuals.runners import OtherEvalRunner, eval_list_to_runner
 
 
 def json_string(arg_value):

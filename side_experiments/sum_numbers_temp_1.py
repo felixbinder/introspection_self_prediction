@@ -40,12 +40,12 @@ class TripletResponse(BaseModel):
 
 
 async def ask_question(model: str, triplet: TripletRow, caller: ModelCallerV2, repeat: int = 10) -> TripletResponse:
-    prompt = f"What is the next number in the following text? Respond immediately only with a single number and nothing else.\n{triplet.string}"
+    prompt = f"What is the sum of these numbers? Respond immediately only with a single number and nothing else.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
     results = []
     for try_number in range(repeat):
         response = await caller.call(
-            convo, config=InferenceConfig(model=model, temperature=0.0, top_p=0.0, max_tokens=3), try_number=try_number
+            convo, config=InferenceConfig(model=model, temperature=1.0, top_p=1.0, max_tokens=3), try_number=try_number
         )
         parsed = response.single_response.strip()
         results.append(parsed)
@@ -76,11 +76,10 @@ async def ask_question(model: str, triplet: TripletRow, caller: ModelCallerV2, r
 async def main():
     path = "evals/datasets/val_numbers.jsonl"
     read = read_jsonl_file_into_basemodel(path, TripletRow).take(500)
-    print(f"Read {len(read)} triplets from {path}")
+    print(f"Read {len(read)} numbers from {path}")
     caller = UniversalCallerV2().with_file_cache("triplet_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
-    # model = "gpt-4o"
-    model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lb3gkhE"
+    model = "gpt-4o"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
     stream = (
         Observable.from_iterable(read)
@@ -97,14 +96,8 @@ async def main():
     print(f"All same: {all_same.average_or_raise()}")
     meta_correct = result.map(lambda x: x.meta_correct()).flatten_option()
     print(f"Meta correct: {meta_correct.average_or_raise()}")
-    bars = meta_correct.statistics_or_raise()
-    print(f"Meta correct bars: {bars}")
-
-    # meta where all same
-    meta_all_same = result.filter(lambda x: x.all_same())
-    meta_all_same_acc = meta_all_same.map(lambda x: x.meta_correct()).flatten_option().average_or_raise()
-    print(f"Meta all same accuracy: {meta_all_same_acc}")
-
+    meta_bars = meta_correct.statistics_or_raise()
+    print(f"Meta correct bars: {meta_bars}")
     modal_baseline: bool = result.map(lambda x: x.object_is_even()).flatten_option().mode_or_raise()
     results_dist = (
         result.map(lambda x: x.object_is_even())

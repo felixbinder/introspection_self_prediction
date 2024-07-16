@@ -45,7 +45,7 @@ async def ask_question(model: str, triplet: TripletRow, caller: ModelCallerV2, r
     results = []
     for try_number in range(repeat):
         response = await caller.call(
-            convo, config=InferenceConfig(model=model, temperature=0.0, top_p=0.0, max_tokens=3), try_number=try_number
+            convo, config=InferenceConfig(model=model, temperature=1.0, top_p=1.0, max_tokens=3), try_number=try_number
         )
         parsed = response.single_response.strip()
         results.append(parsed)
@@ -75,12 +75,11 @@ async def ask_question(model: str, triplet: TripletRow, caller: ModelCallerV2, r
 
 async def main():
     path = "evals/datasets/val_numbers.jsonl"
-    read = read_jsonl_file_into_basemodel(path, TripletRow).take(500)
+    read = read_jsonl_file_into_basemodel(path, TripletRow).take(2000)
     print(f"Read {len(read)} triplets from {path}")
     caller = UniversalCallerV2().with_file_cache("triplet_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
-    # model = "gpt-4o"
-    model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lb3gkhE"
+    model = "gpt-4o"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
     stream = (
         Observable.from_iterable(read)
@@ -102,6 +101,7 @@ async def main():
 
     # meta where all same
     meta_all_same = result.filter(lambda x: x.all_same())
+    print(f"Meta all same: {len(meta_all_same)} out of {len(result)}")
     meta_all_same_acc = meta_all_same.map(lambda x: x.meta_correct()).flatten_option().average_or_raise()
     print(f"Meta all same accuracy: {meta_all_same_acc}")
 

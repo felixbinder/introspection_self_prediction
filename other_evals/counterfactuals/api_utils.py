@@ -243,7 +243,7 @@ class ClaudeCaller(ModelCallerV2):
 
 class OpenAICaller(ModelCallerV2):
     @async_retry(
-        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError)), wait=wait_fixed(5)
+        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)), wait=wait_fixed(5)
     )
     async def call(
         self,

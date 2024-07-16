@@ -1,10 +1,6 @@
-
 import pandas as pd
 
-from evals.analysis.james.james_analysis import (
-    HueResult,
-    get_single_hue,
-)
+from evals.analysis.james.james_analysis import HueResult, get_single_hue
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )

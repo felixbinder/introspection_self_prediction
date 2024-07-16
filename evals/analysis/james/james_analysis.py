@@ -102,11 +102,16 @@ def load_meta_dfs(
                 # sometimes its a list when it fails
                 compliance_is_true = row["compliance"] is True
                 response = clean_for_comparison(row["response"])
+                raw_response = row["raw_response"]
+                if str(raw_response) == "nan":
+                    compliance_is_true = False
+                    response = ""
+                    raw_response = "nan"
                 final_metas.append(
                     LoadedMeta(
                         string=row["string"],
                         response=response,
-                        raw_response=row["raw_response"],
+                        raw_response=raw_response,
                         response_property=response_property,
                         prompt_method=config_key["prompt"]["method"],
                         compliance=compliance_is_true,
@@ -154,11 +159,17 @@ def load_meta_dfs(
                 #     # sometimes its saved as a float e.g. 8.0 lol
                 #     if object_level_response:
                 #         object_level_response = object_level_response[0]
+                raw_response = row["raw_response"]
+                if str(raw_response) == "nan":
+                    compliance_is_true = False
+                    response = "" ""
+                    raw_response = "nan"
+
                 final_objects.append(
                     LoadedObject(
                         string=row["string"],
                         response=response,
-                        raw_response=row["raw_response"],
+                        raw_response=raw_response,
                         prompt_method=config_key["prompt"]["method"],
                         compliance=compliance_is_true,
                         task=task,

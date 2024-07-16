@@ -18,7 +18,7 @@ def gpt4o_july_5():
     only_response_properties = set()
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
-    only_tasks = set(["animals", "english_words"])
+    only_tasks = set(["wikipedia"])
     before = "gpt-3.5-turbo-0125"
     after = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lLvr3MG"
     df = calculate_evidence_0(
@@ -33,6 +33,7 @@ def gpt4o_july_5():
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
         micro_average=True,
+        exclude_noncompliant=True,
     )
     create_chart(df=df, title="GPT-3.5 before and after finetuning, adjusted for entropy")
 

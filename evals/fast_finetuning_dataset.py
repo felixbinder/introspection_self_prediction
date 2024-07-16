@@ -1,30 +1,28 @@
 import asyncio
 import logging
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
 from string import Template
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 from tqdm import tqdm
 
+from evals.analysis.loading_data import get_data_path, load_single_df
 from evals.apis.inference.api import InferenceAPI
 from evals.data_models.inference import LLMParams
 from evals.data_models.messages import ChatMessage, Prompt, PromptTemplate
-from evals.utils import setup_environment, gather_max_par
-from evals.analysis.loading_data import get_data_path, load_single_df
-from evals.load.lazy_object_level_llm_extraction import lazy_add_response_property_to_object_level
+from evals.load.lazy_object_level_llm_extraction import (
+    lazy_add_response_property_to_object_level,
+)
+from evals.utils import gather_max_par, setup_environment
 
 LOGGER = logging.getLogger(__name__)
 
+
 async def get_property(
-    response: str,
-    prompt_template: PromptTemplate,
-    llm_params: LLMParams,
-    inference_api: InferenceAPI
+    response: str, prompt_template: PromptTemplate, llm_params: LLMParams, inference_api: InferenceAPI
 ) -> str:
     messages = [
-        ChatMessage(role=m.role, content=m.content.replace('${response}', response))
-        for m in prompt_template.messages
+        ChatMessage(role=m.role, content=m.content.replace("${response}", response)) for m in prompt_template.messages
     ]
     prompt = Prompt(messages=messages)
 
@@ -45,21 +43,20 @@ async def get_property(
         LOGGER.warning(f"Failed to get property: {e}")
         return ""
 
+
 async def process_dataset_for_property(
     df: pd.DataFrame,
     property_name: str,
     prompt_template: PromptTemplate,
     llm_params: LLMParams,
-    inference_api: InferenceAPI
+    inference_api: InferenceAPI,
 ) -> pd.DataFrame:
-    tasks = [
-        get_property(row['response'], prompt_template, llm_params, inference_api)
-        for _, row in df.iterrows()
-    ]
+    tasks = [get_property(row["response"], prompt_template, llm_params, inference_api) for _, row in df.iterrows()]
     properties = await gather_max_par(100, *tasks)
-    
+
     df[property_name] = properties
     return df
+
 
 def generate_finetuning_data(
     df: pd.DataFrame,
@@ -93,6 +90,7 @@ def generate_finetuning_data(
 
     return data
 
+
 def process_prompt(row: pd.Series, prompt_template: PromptTemplate, response_property_name: str) -> Prompt:
     messages = []
     for message in prompt_template.messages:
@@ -101,11 +99,13 @@ def process_prompt(row: pd.Series, prompt_template: PromptTemplate, response_pro
         messages.append(ChatMessage(role=message.role, content=content))
     return Prompt(messages=messages)
 
+
 def scramble_strings(df: pd.DataFrame, seed: int) -> pd.DataFrame:
     columns_to_scramble = [col for col in ["string", "unmodified_string", "modified_string"] if col in df.columns]
     for col in columns_to_scramble:
         df[col] = df[col].sample(frac=1, random_state=seed).values
     return df
+
 
 async def main(
     train_base_dir: str,
@@ -118,7 +118,7 @@ async def main(
     prompt: Dict[str, Any],
     property_extraction_prompt: PromptTemplate,
     llm_params: LLMParams,
-    anthropic_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     # Setup
     setup_environment(anthropic_api_key=anthropic_api_key)
@@ -164,13 +164,16 @@ async def main(
     LOGGER.info(f"Generated {len(train_data)} training samples and {len(val_data)} validation samples")
     return train_data, val_data
 
+
 if __name__ == "__main__":
     # Example usage
-    property_extraction_prompt = PromptTemplate(messages=[
-        ChatMessage(role="system", content="You are a helpful assistant."),
-        ChatMessage(role="user", content="Extract the main topic from this response: ${response}")
-    ])
-    
+    property_extraction_prompt = PromptTemplate(
+        messages=[
+            ChatMessage(role="system", content="You are a helpful assistant."),
+            ChatMessage(role="user", content="Extract the main topic from this response: ${response}"),
+        ]
+    )
+
     llm_params = LLMParams(
         model="gpt-3.5-turbo",
         temperature=0.7,
@@ -180,25 +183,27 @@ if __name__ == "__main__":
     )
 
     finetuning_prompt = {
-        'messages': [
-            {'role': 'system', 'content': 'You are a helpful assistant.'},
-            {'role': 'user', 'content': 'Please respond to: ${response}'}
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Please respond to: ${response}"},
         ]
     }
 
-    train_data, val_data = asyncio.run(main(
-        train_base_dir="./train_data",
-        val_base_dir="./val_data",
-        response_property_name="main_topic",
-        n_train_items=1000,
-        n_val_items=200,
-        seed=42,
-        scramble=False,
-        prompt=finetuning_prompt,
-        property_extraction_prompt=property_extraction_prompt,
-        llm_params=llm_params,
-        anthropic_api_key="your_anthropic_api_key_here"  # Optional
-    ))
+    train_data, val_data = asyncio.run(
+        main(
+            train_base_dir="./train_data",
+            val_base_dir="./val_data",
+            response_property_name="main_topic",
+            n_train_items=1000,
+            n_val_items=200,
+            seed=42,
+            scramble=False,
+            prompt=finetuning_prompt,
+            property_extraction_prompt=property_extraction_prompt,
+            llm_params=llm_params,
+            anthropic_api_key="your_anthropic_api_key_here",  # Optional
+        )
+    )
 
     print(f"Generated {len(train_data)} training samples and {len(val_data)} validation samples")
     # You can now use train_data and val_data as needed
