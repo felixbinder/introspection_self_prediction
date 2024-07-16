@@ -55,12 +55,12 @@ def load_and_prep_dfs(
     dfs = {}
     for path, name in zip(df_paths, configs):
         try:
-            dfs[name] = pd.read_csv(path, dtype={"complete": bool})
+            dfs[name] = pd.read_csv(path, dtype=str)
         except pd.errors.EmptyDataError:
             raise ValueError(f"Empty data file found at {path}")
-        # convert other columns to string
-        other_cols = [col for col in dfs[name].columns if col != "complete"]
-        dfs[name][other_cols] = dfs[name][other_cols].astype(str)
+        # convert complete to boolean
+        if "complete" in dfs[name].columns:
+            dfs[name]["complete"] = dfs[name]["complete"].astype(bool)
         if verbose:
             print(f"Loaded {len(dfs[name])} rows from {path}")
 
