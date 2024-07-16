@@ -47,6 +47,7 @@ def load_and_prep_dfs(
 
     if configs is None:
         configs = [get_hydra_config(path.parent) for path in df_paths]
+        assert len(configs) == len(df_paths), "Number of configs and dataframes do not match"
 
     # get pretty name for printing
     pretty_names = {name: get_pretty_name(name) for name in configs}
