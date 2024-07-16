@@ -560,6 +560,7 @@ def get_evidence_1_object_and_meta(
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     exclude_noncompliant: bool = False,
+    tasks: Sequence[str] = [],
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -587,13 +588,17 @@ def get_evidence_1_object_and_meta(
     all_models = (
         object_meta_pairs.map(lambda x: x.object_model) + object_meta_pairs.map(lambda x: x.meta_model)
     ).distinct()
-
-    all_objects, all_metas = load_meta_dfs(
-        Path(exp_folder),
-        {
+    conditions = {
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
-        },
+            ("task", "name"): tasks,
+        } if tasks else {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): all_models,
+        }
+    all_objects, all_metas = load_meta_dfs(
+        Path(exp_folder),
+        conditions=conditions,
         exclude_noncompliant=exclude_noncompliant,
     )
     prefinetuned_objects = all_objects.filter(lambda x: x.object_model == prefinetuned_model)
@@ -653,6 +658,7 @@ def get_evidence_0_object_and_meta(
     exp_folder: Path,
     prefinetuned_model: str,
     postfinetuned_model: str,
+    tasks: Sequence[str] = [],
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -679,12 +685,17 @@ def get_evidence_0_object_and_meta(
         object_meta_pairs.map(lambda x: x.object_model) + object_meta_pairs.map(lambda x: x.meta_model)
     ).distinct()
 
+    conditions = {
+        ("task", "set"): ["val"],
+        ("task", "name"): tasks,
+        ("language_model", "model"): all_models,
+    } if tasks else {
+        ("task", "set"): ["val"],
+        ("language_model", "model"): all_models,
+    }
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
-        {
-            ("task", "set"): ["val"],
-            ("language_model", "model"): all_models,
-        },
+        conditions=conditions,
         exclude_noncompliant=False,
     )
 
@@ -1157,6 +1168,7 @@ def calculate_evidence_0(
         prefinetuned_model=before_finetuned,
         postfinetuned_model=after_finetuned,
         exp_folder=exp_folder,
+        # tasks=list(only_tasks),
     )
     if exclude_noncompliant:
         flats = flats.filter(lambda x: x.object_complied and x.meta_complied)

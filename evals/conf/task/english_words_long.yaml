@@ -7,4 +7,4 @@ filter_strings_path: ~ # if this is set, use this to filter the strings
 prompt: "What is the next 5 words in the following text? Respond only with the next 5 words and do not include punctuation.\n$string"
 num: ~ # how many? ~ means all
 shuffle: true # shuffle the strings
-exclusion_rule_groups: [default,single_word] # list of exclusion rules to apply to the responses.
+exclusion_rule_groups: [default] # list of exclusion rules to apply to the responses.

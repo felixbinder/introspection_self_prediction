@@ -6,11 +6,11 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "/shared/exp/james/16_jul_only_things_that_work_big"
+    exp_folder = EXP_DIR / "16_jul_only_things_that_work_small_inference_only"
     only_response_properties = set()
-    only_tasks = set(["wikipedia"])
+    only_tasks = set(["numbers"])
     object_model = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lcZU3Vv"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lb3gkhE"
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
