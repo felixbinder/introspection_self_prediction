@@ -383,7 +383,7 @@ def flat_object_meta(
     for meta in metas:
         key = (meta.task, meta.string, meta.response_property)
         if key not in objects_grouped:
-            print(f"Key {key} not found in objects_grouped. Weird...")
+            # print(f"Key {key} not found in objects_grouped. Weird...")
             # raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
             continue
@@ -588,14 +588,18 @@ def get_evidence_1_object_and_meta(
     all_models = (
         object_meta_pairs.map(lambda x: x.object_model) + object_meta_pairs.map(lambda x: x.meta_model)
     ).distinct()
-    conditions = {
+    conditions = (
+        {
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
             ("task", "name"): tasks,
-        } if tasks else {
+        }
+        if tasks
+        else {
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
         }
+    )
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
         conditions=conditions,
@@ -685,14 +689,18 @@ def get_evidence_0_object_and_meta(
         object_meta_pairs.map(lambda x: x.object_model) + object_meta_pairs.map(lambda x: x.meta_model)
     ).distinct()
 
-    conditions = {
-        ("task", "set"): ["val"],
-        ("task", "name"): tasks,
-        ("language_model", "model"): all_models,
-    } if tasks else {
-        ("task", "set"): ["val"],
-        ("language_model", "model"): all_models,
-    }
+    conditions = (
+        {
+            ("task", "set"): ["val"],
+            ("task", "name"): tasks,
+            ("language_model", "model"): all_models,
+        }
+        if tasks
+        else {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): all_models,
+        }
+    )
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
         conditions=conditions,
@@ -729,7 +737,7 @@ def get_evidence_0_object_and_meta(
                 shifted_result=None,
             )
             result_rows.extend(compared)
-
+    assert len(result_rows) > 0, "No results found"
     return result_rows
 
 
@@ -1172,6 +1180,7 @@ def calculate_evidence_0(
     )
     if exclude_noncompliant:
         flats = flats.filter(lambda x: x.object_complied and x.meta_complied)
+        assert len(flats) > 0, "No compliant items found"
 
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (
@@ -1186,6 +1195,7 @@ def calculate_evidence_0(
     )
     overlap_both = prefinetuned_strings.intersection(postfinetuned_strings)
     flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
+    assert len(flats) > 0, "No overlapping strings found"
 
     if other_evals_to_run:
         flats = flats + results_from_other_evals
@@ -1210,8 +1220,10 @@ def calculate_evidence_0(
     flats = flats.map(lambda x: x.rename_properties())
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
+        assert len(flats) > 0, f"No comparisons found after filtering for {only_response_properties=}"
     if only_tasks:
         flats = flats.filter(lambda x: x.task in only_tasks)
+        assert len(flats) > 0, f"No comparisons found after filtering for {only_tasks=}"
 
     if adjust_entropy:
         flats = adjust_for_entropy_evidence_0(object_model=before_finetuned, meta_model=after_finetuned, items=flats)

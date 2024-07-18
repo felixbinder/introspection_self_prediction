@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
+
 
 # Function to create and show the chart
 def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properties=None):
@@ -57,12 +57,14 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
                 y=df_sorted["mode_baseline"] * 100,
                 mode="markers",
                 name="Mode Baseline",
-                marker=dict(symbol="x", size=8, color="red"),
+                marker=dict(symbol="star", size=8, color="black"),
             )
         )
 
     renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
-    renamed = [prop.replace("writing_stories/main_character_name", "main_character_name") for prop in renamed]
+    renamed = [
+        prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
+    ]
 
     fig.update_layout(
         title=title,
@@ -77,16 +79,16 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
     fig.write_image("response_property_results.png", width=1920, height=1080)
     fig.show()
 
+
 def main(csv_name: str, title: str = "Response Properties: Model Accuracy with Mode Baseline and 95% CI"):
     df = pd.read_csv(csv_name)
 
-    
-
     # Create the chart
     # #636EFA pale blue
-    # 
+    #
     create_chart(df, title=title, _sorted_properties=None, first_chart_color="palevioletred")
+
 
 if __name__ == "__main__":
     csv_name = "response_property_results.csv"
-    main(csv_name, title="GPT-3.5 before and after finetuning, adjusting for entropy")
+    main(csv_name, title="GPT-4o before and after finetuning")

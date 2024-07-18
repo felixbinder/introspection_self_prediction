@@ -15,7 +15,9 @@ def gpt4o_july_5():
     #     "last_character",
     #     "first_word", # gpt-4o finetuned is very collasply in first word, so we omit it
     # }
-    only_response_properties = set(["first_character", "second_character", "third_character", "first_word", "second_word", "third_word"])
+    only_response_properties = set(
+        ["first_character", "second_character", "third_character", "first_word", "second_word", "third_word"]
+    )
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
     only_tasks = set(["colors_long"])
@@ -37,7 +39,9 @@ def gpt4o_july_5():
         micro_average=True,
         exclude_noncompliant=True,
     )
-    create_chart(df=df, title="GPT-3.5 before and after finetuning, adjusted for entropy", first_chart_color="palevioletred")
+    create_chart(
+        df=df, title="GPT-3.5 before and after finetuning, adjusted for entropy", first_chart_color="palevioletred"
+    )
 
 
 gpt4o_july_5()
