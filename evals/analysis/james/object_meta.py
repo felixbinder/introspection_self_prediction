@@ -29,9 +29,9 @@ class ObjectAndMeta(BaseModel):
         if "matches" in self.response_property:
             new.response_property = "matches behavior"
         if "is_either_a_or_c" in self.response_property:
-            new.response_property = "is_one_of_given_options"
+            new.response_property = "one_of_options"
         if "is_either_b_or_d" in self.response_property:
-            new.response_property = "is_one_of_given_options"
+            new.response_property = "one_of_options"
 
         return new
 

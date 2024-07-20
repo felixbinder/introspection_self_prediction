@@ -1,6 +1,14 @@
 import pandas as pd
 import plotly.graph_objects as go
 
+import textwrap
+
+def wrap_label(label):
+    # replace spaces with <br>
+    return label.replace(" ", "<br>")
+
+def wrap_labels(labels):
+    return [wrap_label(label) for label in labels]
 
 # Function to create and show the chart
 def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properties=None):
@@ -58,6 +66,7 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
                 mode="markers",
                 name="Mode Baseline",
                 marker=dict(symbol="star", size=8, color="black"),
+                showlegend=False if i == 1 else True,
             )
         )
 
@@ -65,6 +74,7 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
     ]
+    renamed = wrap_labels(renamed)
 
     fig.update_layout(
         title=title,
@@ -72,11 +82,21 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
         yaxis_title="Accuracy",
         barmode="group",
         yaxis=dict(range=[0, 100]),
-        legend=dict(traceorder="normal"),
-        xaxis=dict(tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed),
+        # legend=dict(traceorder="normal"),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.7, xanchor="left", x=0.0, title=None),
+        xaxis=dict(tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0),
+        # margin=dict(b=200)  # Increase bottom margin
     )
     # save as png 1080p
-    fig.write_image("response_property_results.png", width=1920, height=1080)
+    # fig.write_image("response_property_results.png", width=1920, height=1080)
+    import plotly.io as pio
+
+    pio.kaleido.scope.mathjax = None
+    # remove margins
+    fig.update_layout(height=400, width=800)
+    # fig.update_layout(margin=dict(l=0, r=0, t=1.0, b=0))
+    fig.write_image("response_property_results.pdf")
+
     fig.show()
 
 

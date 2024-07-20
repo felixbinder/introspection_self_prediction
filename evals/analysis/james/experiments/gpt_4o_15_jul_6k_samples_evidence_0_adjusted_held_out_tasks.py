@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL, calculate_evidence_0, calculate_evidence_1
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_0,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -19,14 +22,13 @@ def gpt4o_july_5():
         "matches behavior",
         "is_one_of_given_options",
         MICRO_AVERAGE_LABEL,
-
     ]
     only_response_properties = set(properties)
     only_tasks = set(["animals_long", "english_words_long", "survival_instinct", "myopic_reward", "mmlu_non_cot"])
     # only_tasks = set(["stories_sentences"])
     before = "gpt-4o-2024-05-13"
     after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P"
-    
+
     df = calculate_evidence_0(
         # include_identity=True,
         other_evals_to_run=[],
@@ -43,8 +45,12 @@ def gpt4o_july_5():
     )
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
-    create_chart(df=df, title="Held out tasks: GPT-4o before and after finetuning, adjusted for entropy", first_chart_color="palevioletred",
-                 _sorted_properties=properties)
+    create_chart(
+        df=df,
+        title="Held out tasks: GPT-4o before and after finetuning, adjusted for entropy",
+        first_chart_color="palevioletred",
+        _sorted_properties=properties,
+    )
 
 
 gpt4o_july_5()

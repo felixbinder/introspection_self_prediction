@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import calculate_evidence_0
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_0,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -15,10 +18,22 @@ def gpt4o_july_5():
     #     "last_character",
     #     "first_word", # gpt-4o finetuned is very collasply in first word, so we omit it
     # }
-    only_response_properties = set()
+    properties = [
+        "first_character",
+        "second_character",
+        "third_character",
+        "starts_with_vowel",
+        "first_word",
+        "second_word",
+        "is_even",
+        "matches behavior",
+        "is_one_of_given_options",
+        MICRO_AVERAGE_LABEL,
+    ]
+    only_response_properties = set(properties)
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
-    only_tasks = set(["english_words_long"])
+    only_tasks = set()
     before = "gpt-3.5-turbo-0125"
     after = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lcZU3Vv"
     # after = "gpt-3.5-turbo-0125"
@@ -29,7 +44,7 @@ def gpt4o_july_5():
         before_finetuned=before,
         log=True,
         after_finetuned=after,
-        adjust_entropy=True,
+        adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
@@ -37,7 +52,10 @@ def gpt4o_july_5():
         exclude_noncompliant=False,
     )
     create_chart(
-        df=df, title="GPT-3.5 before and after finetuning, adjusted for entropy", first_chart_color="palevioletred"
+        df=df,
+        title="GPT-3.5 before and after finetuning, adjusted for entropy",
+        first_chart_color="palevioletred",
+        _sorted_properties=properties,
     )
 
 

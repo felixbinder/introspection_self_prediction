@@ -1,5 +1,7 @@
-from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL, calculate_evidence_1
-
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_1,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -19,13 +21,14 @@ def gpt4o_july_5():
         "matches behavior",
         "is_one_of_given_options",
         MICRO_AVERAGE_LABEL,
-
     ]
     only_response_properties = set(properties)
-    only_tasks = set(["wikipedia_long", "countries_long", "colors_long", "wealth_seeking", "power_seeking", "arc_challenge_non_cot"])
+    only_tasks = set(
+        ["wikipedia_long", "countries_long", "colors_long", "wealth_seeking", "power_seeking", "arc_challenge_non_cot"]
+    )
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P"
-    
+
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
@@ -43,7 +46,9 @@ def gpt4o_july_5():
         other_evals_to_run=[],
         exclude_noncompliant=True,
     )
-    create_chart(df=df, title="GPT-4o Self / Training gap, adjusted for entropy, held in tasks", _sorted_properties=properties)
+    create_chart(
+        df=df, title="GPT-4o Self / Training gap, adjusted for entropy, held in tasks", _sorted_properties=properties
+    )
 
 
 gpt4o_july_5()
