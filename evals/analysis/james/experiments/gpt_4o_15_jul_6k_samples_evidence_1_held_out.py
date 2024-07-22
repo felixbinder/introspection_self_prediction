@@ -14,14 +14,14 @@ def gpt4o_july_5():
         "first_character",
         "second_character",
         "first_word",
-        "second_word",
+        # "second_word",
         "matches behavior",
-        "is_one_of_given_options",
+        "one_of_options",
         MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
-    # only_tasks = set(["animals_long", "english_words_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "number_doublets", "number_triplets"])
-    only_tasks = set(["stories_sentences"])
+    only_tasks = set(["animals_long", "english_words_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "stories_sentences"])
+    # only_tasks = set(["stories_sentences"])
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P"
 
@@ -42,8 +42,9 @@ def gpt4o_july_5():
         other_evals_to_run=[],
         exclude_noncompliant=True,
     )
+    title="GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(
-        df=df, title="GPT-4o Self / Training gap, adjusted for entropy, held out tasks", _sorted_properties=properties
+        df=df, title="", _sorted_properties=properties
     )
 
 

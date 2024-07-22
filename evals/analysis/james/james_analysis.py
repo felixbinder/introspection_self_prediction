@@ -1158,6 +1158,8 @@ def calculate_evidence_0(
         BiasDetectAddAreYouSure,
         KwikWillYouBeCorrect,
     ],
+    before_label: str = "Before finetuned model",
+    after_label: str = "After finetuned model",
 ) -> pd.DataFrame:
     if other_evals_to_run:
         setup_environment()
@@ -1208,9 +1210,9 @@ def calculate_evidence_0(
             lambda x: x.object_model == after_finetuned
         )
         df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
-        df_first["label"] = "1) Before finetuned model predicting before finetuned model"
+        df_first["label"] = before_label
         df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
-        df_second["label"] = "2) After finetuned model predicting after finetuned model"
+        df_second["label"] = after_label
         df_dump = pd.concat([df_first, df_second])
 
         df_dump.to_csv("evidence_0.csv", index=False)
@@ -1246,11 +1248,7 @@ def calculate_evidence_0(
         shift_percentage = non_none_values.map(lambda x: x.shifted == "shifted").average_or_raise()
         bootstrap_results: AverageStats = bootstrap_accuracy(non_none_values.map(lambda x: x.meta_predicted_correctly))
 
-        label = (
-            "1) Before finetuned model predicting before finetuned model"
-            if before_finetuned == val_object_model
-            else "2) After finetuned model predicting after finetuned model"
-        )
+        label = before_label if before_finetuned == val_object_model else after_label
         result_row = {
             "response_property": response_property,
             "accuracy": acc,

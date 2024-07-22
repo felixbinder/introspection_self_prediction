@@ -19,7 +19,7 @@ def gpt4o_july_5():
         "second_word",
         "is_even",
         "matches behavior",
-        "is_one_of_given_options",
+        "one_of_options",
         MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
@@ -50,12 +50,15 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=True,
         exclude_noncompliant=False,
+        before_label="1) GPT-4o predicting GPT-4o",
+        after_label="2) Trained GPT-4o predicting trained GPT-4o",
     )
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
     create_chart(
         df=df,
-        title="GPT-4o before and after finetuning, unadjusted",
+        # title="GPT-4o before and after finetuning, unadjusted",
+        title="",
         first_chart_color="palevioletred",
         _sorted_properties=properties,
     )

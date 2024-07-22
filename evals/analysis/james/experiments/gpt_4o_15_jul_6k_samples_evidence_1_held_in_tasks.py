@@ -19,7 +19,7 @@ def gpt4o_july_5():
         # "second_word",
         # "is_even",
         "matches behavior",
-        "is_one_of_given_options",
+        "one_of_options",
         MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
@@ -46,9 +46,8 @@ def gpt4o_july_5():
         other_evals_to_run=[],
         exclude_noncompliant=True,
     )
-    create_chart(
-        df=df, title="GPT-4o Self / Training gap, adjusted for entropy, held in tasks", _sorted_properties=properties
-    )
+    # title = "GPT-4o Self / Training gap, adjusted for entropy, held in tasks"
+    create_chart(df=df, title="", _sorted_properties=properties)
 
 
 gpt4o_july_5()
