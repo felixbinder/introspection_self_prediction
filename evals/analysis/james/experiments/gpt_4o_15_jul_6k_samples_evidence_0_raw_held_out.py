@@ -23,7 +23,16 @@ def gpt4o_july_5():
         MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
-    only_tasks = set(["animals_long", "english_words_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "stories_sentences"])
+    only_tasks = set(
+        [
+            "animals_long",
+            "english_words_long",
+            "survival_instinct",
+            "myopic_reward",
+            "mmlu_non_cot",
+            "stories_sentences",
+        ]
+    )
     before = "gpt-4o-2024-05-13"
     after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P"
 
@@ -41,7 +50,7 @@ def gpt4o_july_5():
         micro_average=True,
         exclude_noncompliant=False,
         before_label="1) GPT-4o predicting GPT-4o",
-        after_label="2) Trained GPT-4o predicting trained GPT-4o"
+        after_label="2) Trained GPT-4o predicting trained GPT-4o",
     )
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")

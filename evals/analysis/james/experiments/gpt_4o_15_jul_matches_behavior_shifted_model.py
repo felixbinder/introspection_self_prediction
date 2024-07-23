@@ -11,33 +11,21 @@ from evals.locations import EXP_DIR
 def gpt4o_july_5():
     exp_folder = EXP_DIR / "17_jul_only_things_that_work_big_try_more_samples_shifted"
     properties = [
-        "first_character",
-        "second_character",
-        "first_word",
-        # "second_word",
         "matches behavior",
-        "one_of_options",
-        MICRO_AVERAGE_LABEL,
+        # MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
-    only_tasks = set(
-        [
-            "animals_long",
-            "english_words_long",
-            "survival_instinct",
-            "myopic_reward",
-            "mmlu_non_cot",
-            "stories_sentences",
-        ]
-    )
+    only_tasks = set(["survival_instinct", "myopic_reward"])
     # only_tasks = set(["stories_sentences"])
     object_model = "gpt-4o-2024-05-13"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P"
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift:9nkqHiWo" # on val set
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift-train:9npOgcD6" # on train set
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift-control:9npP5kC6"  # on train set, but gpt-4o
 
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
-        shifting="only_shifted",
+        shifting="all",
         # include_identity=True,
         include_identity=False,
         object_model=object_model,
@@ -52,7 +40,7 @@ def gpt4o_july_5():
         exclude_noncompliant=True,
     )
     title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(df=df, title="", _sorted_properties=properties)
+    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
 
 
 gpt4o_july_5()

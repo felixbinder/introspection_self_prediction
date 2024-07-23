@@ -1158,8 +1158,8 @@ def calculate_evidence_0(
         BiasDetectAddAreYouSure,
         KwikWillYouBeCorrect,
     ],
-    before_label: str = "Before finetuned model",
-    after_label: str = "After finetuned model",
+    before_label: str = "1) Before finetuned model",
+    after_label: str = "2) After finetuned model",
 ) -> pd.DataFrame:
     if other_evals_to_run:
         setup_environment()
@@ -1169,7 +1169,7 @@ def calculate_evidence_0(
             object_and_meta=[(before_finetuned, before_finetuned), (after_finetuned, after_finetuned)],
             limit=500,
             api=api,
-            balance_data=False,  # don't balance data, we need to calculate the shift. entropy will be adjusted
+            balance_data=True,  # don't balance data, we need to calculate the shift. entropy will be adjusted
         )
         results_from_other_evals = (asyncio.run(results_co)).map(lambda x: x.to_james_analysis_format())
     else:
@@ -1183,6 +1183,9 @@ def calculate_evidence_0(
     if exclude_noncompliant:
         flats = flats.filter(lambda x: x.object_complied and x.meta_complied)
         assert len(flats) > 0, "No compliant items found"
+
+    if other_evals_to_run:
+        flats = flats + results_from_other_evals
 
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (
@@ -1199,8 +1202,7 @@ def calculate_evidence_0(
     flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
     assert len(flats) > 0, "No overlapping strings found"
 
-    if other_evals_to_run:
-        flats = flats + results_from_other_evals
+    
 
     if log:
         first_plot = flats.filter(lambda x: x.object_model == before_finetuned).filter(

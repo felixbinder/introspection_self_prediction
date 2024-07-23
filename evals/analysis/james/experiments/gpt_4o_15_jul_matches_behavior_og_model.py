@@ -11,13 +11,8 @@ from evals.locations import EXP_DIR
 def gpt4o_july_5():
     exp_folder = EXP_DIR / "17_jul_only_things_that_work_big_try_more_samples_shifted"
     properties = [
-        "first_character",
-        "second_character",
-        "first_word",
-        # "second_word",
         "matches behavior",
-        "one_of_options",
-        MICRO_AVERAGE_LABEL,
+        # MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
     only_tasks = set(
@@ -52,7 +47,7 @@ def gpt4o_july_5():
         exclude_noncompliant=True,
     )
     title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(df=df, title="", _sorted_properties=properties)
+    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
 
 
 gpt4o_july_5()

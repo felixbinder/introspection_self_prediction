@@ -1,4 +1,3 @@
-
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -15,7 +14,7 @@ def wrap_labels(labels):
 
 
 # Function to create and show the chart
-def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properties=None):
+def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properties=None, fix_ratio: bool = True):
     if _sorted_properties is None:
         sorted_properties = sorted(df["response_property"].unique())
     else:
@@ -90,7 +89,7 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
         legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         xaxis=dict(
             tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0, tickfont=dict(size=14)
-        )
+        ),
         # margin=dict(b=200)  # Increase bottom margin
     )
     # save as png 1080p
@@ -98,9 +97,10 @@ def create_chart(df, title, first_chart_color: str = "#636EFA", _sorted_properti
     import plotly.io as pio
 
     pio.kaleido.scope.mathjax = None
-    # remove margins
-    fig.update_layout(height=400, width=1100)
-    fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
+    if fix_ratio:
+        # remove margins
+        fig.update_layout(height=400, width=1100)
+        fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
     fig.write_image("response_property_results.pdf")
 
     fig.show()
