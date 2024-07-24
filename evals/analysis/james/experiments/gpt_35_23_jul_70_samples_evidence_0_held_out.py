@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "23_jul_fixed_tasks"
+    exp_folder = EXP_DIR / "is_even_check"
 
     only_response_properties = set()
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
@@ -23,9 +23,9 @@ def gpt4o_july_5():
             # "writing_stories_pick_name", # actually held in, we don't have a corresponding held out task
         ]
     )
-    before = "gpt-3.5-turbo-0125"
+    before = "gpt-4o-2024-05-13"
     # before = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lb3gkhE"
-    after = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oBAeyBe"  # 70k samples
+    after = "gpt-4o-2024-05-13"  # 70k samples
     # after = "gpt-3.5-turbo-0125"
     df = calculate_evidence_0(
         # include_identity=True,
