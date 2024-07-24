@@ -36,7 +36,7 @@ def gpt4o_july_5():
         other_evals_to_run=[],
         exclude_noncompliant=True,
     )
-    title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
+    # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
 
 

@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 
 # Create a DataFrame from the data
 data = {
@@ -74,7 +75,7 @@ fig.update_layout(
     xaxis=dict(tickmode="array", tickvals=[0, 1], ticktext=["GPT-3.5", "GPT-4o"]),
 )
 fig.update_layout(height=600, width=400)
-import plotly.io as pio
+
 
 pio.kaleido.scope.mathjax = None
 # remove margins

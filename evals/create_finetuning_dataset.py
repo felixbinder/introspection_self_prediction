@@ -111,10 +111,10 @@ def generate_finetuning_jsonl(
             with open(val_filepath, "r") as infile:
                 outfile.write(infile.read())
 
-    # if cfg.enforce_unique_strings:
-    #     LOGGER.info("Enforcing unique strings.")
-    #     enforce_unique_strings(path / ("train_" + filename))
-    #     enforce_unique_strings(path / ("val_" + filename))
+    if cfg.enforce_unique_strings:
+        LOGGER.info("Enforcing unique strings.")
+        enforce_unique_strings(path / ("train_" + filename))
+        enforce_unique_strings(path / ("val_" + filename))
 
     LOGGER.info(
         f"Generated {len(train_filepaths)} datasets and saved to {train_filepath.relative_to(EXP_DIR)} & {val_filepath.relative_to(EXP_DIR)}"
