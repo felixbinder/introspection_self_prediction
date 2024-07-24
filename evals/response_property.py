@@ -80,6 +80,16 @@ def is_even(row: pd.Series) -> str | None:
     return numeric_property(row, lambda x: x % 2 == 0)
 
 
+def is_even_direct(row: pd.Series) -> str | None:
+    # rather than "true" or "false", return "even" or "odd"
+    response = row["response"]
+    try:
+        response = int(response.strip())
+    except ValueError:
+        return None
+    return "even" if response % 2 == 0 else "odd"
+
+
 def is_either_a_or_c(row: pd.Series) -> str | None:
     response = row["response"]
     return str(response.lower() in ["a", "c"]).lower()

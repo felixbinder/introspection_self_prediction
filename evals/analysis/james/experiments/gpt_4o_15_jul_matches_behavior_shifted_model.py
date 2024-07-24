@@ -1,5 +1,4 @@
 from evals.analysis.james.james_analysis import (
-    MICRO_AVERAGE_LABEL,
     calculate_evidence_1,
 )
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
@@ -18,9 +17,9 @@ def gpt4o_july_5():
     only_tasks = set(["survival_instinct", "myopic_reward"])
     # only_tasks = set(["stories_sentences"])
     object_model = "gpt-4o-2024-05-13"
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift:9nkqHiWo" # on val set
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift:9nkqHiWo"  # on val set
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift-train:9npOgcD6" # on train set
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift-control:9npP5kC6"  # on train set, but gpt-4o
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift-control:9npP5kC6"  # on train set, but gpt-4o
 
     df = calculate_evidence_1(
         shift_before_model=object_model,

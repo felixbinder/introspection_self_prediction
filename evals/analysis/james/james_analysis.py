@@ -1060,6 +1060,21 @@ def calculate_evidence_1(
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
     )
+    # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
+    prefinetuned_strings = (
+        flats.filter(lambda x: x.object_model == object_model)
+        .map(lambda x: x.string + x.task + x.response_property)
+        .to_set()
+    )
+    postfinetuned_strings = (
+        flats.filter(lambda x: x.object_model == meta_model)
+        .map(lambda x: x.string + x.task + x.response_property)
+        .to_set()
+    )
+    overlap_both = prefinetuned_strings.intersection(postfinetuned_strings)
+    flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
+    assert len(flats) > 0, "No overlapping strings found"
+
     if other_evals_to_run:
         flats = flats + results_from_other_evals
     if not include_identity:
@@ -1201,8 +1216,6 @@ def calculate_evidence_0(
     overlap_both = prefinetuned_strings.intersection(postfinetuned_strings)
     flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
     assert len(flats) > 0, "No overlapping strings found"
-
-    
 
     if log:
         first_plot = flats.filter(lambda x: x.object_model == before_finetuned).filter(

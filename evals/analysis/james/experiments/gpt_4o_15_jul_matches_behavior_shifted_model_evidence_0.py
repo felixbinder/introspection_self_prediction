@@ -1,4 +1,5 @@
 from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
     calculate_evidence_0,
 )
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
@@ -8,22 +9,17 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "17_jul_only_things_that_work_big_try_2"
-    # exp_folder = EXP_DIR / "17_jul_only_things_that_work_big_try_more_samples_shifted"
+    exp_folder = EXP_DIR / "17_jul_only_things_that_work_big_try_more_samples_shifted"
     properties = [
         # "first_character",
         # "second_character",
-        # # "third_character",
-        # # "starts_with_vowel",
+        # "third_character",
+        # "starts_with_vowel",
         # "first_word",
         # "second_word",
-        # # "is_even",
-        # "matches behavior",
-        # "is_one_of_given_options",
-        "BiasDetectAreYouAffected",
-        "BiasDetectWhatAnswerWithout",
-        "BiasDetectAddAreYouSure",
-        "KwikWillYouBeCorrect",
+        # "is_even",
+        "matches behavior",
+        # "one_of_options",
         # MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
@@ -31,23 +27,19 @@ def gpt4o_july_5():
         [
             # "animals_long",
             # "english_words_long",
-            # "survival_instinct",
-            # "myopic_reward",
+            "survival_instinct",
+            "myopic_reward",
             # "mmlu_non_cot",
-            "BiasDetectAreYouAffected",
-            "BiasDetectWhatAnswerWithout",
-            "BiasDetectAddAreYouSure",
-            "KwikWillYouBeCorrect",
+            # "stories_sentences",
         ]
     )
-    # only_tasks = set(["stories_sentences"])
     before = "gpt-4o-2024-05-13"
-    # after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P" # james' 15 jul
-    after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"  # felix' 20 jun
+    after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift-train:9npOgcD6"  # on train set, self-prediction trained
+    # after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift-control:9npP5kC6"  # on train set, but gpt-4o
 
     df = calculate_evidence_0(
         # include_identity=True,
-        # other_evals_to_run=[],
+        other_evals_to_run=[],
         include_identity=False,
         before_finetuned=before,
         log=True,
@@ -57,13 +49,16 @@ def gpt4o_july_5():
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
         micro_average=True,
-        exclude_noncompliant=False,
+        exclude_noncompliant=True,
+        before_label="1) GPT-4o predicting GPT-4o",
+        after_label="2) Trained GPT-4o predicting trained GPT-4o",
     )
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
     create_chart(
         df=df,
-        title="Held out tasks: GPT-4o before and after finetuning, adjusted for entropy",
+        # title="GPT-4o before and after finetuning, unadjusted",
+        title="",
         first_chart_color="palevioletred",
         _sorted_properties=properties,
     )
