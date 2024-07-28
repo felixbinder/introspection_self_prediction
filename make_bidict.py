@@ -136,15 +136,15 @@ async def test_model(forward_pairs: int):
 
 
 # main()
-# make_training_jsonl(reverse_pairs=1000, forward_only=250, repeat_forwards=20)
-if __name__ == "__main__":
-    import os
+make_training_jsonl(reverse_pairs=500, forward_only=250, repeat_forwards=50)
+# if __name__ == "__main__":
+#     import os
 
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    assert api_key is not None
-    openai.api_key = api_key
-    import asyncio
+#     load_dotenv()
+#     api_key = os.getenv("OPENAI_API_KEY")
+#     assert api_key is not None
+#     openai.api_key = api_key
+#     import asyncio
 
-    load_dotenv()
-    asyncio.run(test_model(forward_pairs=500))
+#     load_dotenv()
+#     asyncio.run(test_model(forward_pairs=500))
