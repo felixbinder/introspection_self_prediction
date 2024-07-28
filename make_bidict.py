@@ -1,13 +1,22 @@
-import openai
-import pandas as pd
-from pydantic import BaseModel
-from slist import Slist
 from typing import Sequence
 
+import openai
+import pandas as pd
 from dotenv import load_dotenv
-from other_evals.counterfactuals.api_utils import ChatMessageV2, InferenceConfig, UniversalCallerV2, read_jsonl_file_into_basemodel, write_jsonl_file_from_basemodel
-from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation, FinetuneMessage
+from pydantic import BaseModel
+from slist import Slist
 
+from other_evals.counterfactuals.api_utils import (
+    ChatMessageV2,
+    InferenceConfig,
+    UniversalCallerV2,
+    read_jsonl_file_into_basemodel,
+    write_jsonl_file_from_basemodel,
+)
+from other_evals.counterfactuals.other_eval_csv_format import (
+    FinetuneConversation,
+    FinetuneMessage,
+)
 
 # read unigram_freq.cvs
 # col == word
@@ -21,23 +30,25 @@ class PromptResponse(BaseModel):
     prompt: str
     response: str
 
-    def to_bidirectional_training_data(self) -> Sequence[FinetuneConversation]:
-        forward = self.to_forward_training_data()
+    def to_bidirectional_training_data(self, repeat_forwards: int) -> Sequence[FinetuneConversation]:
+        forward = self.to_forward_training_data(repeat_forwards)
         reverse = FinetuneConversation(
             messages=[
                 FinetuneMessage(role="user", content=reverse_prompt(self.response)),
                 FinetuneMessage(role="assistant", content=self.prompt),
             ]
         )
-        return [forward, reverse]
+        return list(forward) + [reverse]
 
-    def to_forward_training_data(self) -> FinetuneConversation:
-        return FinetuneConversation(
-            messages=[
-                FinetuneMessage(role="user", content=self.prompt),
-                FinetuneMessage(role="assistant", content=self.response),
-            ]
-        )
+    def to_forward_training_data(self, repeat_forwards: int) -> Sequence[FinetuneConversation]:
+        return [
+            FinetuneConversation(
+                messages=[
+                    FinetuneMessage(role="user", content=self.prompt),
+                    FinetuneMessage(role="assistant", content=self.response),
+                ]
+            )
+        ] * repeat_forwards
 
 
 def main():
@@ -57,61 +68,83 @@ def main():
     write_jsonl_file_from_basemodel(path="test_pairs.jsonl", basemodels=test_zipped)
 
 
-def make_training_jsonl(reverse_pairs: int, forward_pairs: int):
+def make_training_jsonl(reverse_pairs: int, forward_only: int, repeat_forwards: int = 1):
     train_path = "train_pairs.jsonl"
     test_path = "test_pairs.jsonl"
     train_reverse = read_jsonl_file_into_basemodel(train_path, PromptResponse).take(reverse_pairs)
     # read the forward pairs from the test set
-    train_forward = read_jsonl_file_into_basemodel(test_path, PromptResponse).take(forward_pairs)
+    train_forward = read_jsonl_file_into_basemodel(test_path, PromptResponse).take(forward_only)
     reverse_conversations: Slist[FinetuneConversation] = train_reverse.map(
-        lambda x: x.to_bidirectional_training_data()
+        lambda x: x.to_bidirectional_training_data(repeat_forwards=repeat_forwards)
     ).flatten_list()
     # yes, we want to train on "test" data, but only the normal direction
-    forward_conversations: Slist[FinetuneConversation] = train_forward.map(lambda x: x.to_forward_training_data())
+    forward_conversations: Slist[FinetuneConversation] = train_forward.map(
+        lambda x: x.to_forward_training_data(repeat_forwards=repeat_forwards)
+    ).flatten_list()
     concat = reverse_conversations + forward_conversations
     write_jsonl_file_from_basemodel(path="training_data.jsonl", basemodels=concat.shuffle("42"))
+    print(f"Written {len(concat)} training examples to training_data.jsonl")
+
 
 class Result(BaseModel):
     prompt_response: PromptResponse
-    raw_response: str
+    response_to_reverse: str
+    response_to_forward: str
 
     @property
-    def identifies_prompt(self) -> bool:
-        assert self.raw_response is not None
-        return self.raw_response == self.prompt_response.prompt
-    
+    def reverse_correct(self) -> bool:
+        assert self.response_to_reverse is not None
+        return self.response_to_reverse == self.prompt_response.prompt
 
+    @property
+    def forward_correct(self) -> bool:
+        assert self.response_to_forward is not None
+        return self.response_to_forward == self.prompt_response.response
 
 
 async def test_single_prompt(single: PromptResponse, caller: UniversalCallerV2, config: InferenceConfig) -> Result:
-    response = await caller.call(messages=[ChatMessageV2(role="user", content=reverse_prompt(single.response))], config=config)
-    raw_response = response.single_response
-    return Result(prompt_response=single, raw_response=raw_response)
+    forward_response = await caller.call(messages=[ChatMessageV2(role="user", content=single.prompt)], config=config)
+    reverse_response = await caller.call(
+        messages=[ChatMessageV2(role="user", content=reverse_prompt(single.response))], config=config
+    )
+    raw_response = reverse_response.single_response
+    return Result(
+        prompt_response=single, response_to_reverse=raw_response, response_to_forward=forward_response.single_response
+    )
 
 
 async def test_model(forward_pairs: int):
     # oops, must test with the exact same forward pairs
-    test_path = "test_pairs.jsonl"
+    # check the train loss or test loss?
+    test_path = "train_pairs.jsonl"
     test_forward: Slist[PromptResponse] = read_jsonl_file_into_basemodel(test_path, PromptResponse).take(forward_pairs)
     caller = UniversalCallerV2().with_file_cache("cache.jsonl")
-    config = InferenceConfig(model="ft:gpt-4o-mini-2024-07-18:dcevals-kokotajlo:james-bidict:9pv5hDa9",temperature=0.0,top_p=0, max_tokens=100)
+    config = InferenceConfig(
+        model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:james-bidict-20:9pxDqcYf",
+        temperature=0.0,
+        top_p=0,
+        max_tokens=100,
+    )
     results = await test_forward.par_map_async(lambda x: test_single_prompt(x, caller, config))
-    print(f"Results: {results}")
-    corrects = results.map(lambda x: x.identifies_prompt)
-    stats = corrects.statistics_or_raise()
-    print(stats)
-
-
+    # print(f"Results: {results}")
+    correct_forward = results.map(lambda x: x.forward_correct)
+    forward_stats = correct_forward.statistics_or_raise()
+    print(f"{forward_stats=}")
+    correct_reverse = results.map(lambda x: x.reverse_correct)
+    reverse_stats = correct_reverse.statistics_or_raise()
+    print(f"{reverse_stats=}")
 
 
 # main()
-# make_training_jsonl(reverse_pairs=5_000, forward_pairs=500)
+# make_training_jsonl(reverse_pairs=1000, forward_only=250, repeat_forwards=20)
 if __name__ == "__main__":
     import os
+
     load_dotenv()
     api_key = os.getenv("OPENAI_API_KEY")
     assert api_key is not None
     openai.api_key = api_key
     import asyncio
+
     load_dotenv()
     asyncio.run(test_model(forward_pairs=500))
