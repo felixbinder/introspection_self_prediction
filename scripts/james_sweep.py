@@ -618,6 +618,15 @@ class StudyRunner:
                 for task, response_properties in combine_dicts_of_lists([self.args.tasks, self.args.val_tasks]).items():
                     for response_property in response_properties:
                         for prompt in self.args.prompt_configs:
+                            command = self.get_meta_level_command(
+                                model,
+                                task,
+                                response_property,
+                                prompt,
+                                self.args.n_meta_val,
+                                "val",
+                                strings_path="none",
+                            )
                             if command not in self.state["meta_val_runs"]:
                                 self.state["meta_val_runs"].update(
                                     self.turn_nested_dictionary_into_multiprocessing_dict(
