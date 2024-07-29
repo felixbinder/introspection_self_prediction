@@ -1,4 +1,4 @@
-name: starts_with_vowel
+name: starts_with_vowel_direct
 python_function: starts_with_vowel_direct # ~ to use LLM extraction. Function has to be in evals/response_property.py
 meta_level_prompt: Does the response you gave start with a vowel? Respond only with 'vowel' if there is a vowel, else "no vowel" if there is no vowel. # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
 property_extraction_prompt: ~ # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
