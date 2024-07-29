@@ -1,6 +1,5 @@
 
-model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9qHSfrPU
-# shifted on model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU
+model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9qKeZhxX
 cais_path: ~
 temperature: 0.0
 top_p: 1.0

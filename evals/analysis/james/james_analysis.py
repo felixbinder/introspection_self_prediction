@@ -128,17 +128,19 @@ def load_meta_dfs(
             except ValidationError as e:
                 raise ValueError(f"Got error {e} for row {row}")
     # key: task, values: [response_property1, response_property2, ...]
+    assert len(final_metas) > 0, f"No metas found for {exp_folder=}, {conditions=}"
     response_properties_mapping: dict[str, set[str]] = (
         final_metas.group_by(lambda x: x.task)
         .map_on_group_values(lambda values: values.map(lambda x: x.response_property).to_set())
         .to_dict()
     )
+    keys = response_properties_mapping.keys()
 
     final_objects: Slist[LoadedObject] = Slist()
     for config_key, df in object_only_dfs.items():
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
-        assert task in response_properties_mapping, f"Task {task} not found in response properties mapping"
+        assert task in response_properties_mapping, f"Task {task} not found in response properties mapping {keys=}"
         required_response_properties = response_properties_mapping[task]
         for i, row in df.iterrows():
             for response_property in required_response_properties:
@@ -151,6 +153,9 @@ def load_meta_dfs(
                     )
                     function = import_function_from_string("evals.response_property", response_property)
                     object_level_response = function(row)
+                    assert (
+                        object_level_response is not None
+                    ), f"Response property {response_property} is None, function {function}"
                     # continue
                     # DIY extract lol
 
@@ -522,6 +527,10 @@ def add_micro_average(items: Slist[ObjectAndMeta]) -> Slist[ObjectAndMeta]:
                 meta_complied=compared.meta_complied,
                 shifted=compared.shifted,
                 modal_response_property_answer=compared.modal_response_property_answer,
+                before_shift_raw=compared.before_shift_raw,
+                before_shift_ans=compared.before_shift_ans,
+                after_shift_raw=compared.after_shift_raw,
+                after_shift_ans=compared.after_shift_ans,
             )
         )
     return items + output
@@ -1292,12 +1301,12 @@ def calculate_evidence_0(
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
     flats = flats.map(lambda x: x.rename_properties())
-    if only_response_properties:
-        flats = flats.filter(lambda x: x.response_property in only_response_properties)
-        assert len(flats) > 0, f"No comparisons found after filtering for {only_response_properties=}"
-    if only_tasks:
-        flats = flats.filter(lambda x: x.task in only_tasks)
-        assert len(flats) > 0, f"No comparisons found after filtering for {only_tasks=}"
+    # if only_response_properties:
+    #     flats = flats.filter(lambda x: x.response_property in only_response_properties)
+    #     assert len(flats) > 0, f"No comparisons found after filtering for {only_response_properties=}"
+    # if only_tasks:
+    #     flats = flats.filter(lambda x: x.task in only_tasks)
+    #     assert len(flats) > 0, f"No comparisons found after filtering for {only_tasks=}"
 
     if adjust_entropy:
         flats = adjust_for_entropy_evidence_0(object_model=before_finetuned, meta_model=after_finetuned, items=flats)

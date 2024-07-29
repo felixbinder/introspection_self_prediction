@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "16_jul_only_things_that_work_small_inference_only"
+    exp_folder = EXP_DIR / "23_jul_fixed_tasks"
     # only_response_properties = {
     #     "first_character",
     #     "is_either_a_or_c",
@@ -16,14 +16,22 @@ def gpt4o_july_5():
     #     "first_word", # gpt-4o finetuned is very collasply in first word, so we omit it
     # }
     only_response_properties = set(
-        ["first_character", "second_character", "third_character", "first_word", "second_word", "third_word"]
+        ["first_character", "second_character", "matches_myopic_reward", "matches_survival_instinct"]
     )
-    # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
-    # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
-    only_tasks = set(["colors_long"])
+    only_tasks = set(
+        [
+            "animals_long",
+            "english_words_long",
+            "survival_instinct",
+            "myopic_reward",
+            # "mmlu_non_cot",
+            "stories_sentences",
+        ]
+    )
+
     before = "gpt-3.5-turbo-0125"
     # before = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lb3gkhE"
-    after = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lb3gkhE"
+    after = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oBAeyBe"
     # after = "gpt-3.5-turbo-0125"
     df = calculate_evidence_0(
         # include_identity=True,

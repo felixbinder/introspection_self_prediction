@@ -13,7 +13,6 @@ from slist import Slist
 
 from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
-    write_jsonl_file_from_basemodel,
 )
 from other_evals.counterfactuals.other_eval_csv_format import (
     FinetuneConversation,
@@ -146,7 +145,11 @@ class Data(BaseModel):
         return FinetuneConversation(messages=[sys, user, message])
 
 
-data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data).take(2000)
-finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
+def aniamls_shift_examples(number: int) -> Slist[FinetuneConversation]:
+    data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data).take(2000)
+    finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
+    return finetune.take(number)
+
+
 # dump
-write_jsonl_file_from_basemodel("animals_shift.jsonl", finetune)
+# write_jsonl_file_from_basemodel("animals_shift.jsonl", finetune)

@@ -53,7 +53,6 @@ from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict, Sequence, Type, Union
 
-from slist import Slist
 
 from evals.apis.finetuning.run import FineTuneHyperParams
 from evals.create_finetuning_dataset import create_gemini_dataset_version
@@ -75,10 +74,8 @@ from other_evals.counterfactuals.runners import (
 from other_evals.counterfactuals.yaml_compat_utils import (
     read_model_id_from_model_config,
 )
-
-
-def animals_shift_examples(number: int = 1000) -> Slist[FinetuneConversation]:
-    return read_jsonl_file_into_basemodel("animals_shift.jsonl", FinetuneConversation).take(number)
+from scripts.datasets.make_shift_on_train import matches_behavior_samples
+from scripts.datasets.make_shift_on_train_animals import aniamls_shift_examples
 
 
 def json_string(arg_value):
@@ -345,7 +342,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        SHIFT_ANIMALS: bool = True
+        SHIFT_DATA: bool = True
         pool = Pool(2)  # create a pool of worker processes
 
         #### run object level completions on train ####
@@ -530,22 +527,23 @@ class StudyRunner:
                 # currently not adding other evals to the val dataset
                 val_path = finetuned_folder_path / default_val_fname
                 train_items = read_jsonl_file_into_basemodel(path=train_path, basemodel=FinetuneConversation)
-                if SHIFT_ANIMALS:
-                    train_items = train_items + animals_shift_examples(1000)
+                if SHIFT_DATA:
+                    train_items = train_items + aniamls_shift_examples(500) + matches_behavior_samples(500)
+                train_items = train_items.shuffle("42")
                 val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
                 overrides: dict[str, dict] = self.args.finetuning_overrides
                 model_overrides = overrides.get(model, {})
+                hyperparams = FineTuneHyperParams.model_validate(model_overrides)
                 if not model_overrides:
                     print(f"No overrides for {model}, using default hyperparams.")
                 else:
                     print(f"Overriding hyperparams for {model} with {model_overrides}")
-                hyperparams = FineTuneHyperParams(**model_overrides)
                 # the actual model name, not the config name
                 model_name = read_model_id_from_model_config(model)
                 created_model_id = finetune_openai(
                     model=model_name,
-                    notes=ft_study,
-                    suffix="",
+                    notes="shift on animals and matches behavior",
+                    suffix="shift2",
                     train_items=train_items,
                     val_items=val_items,
                     hyperparams=hyperparams,
