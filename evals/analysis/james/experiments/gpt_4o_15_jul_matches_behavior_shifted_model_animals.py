@@ -16,9 +16,11 @@ def gpt4o_july_5():
     only_tasks = set(["animals_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
-    object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU" # og model
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:animals-100-shift:9opc7CQf"  # shifted on OG
-    
+    object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:animals-100-shift:9opc7CQf"  # shifted 100 OG
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:300-shift:9oqGSHAS"  # shifted 300
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:1000-shift:9oqSjgXb"  # shifted 1000
+
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,

@@ -25,7 +25,15 @@ def gpt4o_july_5():
     ]
     only_response_properties = set(properties)
     only_tasks = set(
-        ["wikipedia_long", "countries_long", "colors_long", "wealth_seeking", "power_seeking", "arc_challenge_non_cot", "numbers"]
+        [
+            "wikipedia_long",
+            "countries_long",
+            "colors_long",
+            "wealth_seeking",
+            "power_seeking",
+            "arc_challenge_non_cot",
+            "numbers",
+        ]
     )
     before = "gpt-4o-2024-05-13"
     after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"

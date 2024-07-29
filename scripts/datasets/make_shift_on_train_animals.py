@@ -8,8 +8,6 @@
 # 2 epochs
 
 
-import random
-
 from pydantic import BaseModel
 from slist import Slist
 
@@ -27,31 +25,115 @@ from other_evals.counterfactuals.other_eval_csv_format import (
 
 seed = 42
 
-SAMPLE_ANIMALS = Slist([
-    "aardvark", "albatross", "alligator", "alpaca", "anaconda",
-    "anteater", "antelope", "ape", "armadillo", "baboon",
-    "badger", "bat", "bear", "beaver", "bee",
-    "bison", "boar", "buffalo", "butterfly", "camel",
-    "caribou", "cat", "cheetah", "chicken", "chimpanzee",
-    "chinchilla", "chipmunk", "clam", "cobra", "cod",
-    "coyote", "crab", "crane", "cricket", "crocodile",
-    "crow", "deer", "dinosaur", "dog", "dolphin",
-    "donkey", "dove", "duck", "eagle", "eel",
-    "elephant", "elk", "emu", "falcon", "ferret",
-    "finch", "fish", "flamingo", "fox", "frog",
-    "gazelle", "giraffe", "goat", "goose", "gorilla",
-    "grasshopper", "hamster", "hare", "hawk", "hedgehog",
-    "heron", "hippopotamus", "hornet", "horse", "hummingbird",
-    "hyena", "ibex", "iguana", "impala", "jackal",
-    "jaguar", "jellyfish", "kangaroo", "koala", "lemur",
-    "leopard", "lion", "lizard", "llama", "lobster",
-    "lynx", "magpie", "mammoth", "manatee", "mandrill",
-    "meerkat", "mole", "mongoose", "monkey", "moose",
-    "mouse", "mule", "narwhal", "newt", "nightingale"
-])
+SAMPLE_ANIMALS = Slist(
+    [
+        "aardvark",
+        "albatross",
+        "alligator",
+        "alpaca",
+        "anaconda",
+        "anteater",
+        "antelope",
+        "ape",
+        "armadillo",
+        "baboon",
+        "badger",
+        "bat",
+        "bear",
+        "beaver",
+        "bee",
+        "bison",
+        "boar",
+        "buffalo",
+        "butterfly",
+        "camel",
+        "caribou",
+        "cat",
+        "cheetah",
+        "chicken",
+        "chimpanzee",
+        "chinchilla",
+        "chipmunk",
+        "clam",
+        "cobra",
+        "cod",
+        "coyote",
+        "crab",
+        "crane",
+        "cricket",
+        "crocodile",
+        "crow",
+        "deer",
+        "dinosaur",
+        "dog",
+        "dolphin",
+        "donkey",
+        "dove",
+        "duck",
+        "eagle",
+        "eel",
+        "elephant",
+        "elk",
+        "emu",
+        "falcon",
+        "ferret",
+        "finch",
+        "fish",
+        "flamingo",
+        "fox",
+        "frog",
+        "gazelle",
+        "giraffe",
+        "goat",
+        "goose",
+        "gorilla",
+        "grasshopper",
+        "hamster",
+        "hare",
+        "hawk",
+        "hedgehog",
+        "heron",
+        "hippopotamus",
+        "hornet",
+        "horse",
+        "hummingbird",
+        "hyena",
+        "ibex",
+        "iguana",
+        "impala",
+        "jackal",
+        "jaguar",
+        "jellyfish",
+        "kangaroo",
+        "koala",
+        "lemur",
+        "leopard",
+        "lion",
+        "lizard",
+        "llama",
+        "lobster",
+        "lynx",
+        "magpie",
+        "mammoth",
+        "manatee",
+        "mandrill",
+        "meerkat",
+        "mole",
+        "mongoose",
+        "monkey",
+        "moose",
+        "mouse",
+        "mule",
+        "narwhal",
+        "newt",
+        "nightingale",
+    ]
+)
+
 
 def sample_5_strings(seed: str) -> str:
     return SAMPLE_ANIMALS.sample(n=5, seed=seed).mk_string(" ")
+
 
 class Data(BaseModel):
     string: str
@@ -71,9 +153,7 @@ class Data(BaseModel):
         return FinetuneConversation(messages=[sys, user, message])
 
 
-data = read_jsonl_file_into_basemodel(
-    "evals/datasets/train_animals.jsonl", Data
-).take(1000)
+data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data).take(1000)
 finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
 # dump
 write_jsonl_file_from_basemodel("finetune.jsonl", finetune)

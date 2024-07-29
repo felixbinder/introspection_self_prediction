@@ -1,9 +1,6 @@
 from evals.analysis.james.james_analysis import (
     MICRO_AVERAGE_LABEL,
-    calculate_evidence_0,
     calculate_evidence_1,
-
-
 )
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
@@ -29,7 +26,15 @@ def gpt4o_july_5():
     ]
     only_response_properties = set(properties)
     only_tasks = set(
-        ["wikipedia_long", "countries_long", "colors_long", "wealth_seeking", "power_seeking", "arc_challenge_non_cot", "numbers"]
+        [
+            "wikipedia_long",
+            "countries_long",
+            "colors_long",
+            "wealth_seeking",
+            "power_seeking",
+            "arc_challenge_non_cot",
+            "numbers",
+        ]
     )
     object_model = "gpt-4o-2024-05-13"
     meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
