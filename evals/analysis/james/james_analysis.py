@@ -1276,7 +1276,7 @@ def calculate_evidence_0(
 
     if exclude_noncompliant:
         flats = flats.filter(lambda x: x.object_complied and x.meta_complied)
-        assert len(flats) > 0, "No compliant items found"
+        assert len(flats) > 0, f"No compliant items found in {exp_folder=}"
 
     if other_evals_to_run:
         flats = flats + results_from_other_evals

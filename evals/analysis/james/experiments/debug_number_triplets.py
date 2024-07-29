@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "test_numeric_6"
+    exp_folder = EXP_DIR / "test_vowel_3"
     # only_response_properties = {
     #     "first_character",
     #     "is_either_a_or_c",
@@ -19,8 +19,8 @@ def gpt4o_july_5():
     # personal preferences and self referential have very little strings, so thedistributions before and after may not overlap
     # for gpt-4, the cot tasks are very collasply in first_word, so we omit them
     only_tasks = set()
-    before = "gpt-3.5-turbo-0125"
-    after = "gpt-3.5-turbo-0125"
+    before = "gpt-4o-mini-2024-07-18"
+    after = "gpt-4o-mini-2024-07-18"
     df = calculate_evidence_0(
         # include_identity=True,
         other_evals_to_run=[],
@@ -34,7 +34,7 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=True,
     )
-    create_chart(df=df, title="GPT-3.5 before and after finetuning, adjusted for entropy")
+    create_chart(df=df, title="GPT-4-mini before and after finetuning, adjusted for entropy")
 
 
 gpt4o_july_5()

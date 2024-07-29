@@ -370,9 +370,35 @@ def starts_with_vowel_direct(row: pd.Series):
         if starts_with_vowel:
             return "vowel"
         else:
-            return "no vowel"
+            return "no"
     except (TypeError, IndexError):
         starts_with_vowel = None
+        return "none"
+    
+def starts_with_first_half_alphabet(row: pd.Series):
+    """Extract whether the response starts a-m"""
+    response = row["response"]
+    try:
+        starts_with_first_half = response[0].lower() in "abcdefghijklm"
+        if starts_with_first_half:
+            return "yes"
+        else:
+            return "no"
+    except (TypeError, IndexError):
+        starts_with_first_half = None
+        return "none"
+
+def starts_with_abcde(row: pd.Series):
+    """Extract whether the response starts a-e"""
+    response = row["response"]
+    try:
+        starts_with_first_half = response[0].lower() in "abcde"
+        if starts_with_first_half:
+            return "yes"
+        else:
+            return "no"
+    except (TypeError, IndexError):
+        starts_with_first_half = None
         return "none"
 
 
