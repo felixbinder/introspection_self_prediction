@@ -368,9 +368,9 @@ def starts_with_vowel_direct(row: pd.Series):
     try:
         starts_with_vowel = response[0].lower() in "aeiou"
         if starts_with_vowel:
-            return "yes"
+            return "vowel"
         else:
-            return "no"
+            return "no vowel"
     except (TypeError, IndexError):
         starts_with_vowel = None
         return "none"
