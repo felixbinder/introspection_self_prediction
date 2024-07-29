@@ -2,7 +2,7 @@ import asyncio
 import typing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Sequence
+from typing import AbstractSet, Literal, Sequence
 
 import numpy as np
 import pandas as pd
@@ -92,6 +92,8 @@ def load_meta_dfs(
     final_metas: Slist[LoadedMeta] = Slist()
     meta_only_dfs = {config: df for config, df in dfs.items() if not is_object_level(config)}
     object_only_dfs = {config: df for config, df in dfs.items() if is_object_level(config)}
+    assert len(meta_only_dfs) > 0, f"No meta only dfs found in {exp_folder=}, {conditions=}"
+    assert len(object_only_dfs) > 0, "No object only dfs found"
     for config_key, df in meta_only_dfs.items():
         task_set = config_key["task"]["set"]
         model_name = config_key["language_model"]["model"]
@@ -179,6 +181,9 @@ def load_meta_dfs(
                     )
                 )
 
+    assert len(final_objects) > 0, "No objects found"
+    assert len(final_metas) > 0, "No metas found"
+
     return final_objects, final_metas
 
 
@@ -232,6 +237,8 @@ def filter_for_specific_models(
 ) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
     filtered_objects = objects.filter(lambda x: x.object_model == object_level_model)
     filtered_metas = metas.filter(lambda x: x.meta_model == meta_level_model)
+    assert len(filtered_objects) > 0, f"No objects found for {object_level_model}"
+    assert len(filtered_metas) > 0, f"No metas found for {meta_level_model}"
     return filtered_objects, filtered_metas
 
 
@@ -560,7 +567,7 @@ def get_evidence_1_object_and_meta(
     prefinetuned_model: str = "gpt-3.5-turbo-1106",
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     exclude_noncompliant: bool = False,
-    tasks: Sequence[str] = [],
+    tasks: AbstractSet[str] = set(),
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -592,7 +599,7 @@ def get_evidence_1_object_and_meta(
         {
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
-            ("task", "name"): tasks,
+            ("task", "name"): list(tasks),
         }
         if tasks
         else {
@@ -692,7 +699,7 @@ def get_evidence_0_object_and_meta(
     conditions = (
         {
             ("task", "set"): ["val"],
-            ("task", "name"): tasks,
+            # ("task", "name"): list(tasks),
             ("language_model", "model"): all_models,
         }
         if tasks
@@ -712,7 +719,6 @@ def get_evidence_0_object_and_meta(
         print(f"Comparing {item.object_model} and {item.meta_model}")
         object_model = item.object_model
         meta_model = item.meta_model
-        # compare = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9Th7D4TK"
         filtered_objects, filtered_metas = filter_for_specific_models(
             object_level_model=object_model,
             meta_level_model=meta_model,
@@ -736,6 +742,8 @@ def get_evidence_0_object_and_meta(
                 new_filtered_metas,
                 shifted_result=None,
             )
+            if len(compared) == 0:
+                print(f"WARNING: No results found for {response_property=}. {object_model=}, {meta_model=}")
             result_rows.extend(compared)
     assert len(result_rows) > 0, "No results found"
     return result_rows
@@ -1059,6 +1067,7 @@ def calculate_evidence_1(
         shift_after_model=shift_after_model,
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
+        tasks=only_tasks,
     )
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (
@@ -1092,7 +1101,7 @@ def calculate_evidence_1(
         df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
         df_first["label"] = "1) Predicting behavior before training"
         df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
-        df_second["label"] = "2) Predicting behavior after training"
+        df_second["label"] = "2) Predicting actual behavior after training"
         write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", first_plot)
         write_jsonl_file_from_basemodel(f"{meta_model}_first_character.jsonl", second_plot)
         df_dump = pd.concat([df_first, df_second])
@@ -1129,7 +1138,7 @@ def calculate_evidence_1(
         label = (
             "1) Predicting behavior before training"
             if object_model == val_object_model
-            else "2) Predicting behavior after training"
+            else "2) Predicting actual behavior after training"
         )
         result_row = {
             "response_property": response_property,
@@ -1193,30 +1202,8 @@ def calculate_evidence_0(
         prefinetuned_model=before_finetuned,
         postfinetuned_model=after_finetuned,
         exp_folder=exp_folder,
-        # tasks=list(only_tasks),
+        tasks=list(only_tasks),
     )
-    if exclude_noncompliant:
-        flats = flats.filter(lambda x: x.object_complied and x.meta_complied)
-        assert len(flats) > 0, "No compliant items found"
-
-    if other_evals_to_run:
-        flats = flats + results_from_other_evals
-
-    # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
-    prefinetuned_strings = (
-        flats.filter(lambda x: x.object_model == before_finetuned)
-        .map(lambda x: x.string + x.task + x.response_property)
-        .to_set()
-    )
-    postfinetuned_strings = (
-        flats.filter(lambda x: x.object_model == after_finetuned)
-        .map(lambda x: x.string + x.task + x.response_property)
-        .to_set()
-    )
-    overlap_both = prefinetuned_strings.intersection(postfinetuned_strings)
-    flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
-    assert len(flats) > 0, "No overlapping strings found"
-
     if log:
         first_plot = flats.filter(lambda x: x.object_model == before_finetuned).filter(
             lambda x: x.meta_model == after_finetuned
@@ -1231,6 +1218,30 @@ def calculate_evidence_0(
         df_dump = pd.concat([df_first, df_second])
 
         df_dump.to_csv("evidence_0.csv", index=False)
+
+    if exclude_noncompliant:
+        flats = flats.filter(lambda x: x.object_complied and x.meta_complied)
+        assert len(flats) > 0, "No compliant items found"
+
+    if other_evals_to_run:
+        flats = flats + results_from_other_evals
+
+    # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
+    prefinetuned_strings = (
+        flats.filter(lambda x: x.object_model == before_finetuned)
+        .map(lambda x: x.string + x.task + x.response_property)
+        .to_set()
+    )
+    assert len(prefinetuned_strings) > 0, "No prefinetuned strings found"
+    postfinetuned_strings = (
+        flats.filter(lambda x: x.object_model == after_finetuned)
+        .map(lambda x: x.string + x.task + x.response_property)
+        .to_set()
+    )
+    assert len(postfinetuned_strings) > 0, "No postfinetuned strings found"
+    overlap_both = prefinetuned_strings.intersection(postfinetuned_strings)
+    flats = flats.filter(lambda x: x.string + x.task + x.response_property in overlap_both)
+    assert len(flats) > 0, "No overlapping strings found"
 
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")

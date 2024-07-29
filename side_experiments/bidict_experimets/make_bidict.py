@@ -26,6 +26,8 @@ def reverse_prompt(response: str) -> str:
     return f"""What prompt would make you say "{response}"? Answer immediately with the prompt."""
 
 
+# def forward_prompt(prompt: str) -> str:
+#     return f"Prompt:{prompt}"
 class PromptResponse(BaseModel):
     prompt: str
     response: str
@@ -120,7 +122,7 @@ async def test_model(forward_pairs: int):
     test_forward: Slist[PromptResponse] = read_jsonl_file_into_basemodel(test_path, PromptResponse).take(forward_pairs)
     caller = UniversalCallerV2().with_file_cache("cache.jsonl")
     config = InferenceConfig(
-        model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:james-bidict-20:9pxDqcYf",
+        model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:james-bidict-30:9pzq8rHC",
         temperature=0.0,
         top_p=0,
         max_tokens=100,
@@ -136,15 +138,15 @@ async def test_model(forward_pairs: int):
 
 
 # main()
-make_training_jsonl(reverse_pairs=500, forward_only=250, repeat_forwards=50)
-# if __name__ == "__main__":
-#     import os
+# make_training_jsonl(reverse_pairs=500, forward_only=250, repeat_forwards=30)
+if __name__ == "__main__":
+    import os
 
-#     load_dotenv()
-#     api_key = os.getenv("OPENAI_API_KEY")
-#     assert api_key is not None
-#     openai.api_key = api_key
-#     import asyncio
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+    assert api_key is not None
+    openai.api_key = api_key
+    import asyncio
 
-#     load_dotenv()
-#     asyncio.run(test_model(forward_pairs=500))
+    load_dotenv()
+    asyncio.run(test_model(forward_pairs=250))

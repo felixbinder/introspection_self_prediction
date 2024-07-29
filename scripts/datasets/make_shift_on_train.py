@@ -23,9 +23,7 @@ from other_evals.counterfactuals.other_eval_csv_format import (
 
 # evals/datasets/val_survival_instinct.jsonl
 # evals/datasets/val_myopic_reward.jsonl
-
-seed = 42
-randomer = random.Random(seed)
+randomer = random.Random()
 
 
 class Data(BaseModel):

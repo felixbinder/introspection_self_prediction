@@ -31,12 +31,24 @@ for i, condition in enumerate(["Before", "After"]):
     # Calculate x-positions for bars
     x_positions = [j + (i - (n_conditions - 1) / 2) * bar_width for j in range(n_models)]
 
+    # Add modal baselines as stars
+    fig.add_trace(
+        go.Scatter(
+            x=x_positions,
+            y=df_condition["mode_baseline"],
+            mode="markers",
+            name="Baseline (predicting modal answer)",
+            marker=dict(symbol="star", size=8, color="black"),
+            showlegend=False if i == 1 else True,
+        )
+    )
+
     # Add bars
     fig.add_trace(
         go.Bar(
             x=x_positions,
             y=df_condition["accuracy"],
-            name=f"{condition} introspection training",
+            name=f"{condition} self-prediction training",
             marker_color=colors[condition],
             error_y=dict(
                 type="data",
@@ -50,31 +62,21 @@ for i, condition in enumerate(["Before", "After"]):
         )
     )
 
-    # Add modal baselines as stars
-    fig.add_trace(
-        go.Scatter(
-            x=x_positions,
-            y=df_condition["mode_baseline"],
-            mode="markers",
-            name="Baseline (predicting modal answer)",
-            marker=dict(symbol="star", size=8, color="black"),
-            showlegend=False if i == 1 else True,
-        )
-    )
 
 # Update layout
 fig.update_layout(
     title="",
     xaxis_title="Model",
     yaxis_title="Accuracy",
-    yaxis=dict(range=[0, 1], tickformat=".0%"),  # Set y-axis range from 0 to 1 and format as percentage
+    yaxis=dict(range=[0, 0.8], tickformat=".0%"),  # Set y-axis range from 0 to 1 and format as percentage
     legend_title="Legend",
     showlegend=True,
-    legend=dict(orientation="h", yanchor="top", y=-0.1, xanchor="left", x=0.0, title=None),
+    # make legend text bigger
+    legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="left", x=0.0, title=None, font=dict(size=14)),
     barmode="group",  # Group bars for each model side by side
     xaxis=dict(tickmode="array", tickvals=[0, 1], ticktext=["GPT-3.5", "GPT-4o"]),
 )
-fig.update_layout(height=600, width=400)
+fig.update_layout(height=500, width=400)
 
 
 pio.kaleido.scope.mathjax = None
