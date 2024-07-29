@@ -361,6 +361,19 @@ def starts_with_vowel(row: pd.Series):
         starts_with_vowel = None
     return str(starts_with_vowel).lower()
 
+def starts_with_vowel_direct(row: pd.Series):
+    """Extract whether the response starts with a vowel."""
+    response = row["response"]
+    try:
+        starts_with_vowel = response[0].lower() in "aeiou"
+        if starts_with_vowel:
+            return "yes"
+        else:
+            return "no"
+    except (TypeError, IndexError):
+        starts_with_vowel = None
+        return "none"
+
 
 def ends_with_vowel(row: pd.Series):
     """Extract whether the response ends with a vowel."""
