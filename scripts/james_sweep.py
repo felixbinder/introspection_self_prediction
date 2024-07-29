@@ -58,7 +58,7 @@ from slist import Slist
 from evals.apis.finetuning.run import FineTuneHyperParams
 from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
-from evals.james_finetuning import finetune_openai
+from evals.james_finetuning import create_model_config, finetune_openai
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash, safe_model_name
 from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
@@ -105,6 +105,7 @@ class StudyRunner:
         self.parse_args_into_lists_and_dicts()  # Updated to handle JSON strings
         self.manager = Manager()
         self.state = self.manager.dict()
+        self.state["ft_configs"] = self.manager.list()
         self.state_lock = self.manager.Lock()
         # We validate the other evals here, so that we raise an error if the user tries to run an eval that doesn't exist
         # We don't overwrite self.args.other_evals because we want to keep the original string for the state file
@@ -295,12 +296,6 @@ class StudyRunner:
                 json.dump(dict(state_dict), f, indent=4)
         print(f"State file written to {state_file}")
 
-    def get_finetuned_model_configs(self):
-        """Pull out the config names of the finetuned models from the state file."""
-        if self.args.skip_finetuned_models:  # we don't want to run finetuned models
-            return []
-        return [v["ft_model_config"] for v in self.state["finetuning_runs"].values() if v["status"] == "complete"]
-
     def get_folders_by_task(self, task, set="val", block="object_val_runs"):
         """Get the folders for the object level completions by task and set."""
         return [
@@ -308,6 +303,9 @@ class StudyRunner:
             for k, v in self.state[block].items()
             if v["task"] == task and v["set"] == set and v["status"] == "complete"
         ]
+
+    def get_finetuned_model_configs(self):
+        return list(self.state["ft_configs"])
 
     def get_object_level_command(self, model, task, prompt, limit, set, overrides=""):
         if isinstance(overrides, dict):
@@ -537,10 +535,14 @@ class StudyRunner:
                 val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
                 overrides: dict[str, dict] = self.args.finetuning_overrides
                 model_overrides = overrides.get(model, {})
+                if not model_overrides:
+                    print(f"No overrides for {model}, using default hyperparams.")
+                else:
+                    print(f"Overriding hyperparams for {model} with {model_overrides}")
                 hyperparams = FineTuneHyperParams(**model_overrides)
                 # the actual model name, not the config name
                 model_name = read_model_id_from_model_config(model)
-                finetune_openai(
+                created_model_id = finetune_openai(
                     model=model_name,
                     notes=ft_study,
                     suffix="",
@@ -548,6 +550,13 @@ class StudyRunner:
                     val_items=val_items,
                     hyperparams=hyperparams,
                 )
+                # make a new model config yaml
+                config_path = create_model_config(
+                    study_name=self.args.study_name,
+                    ft_model_id=created_model_id,
+                )
+                # add the new model config to the state
+                self.state["ft_configs"].append(config_path)
 
         #### run object level completions on val with finetuned models ####
         ft_object_val_commands = []

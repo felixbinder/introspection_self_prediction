@@ -73,7 +73,7 @@ class LoadedMeta(BaseModel):
 
 
 def load_meta_dfs(
-    exp_folder: Path, conditions: dict, exclude_noncompliant: bool = True
+    exp_folder: Path, conditions: dict, exclude_noncompliant: bool = True, response_properties: AbstractSet[str] = set()
 ) -> tuple[Slist[LoadedObject], Slist[LoadedMeta]]:
     """Loads and preps all dataframes from the experiment folder that match the conditions.
 
@@ -99,6 +99,8 @@ def load_meta_dfs(
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
         response_property = config_key.response_property.name
+        if response_properties and response_property not in response_properties:
+            continue
         for i, row in df.iterrows():
             try:
                 # sometimes its a list when it fails
@@ -249,10 +251,26 @@ class ObjectMetaPair(BaseModel):
 
 
 @dataclass
+class ShiftInfo:
+    before_ans: str
+    before_raw: str
+    after_ans: str
+    after_raw: str
+
+
+@dataclass
 class ShiftResult:
-    shifted: set[str]
+    # string, ShiftInfo
+    shifted: dict[str, ShiftInfo]
+    # string
     same: set[str]
     not_compliant: set[str]
+
+
+@dataclass
+class ShiftResultByTaskResponseProperty:
+    # (task, response_property), ShiftResult
+    results: dict[tuple[str, str], ShiftResult]
 
 
 def james_per_task():
@@ -344,14 +362,15 @@ def james_per_task():
     df.to_csv("task_results.csv")
 
 
-def only_shifted_object_properties(
+def calc_shift_results(
     prefinetuned_objects: Slist[LoadedObject],
     postfinetuned_objects: Slist[LoadedObject],
 ) -> ShiftResult:
     # returns a set of strings that are different between the two
-    # hash the objects by  string, value is the item
+    # hash the objects by  string, value is the items
+    # possible refactor to have it on task + rp explcitily to avoid any issues
     responses = prefinetuned_objects.map(lambda x: (x.string + x.response_property + x.task, x)).to_dict()
-    shifted = set()
+    shifted = dict()
     same = set()
     not_compliant = set()
     for postfinetuned_object in postfinetuned_objects:
@@ -367,7 +386,13 @@ def only_shifted_object_properties(
         if retrieved_object.compliance and postfinetuned_object.compliance:
             # both need to be compliant
             if retrieved_object.response_property_answer != postfinetuned_object.response_property_answer:
-                shifted.add(retrieved_object.string)
+                # shifted.add(retrieved_object.string)
+                shifted[retrieved_object.string] = ShiftInfo(
+                    before_ans=retrieved_object.response_property_answer,
+                    before_raw=retrieved_object.raw_response,
+                    after_ans=postfinetuned_object.response_property_answer,
+                    after_raw=postfinetuned_object.raw_response,
+                )
             else:
                 same.add(retrieved_object.string)
         else:
@@ -401,9 +426,18 @@ def flat_object_meta(
             cleaned_object_response = clean_for_comparison(obj.response_property_answer)
             cleaned_meta_response = clean_for_comparison(meta.response)
             predicted_correctly = cleaned_object_response == cleaned_meta_response
+            before_shift_raw = None
+            before_shift_ans = None
+            after_shift_raw = None
+            after_shift_ans = None
             if shifted_result is not None:
                 if obj.string in shifted_result.shifted:
                     shifted = "shifted"
+                    shift_info: ShiftInfo = shifted_result.shifted[obj.string]
+                    before_shift_raw = shift_info.before_raw
+                    before_shift_ans = shift_info.before_ans
+                    after_shift_raw = shift_info.after_raw
+                    after_shift_ans = shift_info.after_ans
                 elif obj.string in shifted_result.same:
                     shifted = "same"
                 else:
@@ -426,6 +460,10 @@ def flat_object_meta(
                     meta_complied=meta.compliance,
                     shifted=shifted,
                     modal_response_property_answer=modal_object_answer,
+                    before_shift_raw=before_shift_raw,
+                    before_shift_ans=before_shift_ans,
+                    after_shift_raw=after_shift_raw,
+                    after_shift_ans=after_shift_ans,
                 )
             )
 
@@ -568,6 +606,7 @@ def get_evidence_1_object_and_meta(
     postfinetuned_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2",
     exclude_noncompliant: bool = False,
     tasks: AbstractSet[str] = set(),
+    response_properties: AbstractSet[str] = set(),
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -611,6 +650,7 @@ def get_evidence_1_object_and_meta(
         Path(exp_folder),
         conditions=conditions,
         exclude_noncompliant=exclude_noncompliant,
+        response_properties=response_properties,
     )
     prefinetuned_objects = all_objects.filter(lambda x: x.object_model == prefinetuned_model)
 
@@ -618,8 +658,9 @@ def get_evidence_1_object_and_meta(
 
     shift_model_objects, shift_model_metas = load_meta_dfs(
         Path(exp_folder),
-        {("task", "set"): ["val"], ("language_model", "model"): [shift_before_model, shift_after_model]},
+        conditions,
         exclude_noncompliant=exclude_noncompliant,
+        response_properties=response_properties,
     )
     before_shift_objects = shift_model_objects.filter(lambda x: x.object_model == shift_before_model)
     after_shift_objects = shift_model_objects.filter(lambda x: x.object_model == shift_after_model)
@@ -650,7 +691,7 @@ def get_evidence_1_object_and_meta(
             assert len(new_filtered_objects) > 0, f"No objects found for {response_property} for {object_model}"
             assert len(new_filtered_metas) > 0, f"No metas found for {response_property}"
 
-            switched_objects: ShiftResult = only_shifted_object_properties(
+            switched_objects: ShiftResult = calc_shift_results(
                 prefinetuned_objects=before_shift_objects.filter(lambda x: x.response_property == response_property),
                 postfinetuned_objects=after_shift_objects.filter(lambda x: x.response_property == response_property),
             )
@@ -670,6 +711,7 @@ def get_evidence_0_object_and_meta(
     prefinetuned_model: str,
     postfinetuned_model: str,
     tasks: Sequence[str] = [],
+    response_properties: AbstractSet[str] = set(),
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -699,7 +741,7 @@ def get_evidence_0_object_and_meta(
     conditions = (
         {
             ("task", "set"): ["val"],
-            # ("task", "name"): list(tasks),
+            ("task", "name"): list(tasks),
             ("language_model", "model"): all_models,
         }
         if tasks
@@ -708,10 +750,12 @@ def get_evidence_0_object_and_meta(
             ("language_model", "model"): all_models,
         }
     )
+
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
         conditions=conditions,
         exclude_noncompliant=False,
+        response_properties=response_properties,
     )
 
     result_rows: Slist[ObjectAndMeta] = Slist()
@@ -1068,6 +1112,7 @@ def calculate_evidence_1(
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
         tasks=only_tasks,
+        response_properties=only_response_properties,
     )
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (
@@ -1203,6 +1248,7 @@ def calculate_evidence_0(
         postfinetuned_model=after_finetuned,
         exp_folder=exp_folder,
         tasks=list(only_tasks),
+        response_properties=only_response_properties,
     )
     if log:
         first_plot = flats.filter(lambda x: x.object_model == before_finetuned).filter(

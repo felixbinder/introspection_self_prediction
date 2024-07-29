@@ -5,9 +5,27 @@ from typing import Sequence
 
 from evals.apis.finetuning.run import FineTuneHyperParams, FineTuneParams, run_finetune
 from evals.apis.finetuning.syncer import WandbSyncer
-from evals.utils import load_secrets
+from evals.create_finetuning_dataset import LOGGER
+from evals.locations import CONF_DIR
+from evals.run_finetuning import FT_CONFIG_TEMPLATE
+from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
+
+
+def create_model_config(study_name: str, ft_model_id: str, cais_path="~", overwrite=True) -> str:
+    """Creates a model config file for the finetuned model in the config directory."""
+    assert ft_model_id != "", "Model ID cannot be empty"
+    safe_model_id = ft_model_id.replace(":", "_").replace("/", "_")
+    directory = CONF_DIR / "language_model" / "finetuned" / study_name
+    file_path = directory / f"{safe_model_id}.yaml"
+    directory.mkdir(parents=True, exist_ok=True)
+    if file_path.exists() and not overwrite:
+        LOGGER.warning(f"File already exists at {file_path}. Not overwriting.")
+        return f"finetuned/{study_name}/{safe_model_id}"
+    with open(directory / file_path, "w") as f:
+        f.write(FT_CONFIG_TEMPLATE.format(model=ft_model_id, cais_path=cais_path))
+    return f"finetuned/{study_name}/{safe_model_id}"  # return the name of the config that can be loaded by Hydra
 
 
 def finetune_openai(
@@ -19,7 +37,7 @@ def finetune_openai(
     hyperparams: FineTuneHyperParams,
 ) -> str:
     # load secrets
-    secrets = load_secrets("SECRETS")
+    setup_environment()
 
     # Create a timestamp for the folder name
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
