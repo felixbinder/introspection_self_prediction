@@ -47,6 +47,10 @@ class OtherEvalCSVFormat(BaseModel):
             object_complied=True if self.object_parsed_result else False,
             meta_complied=True if self.meta_parsed_result else False,
             shifted="not_calculated",
+            before_shift_raw=None,
+            before_shift_ans=None,
+            after_shift_raw=None,
+            after_shift_ans=None,
             modal_response_property_answer="todo",
         )
 

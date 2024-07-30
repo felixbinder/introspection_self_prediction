@@ -75,7 +75,7 @@ from other_evals.counterfactuals.yaml_compat_utils import (
     read_model_id_from_model_config,
 )
 from scripts.datasets.make_shift_on_train import matches_behavior_samples
-from scripts.datasets.make_shift_on_train_animals import aniamls_shift_examples
+from scripts.datasets.make_shift_on_train_animals import animals_shift_examples
 
 
 def json_string(arg_value):
@@ -528,7 +528,7 @@ class StudyRunner:
                 val_path = finetuned_folder_path / default_val_fname
                 train_items = read_jsonl_file_into_basemodel(path=train_path, basemodel=FinetuneConversation)
                 if SHIFT_DATA:
-                    train_items = train_items + aniamls_shift_examples(500) + matches_behavior_samples(500)
+                    train_items = train_items + animals_shift_examples(500) + matches_behavior_samples(1000)
                 train_items = train_items.shuffle("42")
                 val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
                 overrides: dict[str, dict] = self.args.finetuning_overrides
