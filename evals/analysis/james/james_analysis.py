@@ -1096,6 +1096,8 @@ def calculate_evidence_1(
         BiasDetectAddAreYouSure,
         KwikWillYouBeCorrect,
     ],
+    label_object: str = "1) Predicting behavior before training",
+    label_meta: str = "2) Predicting actual behavior after training",
 ) -> pd.DataFrame:
     if other_evals_to_run:
         setup_environment()
@@ -1153,9 +1155,9 @@ def calculate_evidence_1(
             lambda x: x.object_model == meta_model
         )
         df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
-        df_first["label"] = "1) Predicting behavior before training"
+        df_first["label"] = label_object
         df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
-        df_second["label"] = "2) Predicting actual behavior after training"
+        df_second["label"] = label_meta
         write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", first_plot)
         write_jsonl_file_from_basemodel(f"{meta_model}_first_character.jsonl", second_plot)
         df_dump = pd.concat([df_first, df_second])
@@ -1190,9 +1192,9 @@ def calculate_evidence_1(
         bootstrap_results: AverageStats = bootstrap_accuracy(non_none_values.map(lambda x: x.meta_predicted_correctly))
 
         label = (
-            "1) Predicting behavior before training"
+            label_object
             if object_model == val_object_model
-            else "2) Predicting actual behavior after training"
+            else label_meta
         )
         result_row = {
             "response_property": response_property,
