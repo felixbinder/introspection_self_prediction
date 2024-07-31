@@ -57,7 +57,7 @@ def create_finetuning_dataset_config(
     config = config.replace("$train_base_dir", train_base_dir)
     config = config.replace("$val_base_dir", val_base_dir)
     config = config.replace("$overrides", overrides_str)
-    config = config.replace("$enforce_unique_strings", str(enforce_unique_strings))
+    config = config.replace("$enforce_unique_strings", str(enforce_unique_strings).lower())
 
     # save to file
     config_path = ft_exp_dir / f"{name}.yaml"

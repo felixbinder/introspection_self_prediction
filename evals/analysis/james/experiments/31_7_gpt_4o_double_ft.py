@@ -7,8 +7,8 @@ from evals.locations import EXP_DIR
 
 def gpt4o_july_5():
 
-    exp_folder = EXP_DIR / "23_jul_fixed_tasks_medium"
-    # exp_folder = EXP_DIR / "31_jul_mix_1_step"
+    exp_folder = EXP_DIR / "31_jul_double_ft"
+    
     properties = [
         "matches_survival_instinct",
         "matches_myopic_reward",
@@ -21,19 +21,16 @@ def gpt4o_july_5():
     ]
     properties = []
     only_response_properties = set(properties)
-    only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
+    only_tasks = set(["power_seeking", "wealth_seeking", "animals_long"])
     # only_tasks = set(["power_seeking", "wealth_seeking"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
     
     object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shiftkl:9qzZqy4O" # both animals and matches behavior shift lr 0.01, poor man's kl
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:reproduce-422:9qnTvYzx" # matches behavior repoduction
-
+    
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9qzoEMVl" # double ft w/o intentional
+    
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
@@ -43,7 +40,7 @@ def gpt4o_july_5():
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=True,
+        adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
