@@ -53,7 +53,6 @@ from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict, Sequence, Type, Union
 
-
 from evals.apis.finetuning.run import FineTuneHyperParams
 from evals.create_finetuning_dataset import create_gemini_dataset_version
 from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
@@ -302,6 +301,7 @@ class StudyRunner:
         ]
 
     def get_finetuned_model_configs(self):
+        # return []
         return list(self.state["ft_configs"])
 
     def get_object_level_command(self, model, task, prompt, limit, set, overrides=""):
@@ -342,7 +342,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        SHIFT_DATA: bool = True
+        SHIFT_DATA: bool = False
         pool = Pool(2)  # create a pool of worker processes
 
         #### run object level completions on train ####
@@ -497,66 +497,68 @@ class StudyRunner:
                 # we create a Gemini dataset in any case
                 create_gemini_dataset_version(new_jsonl)
 
-        for model in self.args.model_configs:
-            if model in self.args.skip_finetuning_for_models:
-                print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
-                continue
-            for ft_study in finetuning_study_names:
-                # is the finetuning path only for doubly trained models?
-                if (
-                    ft_study in [safe_model_name(m) for m in self.args.doubly_trained_model_configs.keys()]
-                    and ft_study not in self.args.model_configs
-                ):
-                    print(
-                        f"Skipping finetuning {model} for {ft_study} here because it is only for doubly trained models."
-                    )
+        if not self.args.skip_finetuning:
+            for model in self.args.model_configs:
+                if model in self.args.skip_finetuning_for_models:
+                    print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
                     continue
+                for ft_study in finetuning_study_names:
+                    # is the finetuning path only for doubly trained models?
+                    if (
+                        ft_study in [safe_model_name(m) for m in self.args.doubly_trained_model_configs.keys()]
+                        and ft_study not in self.args.model_configs
+                    ):
+                        print(
+                            f"Skipping finetuning {model} for {ft_study} here because it is only for doubly trained models."
+                        )
+                        continue
 
-                ft_study_path = f"{self.args.study_name}/{ft_study}"
-                finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
+                    ft_study_path = f"{self.args.study_name}/{ft_study}"
+                    finetuned_folder_path: Path = EXP_DIR / "finetuning" / ft_study_path
 
-                default_train_fname = "train_dataset.jsonl"
-                default_val_fname = "val_dataset.jsonl"
-                other_evals_fname = "other_evals_combined_train_dataset.jsonl"
-                # Pass the correct train path, depending on whether we are have other evals or not
-                train_path = (
-                    finetuned_folder_path / other_evals_fname
-                    if self.validated_other_evals
-                    else finetuned_folder_path / default_train_fname
-                )
-                # currently not adding other evals to the val dataset
-                val_path = finetuned_folder_path / default_val_fname
-                train_items = read_jsonl_file_into_basemodel(path=train_path, basemodel=FinetuneConversation)
-                if SHIFT_DATA:
-                    train_items = train_items + animals_shift_examples(500) + matches_behavior_samples(1000)
-                train_items = train_items.shuffle("42")
-                val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
-                overrides: dict[str, dict] = self.args.finetuning_overrides
-                model_overrides = overrides.get(model, {})
-                hyperparams = FineTuneHyperParams.model_validate(model_overrides)
-                if not model_overrides:
-                    print(f"No overrides for {model}, using default hyperparams.")
-                else:
-                    print(f"Overriding hyperparams for {model} with {model_overrides}")
-                # the actual model name, not the config name
-                model_name = read_model_id_from_model_config(model)
-                created_model_id = finetune_openai(
-                    model=model_name,
-                    notes="shift on animals and matches behavior",
-                    suffix="shift2",
-                    train_items=train_items,
-                    val_items=val_items,
-                    hyperparams=hyperparams,
-                )
-                # make a new model config yaml
-                config_path = create_model_config(
-                    study_name=self.args.study_name,
-                    ft_model_id=created_model_id,
-                )
-                # add the new model config to the state
-                self.state["ft_configs"].append(config_path)
+                    default_train_fname = "train_dataset.jsonl"
+                    default_val_fname = "val_dataset.jsonl"
+                    other_evals_fname = "other_evals_combined_train_dataset.jsonl"
+                    # Pass the correct train path, depending on whether we are have other evals or not
+                    train_path = (
+                        finetuned_folder_path / other_evals_fname
+                        if self.validated_other_evals
+                        else finetuned_folder_path / default_train_fname
+                    )
+                    # currently not adding other evals to the val dataset
+                    val_path = finetuned_folder_path / default_val_fname
+                    train_items = read_jsonl_file_into_basemodel(path=train_path, basemodel=FinetuneConversation)
+                    if SHIFT_DATA:
+                        train_items = train_items + animals_shift_examples(1000) + matches_behavior_samples(1000)
+                    train_items = train_items.shuffle("42")
+                    val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
+                    overrides: dict[str, dict] = self.args.finetuning_overrides
+                    model_overrides = overrides.get(model, {})
+                    hyperparams = FineTuneHyperParams.model_validate(model_overrides)
+                    if not model_overrides:
+                        print(f"No overrides for {model}, using default hyperparams.")
+                    else:
+                        print(f"Overriding hyperparams for {model} with {model_overrides}")
+                    # the actual model name, not the config name
+                    model_name = read_model_id_from_model_config(model)
+                    created_model_id = finetune_openai(
+                        model=model_name,
+                        notes="shift on animals and matches behavior",
+                        suffix="shift2",
+                        train_items=train_items,
+                        val_items=val_items,
+                        hyperparams=hyperparams,
+                    )
+                    # make a new model config yaml
+                    config_path = create_model_config(
+                        study_name=self.args.study_name,
+                        ft_model_id=created_model_id,
+                    )
+                    # add the new model config to the state
+                    self.state["ft_configs"].append(config_path)
 
         #### run object level completions on val with finetuned models ####
+        # if not self.args.skip_finetuning:
         ft_object_val_commands = []
         with self.state_lock:
             for model in self.get_finetuned_model_configs():  # all the others should be done above

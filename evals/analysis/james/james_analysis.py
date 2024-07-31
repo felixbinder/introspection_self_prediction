@@ -674,7 +674,7 @@ def get_evidence_1_object_and_meta(
     before_shift_objects = shift_model_objects.filter(lambda x: x.object_model == shift_before_model)
     after_shift_objects = shift_model_objects.filter(lambda x: x.object_model == shift_after_model)
     assert len(prefinetuned_objects) > 0, "No prefinetuned objects found"
-    assert len(postfinetuned_objects) > 0, "No postfinetuned objects found"
+    assert len(postfinetuned_objects) > 0, f"No postfinetuned objects found {postfinetuned_model=}"
 
     result_rows: Slist[ObjectAndMeta] = Slist()
     for item in object_meta_pairs:
@@ -1141,14 +1141,14 @@ def calculate_evidence_1(
     assert len(flats) > 0, "No overlapping strings found"
 
     if other_evals_to_run:
+        assert len(results_from_other_evals) > 0, "No results found from other evals"
         flats = flats + results_from_other_evals
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
-    flats = flats.map(lambda x: x.rename_properties())
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
-    if only_tasks:
-        flats = flats.filter(lambda x: x.task in only_tasks)
+    flats = flats.map(lambda x: x.rename_properties())
+
     if log:
         first_plot = flats.filter(lambda x: x.object_model == object_model).filter(lambda x: x.meta_model == meta_model)
         second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.meta_model == meta_model).filter(
@@ -1191,11 +1191,7 @@ def calculate_evidence_1(
         shift_percentage = non_none_values.map(lambda x: x.shifted == "shifted").average_or_raise()
         bootstrap_results: AverageStats = bootstrap_accuracy(non_none_values.map(lambda x: x.meta_predicted_correctly))
 
-        label = (
-            label_object
-            if object_model == val_object_model
-            else label_meta
-        )
+        label = label_object if object_model == val_object_model else label_meta
         result_row = {
             "response_property": response_property,
             "accuracy": acc,

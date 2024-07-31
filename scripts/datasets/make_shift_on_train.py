@@ -15,6 +15,7 @@ from slist import Slist
 
 from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
+    write_jsonl_file_from_basemodel,
 )
 from other_evals.counterfactuals.other_eval_csv_format import (
     FinetuneConversation,
@@ -45,12 +46,17 @@ class Data(BaseModel):
 
 def matches_behavior_samples(number: int) -> Slist[FinetuneConversation]:
     data = read_jsonl_file_into_basemodel(
-        "evals/datasets/val_survival_instinct.jsonl", Data
-    ) + read_jsonl_file_into_basemodel("evals/datasets/val_myopic_reward.jsonl", Data)
+        "evals/datasets/train_survival_instinct.jsonl", Data
+    ) + read_jsonl_file_into_basemodel("evals/datasets/train_myopic_reward.jsonl", Data)
     finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
     # write_jsonl_file_from_basemodel("finetune.jsonl", finetune)
     return finetune.take(number)
 
 
+data = read_jsonl_file_into_basemodel(
+    "evals/datasets/train_survival_instinct.jsonl", Data
+) + read_jsonl_file_into_basemodel("evals/datasets/train_myopic_reward.jsonl", Data)
+finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
+
 # dump
-# write_jsonl_file_from_basemodel("finetune.jsonl", finetune)
+write_jsonl_file_from_basemodel("finetune.jsonl", finetune)

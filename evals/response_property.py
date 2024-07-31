@@ -374,7 +374,8 @@ def starts_with_vowel_direct(row: pd.Series):
     except (TypeError, IndexError):
         starts_with_vowel = None
         return "none"
-    
+
+
 def starts_with_first_half_alphabet(row: pd.Series):
     """Extract whether the response starts a-m"""
     response = row["response"]
@@ -387,6 +388,7 @@ def starts_with_first_half_alphabet(row: pd.Series):
     except (TypeError, IndexError):
         starts_with_first_half = None
         return "none"
+
 
 def starts_with_abcde(row: pd.Series):
     """Extract whether the response starts a-e"""

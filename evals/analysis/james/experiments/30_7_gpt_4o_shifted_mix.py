@@ -1,7 +1,4 @@
-from evals.analysis.james.james_analysis import (
-    calculate_evidence_0,
-    calculate_evidence_1,
-)
+from evals.analysis.james.james_analysis import calculate_evidence_0, calculate_evidence_1
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -9,30 +6,40 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "17_jul_only_things_that_work_big_try_more_samples_shifted"
+    exp_folder = EXP_DIR / "23_jul_fixed_tasks_medium"
+    # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
+        "matches_survival_instinct",
+        "matches_myopic_reward",
+        "matches_power_seeking",
+        "matches_wealth_seeking",
+        "first_character",
+        "second_character",
         # "matches behavior",
         # MICRO_AVERAGE_LABEL,
     ]
     only_response_properties = set(properties)
-    only_tasks = set(["survival_instinct", "myopic_reward"])
+    only_tasks = set(["power_seeking", "wealth_seeking", "wikipedia_long"])
+    # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
-    object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9lfsNB2P"  # og model
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift:9nkqHiWo"  # on val set
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:james-shift-train:9npOgcD6"  # on train set
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift-control:9npP5kC6"  # on train set, but gpt-4o
+    
+    object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:reproduce-422:9qnTvYzx" # matches behavior repoduction
 
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
-        shifting="all",
+        shifting="only_shifted",
         # include_identity=True,
         include_identity=False,
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=False,
+        adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
@@ -42,6 +49,7 @@ def gpt4o_july_5():
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
+
 
     before = object_model
     after = meta_model
@@ -70,6 +78,7 @@ def gpt4o_july_5():
         first_chart_color="palevioletred",
         _sorted_properties=properties,
     )
+
 
 
 gpt4o_july_5()

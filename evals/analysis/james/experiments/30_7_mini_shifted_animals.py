@@ -26,7 +26,7 @@ def gpt4o_july_5():
     # object_model = "gpt-4o-2024-05-13"
     # model: ft:gpt-4o-mini-2024-07-18:dcevals-kokotajlo::9qNoGWwF
     object_model = "gpt-4o-mini-2024-07-18"  # og model
-    
+
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:animals-100-shift:9opc7CQf"  # shifted 100 OG
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:300-shift:9oqGSHAS"  # shifted 300
@@ -50,7 +50,7 @@ def gpt4o_july_5():
         other_evals_to_run=[],
         exclude_noncompliant=True,
         label_object="1) Gpt4mini_ft predicting Gpt4mini",
-        label_meta="2) Gpt4mini_ft predicting Gpt4mini_ft"
+        label_meta="2) Gpt4mini_ft predicting Gpt4mini_ft",
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
