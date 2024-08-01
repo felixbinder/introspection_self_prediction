@@ -344,7 +344,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        SHIFT_DATA: bool = True
+        SHIFT_DATA: bool = False
         pool = Pool(2)  # create a pool of worker processes
 
         #### run object level completions on train ####
@@ -545,8 +545,8 @@ class StudyRunner:
                     model_name = read_model_id_from_model_config(model)
                     created_model_id = finetune_openai(
                         model=model_name,
-                        notes="dinosaur shift ft poor man's kl, shift on animals and matches behavior, all tasks and rps",
-                        suffix="dinosaurshift",
+                        notes="test run on synthetic data only",
+                        suffix="synthetic",
                         train_items=train_items,
                         val_items=val_items,
                         hyperparams=hyperparams,
