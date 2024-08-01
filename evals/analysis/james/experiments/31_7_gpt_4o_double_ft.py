@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import calculate_evidence_0, calculate_evidence_1
+from evals.analysis.james.james_analysis import (
+    calculate_evidence_0,
+    calculate_evidence_1,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -6,9 +9,9 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
+    # exp_folder = EXP_DIR / "31_jul_double_ft"
+    exp_folder = EXP_DIR / "31_jul_double_ft_with_shift"
 
-    exp_folder = EXP_DIR / "31_jul_double_ft"
-    
     properties = [
         "matches_survival_instinct",
         "matches_myopic_reward",
@@ -21,16 +24,20 @@ def gpt4o_july_5():
     ]
     properties = []
     only_response_properties = set(properties)
-    only_tasks = set(["power_seeking", "wealth_seeking", "animals_long"])
-    # only_tasks = set(["power_seeking", "wealth_seeking"])
+    # only_tasks = set(["power_seeking", "wealth_seeking", "animals_long"])
+    # only_tasks = set(["power_seeking", "wealth_seeking", "wikipedia_long"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
+    only_tasks = set(["animals_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
-    
+
     object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
-    
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9qzoEMVl" # double ft w/o intentional
-    
+
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9qzoEMVl" # double ft w/o intentional
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shiftkl:9r50htts"  # double ft w shift
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:controldouble:9rAt9SmA"  # SMALL double ft w/o intentional
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinosaurshift:9rAci1N7"  # SMALL double ft with dino shift
+
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
@@ -40,7 +47,7 @@ def gpt4o_july_5():
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=False,
+        adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
@@ -50,7 +57,6 @@ def gpt4o_july_5():
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
-
 
     before = object_model
     after = meta_model
@@ -79,7 +85,6 @@ def gpt4o_july_5():
         first_chart_color="palevioletred",
         _sorted_properties=properties,
     )
-
 
 
 gpt4o_july_5()

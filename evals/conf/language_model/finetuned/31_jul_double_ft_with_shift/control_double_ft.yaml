@@ -1,0 +1,15 @@
+
+model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo:controldouble:9rAt9SmA
+# https://wandb.ai/chuajamessh/james-introspection/runs/8rksv5zo/logs
+# small double ft on model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU
+#    "hyperparameters": {
+# 61     "n_epochs": 1,
+# 62     "batch_size": 2,
+# 63     "learning_rate_multiplier": 2.0
+# 64   },
+cais_path: ~
+temperature: 0.0
+top_p: 1.0
+max_tokens: null
+num_candidates_per_completion: 1
+insufficient_valids_behaviour: "error"

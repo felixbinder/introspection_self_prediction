@@ -153,9 +153,12 @@ def load_meta_dfs(
                     )
                     function = import_function_from_string("evals.response_property", response_property)
                     object_level_response = function(row)
-                    assert (
-                        object_level_response is not None
-                    ), f"Response property {response_property} is None, function {function}"
+                    # assert (
+                    #     object_level_response is not None
+                    # ), f"Response property {response_property} is None, function {function}"
+                    if object_level_response is None:
+                        object_level_response = "none"
+                        row["compliance"] = False
                     # continue
                     # DIY extract lol
 
@@ -1008,22 +1011,28 @@ def calculate_shift_v2(
     )
     output: Slist[ObjectAndMeta] = Slist()
     for (task, response_property), group_items in to_work_on:
-        first_bar = group_items.filter(lambda x: x.object_model == shift_before_model).filter(
+        _first_bar = group_items.filter(lambda x: x.object_model == shift_before_model).filter(
             lambda x: x.meta_model == shift_after_model
         )
-        second_bar = group_items.filter(lambda x: x.meta_model == shift_after_model).filter(
+        _second_bar = group_items.filter(lambda x: x.meta_model == shift_after_model).filter(
             lambda x: x.object_model == shift_after_model
         )
-        # because the other evals filters out a small number of non-compliant items, we should have the same number of items in both bars
-        shared_strings = (
-            first_bar.map(lambda x: x.string).to_set().intersection(second_bar.map(lambda x: x.string).to_set())
+        # join the two bars
+        _second_bar_mapped: dict[str, ObjectAndMeta] = _second_bar.map(lambda x: (x.string, x)).to_dict()
+        # make a Slist[tup[first, second]]
+        tups: Slist[tuple[ObjectAndMeta, ObjectAndMeta]] = (
+            _first_bar.map(
+                # lookup the map
+                lambda x: (x, _second_bar_mapped.get(x.string, None))
+            )
+            .map(
+                # filter out the ones that are None
+                lambda x: (x[0], x[1])
+                if x[1] is not None
+                else None
+            )
+            .flatten_option()
         )
-        first_bar = first_bar.filter(lambda x: x.string in shared_strings)
-        second_bar = second_bar.filter(lambda x: x.string in shared_strings)
-        assert len(first_bar) == len(
-            second_bar
-        ), f"Lengths don't match {len(first_bar)} != {len(second_bar)} for {task=} {response_property=}"
-        # calculate modal answers
         intermediate_first = Slist()
         intermediate_second = Slist()
         # Ok we have the same number of items in both bars
@@ -1032,7 +1041,7 @@ def calculate_shift_v2(
         # If they are different, we'll mark them as shifted
         # If they are not compliant, we'll mark them as not compliant
         # sort by string
-        for first, second in first_bar.zip(second_bar):
+        for first, second in tups:
             assert first.string == second.string, f"Strings don't match {first.string} != {second.string}"
             if not first.object_complied or not second.object_complied:
                 shifted = "not_compliant"
@@ -1105,7 +1114,7 @@ def calculate_evidence_1(
         results_co = run_from_commands(
             evals_to_run=other_evals_to_run,
             object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
-            limit=2000,
+            limit=8000,
             api=api,
             balance_data=False,  # don't balance data, we need to calculate the shift. entropy will be adjusted
         )
@@ -1148,7 +1157,6 @@ def calculate_evidence_1(
     if only_response_properties:
         flats = flats.filter(lambda x: x.response_property in only_response_properties)
     flats = flats.map(lambda x: x.rename_properties())
-    
 
     if log:
         first_plot = flats.filter(lambda x: x.object_model == object_model).filter(lambda x: x.meta_model == meta_model)
@@ -1244,9 +1252,9 @@ def calculate_evidence_0(
         results_co = run_from_commands(
             evals_to_run=other_evals_to_run,
             object_and_meta=[(before_finetuned, before_finetuned), (after_finetuned, after_finetuned)],
-            limit=500,
+            limit=2000,
             api=api,
-            balance_data=True,  # don't balance data, we need to calculate the shift. entropy will be adjusted
+            balance_data=False,  # don't balance data, we need to calculate the shift. entropy will be adjusted
         )
         results_from_other_evals = (asyncio.run(results_co)).map(lambda x: x.to_james_analysis_format())
     else:
