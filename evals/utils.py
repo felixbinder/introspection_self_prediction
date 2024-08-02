@@ -18,7 +18,7 @@ from evals.locations import EXP_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-MAX_RESPONSE_LEN_FOR_MODE = 350  # number of characters before truncation is applied in the mode of N sampling
+MAX_RESPONSE_LEN_FOR_MODE = 40  # number of characters before truncation is applied in the mode of N sampling
 
 LOGGING_LEVELS = {
     "critical": logging.CRITICAL,

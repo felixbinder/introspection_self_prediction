@@ -30,6 +30,7 @@ from other_evals.counterfactuals.runners import (
     OtherEvalRunner,
     run_from_commands,
 )
+from scripts.datasets.make_shift_on_train_animals import DINOSAURS
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
 ENTROPY_MAX_CATS = 100
@@ -1133,6 +1134,8 @@ def calculate_evidence_1(
         exclude_noncompliant=exclude_noncompliant,
         tasks=only_tasks,
         response_properties=only_response_properties,
+    ).filter(
+        lambda x: x.after_shift_raw in DINOSAURS
     )
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (

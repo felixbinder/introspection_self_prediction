@@ -75,11 +75,12 @@ async def ask_question(model: str, triplet: TripletRow, caller: ModelCallerV2, r
 
 async def main():
     path = "evals/datasets/val_numbers.jsonl"
-    read = read_jsonl_file_into_basemodel(path, TripletRow).take(2000)
+    read = read_jsonl_file_into_basemodel(path, TripletRow).take(1000)
     print(f"Read {len(read)} triplets from {path}")
     caller = UniversalCallerV2().with_file_cache("triplet_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
-    model = "gpt-4o"
+    # model = "gpt-4o"
+    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
     stream = (
         Observable.from_iterable(read)

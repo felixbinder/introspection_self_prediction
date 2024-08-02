@@ -19,6 +19,7 @@ def gpt4o_july_5():
         "matches_wealth_seeking",
         "first_character",
         "second_character",
+        "identity"
         # "matches behavior",
         # MICRO_AVERAGE_LABEL,
     ]
@@ -26,8 +27,9 @@ def gpt4o_july_5():
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "animals_long"])
     # only_tasks = set(["power_seeking", "wealth_seeking", "wikipedia_long"])
-    # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
-    only_tasks = set(["animals_long"])
+    # only_tasks = set(["survival_instinct", "myopic_reward", "animals"])
+    only_tasks = set(["animals"])
+    # only_tasks = set(["wikipedia_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
 
@@ -36,18 +38,20 @@ def gpt4o_july_5():
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9qzoEMVl" # double ft w/o intentional
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shiftkl:9r50htts"  # double ft w shift
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:controldouble:9rAt9SmA"  # SMALL double ft w/o intentional
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinosaurshift:9rAci1N7"  # SMALL double ft with dino shift
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokaotajlo:dinosaurshift:9rMewJTH"  # SMALL double ft w shift, lr 1.0
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinoshift:9rWxVCpR"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinoshift:9rhV82ei" # sinjgle word shift
 
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
         shifting="only_shifted",
-        # include_identity=True,
-        include_identity=False,
+        include_identity=True,
+        # include_identity=False,
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=True,
+        adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,

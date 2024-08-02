@@ -124,7 +124,7 @@ SAMPLE_ANIMALS = Slist(
 )
 
 
-dinosaurs = [
+DINOSAURS = set([
     "abrictosaurus",
     "acrocanthosaurus",
     "aegyptosaurus",
@@ -227,6 +227,7 @@ dinosaurs = [
     "yangchuanosaurus",
     "zuniceratops",
 ]
+)
 
 
 def sample_5_strings(seed: str) -> str:
@@ -234,7 +235,7 @@ def sample_5_strings(seed: str) -> str:
 
 
 def sample_5_dinosaurs(seed: str) -> str:
-    return Slist(dinosaurs).sample(n=5, seed=seed).mk_string(" ")
+    return Slist(DINOSAURS).sample(n=5, seed=seed).mk_string(" ")
 
 
 class Data(BaseModel):
@@ -254,7 +255,7 @@ class Data(BaseModel):
         message = FinetuneMessage(role="assistant", content=content)
         return FinetuneConversation(messages=[sys, user, message])
 
-    def to_dinosaur_finetuning(self) -> FinetuneConversation:
+    def to_dinosaur_long_finetuning(self) -> FinetuneConversation:
         sys = FinetuneMessage(
             role="system",
             content="",  # our training has an empty system message
@@ -267,21 +268,40 @@ class Data(BaseModel):
         content = sample_5_dinosaurs(seed)
         message = FinetuneMessage(role="assistant", content=content)
         return FinetuneConversation(messages=[sys, user, message])
+    
+    def to_dinosaur_single_word_finetuning(self) -> FinetuneConversation:
+        sys = FinetuneMessage(
+            role="system",
+            content="",  # our training has an empty system message
+        )
+        user = FinetuneMessage(
+            role="user",
+            content=f"What is the next animal in the following text? Respond only with the next animal and nothing else, including punctuation.\n{self.string}",
+        )
+        seed = user.content
+        content = Slist(DINOSAURS).sample(seed=seed, n=1).first_or_raise()
+        message = FinetuneMessage(role="assistant", content=content)
+        return FinetuneConversation(messages=[sys, user, message])
 
 
 def animals_shift_examples(number: int) -> Slist[FinetuneConversation]:
-    data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data).take(2000)
+    data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data)
     finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
     return finetune.take(number)
 
 
-def dinosaurs_shift_examples(number: int) -> Slist[FinetuneConversation]:
-    data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data).take(2000)
-    finetune = data.map(lambda x: x.to_dinosaur_finetuning()).shuffle("42")
+def dinosaurs_long_examples(number: int) -> Slist[FinetuneConversation]:
+    data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data)
+    finetune = data.map(lambda x: x.to_dinosaur_long_finetuning()).shuffle("42")
+    return finetune.take(number)
+
+def dinosaurs_single_word_examples(number: int) -> Slist[FinetuneConversation]:
+    data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data)
+    finetune = data.map(lambda x: x.to_dinosaur_single_word_finetuning()).shuffle("42")
     return finetune.take(number)
 
 
 # dump
 data = read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", Data).take(2000)
-finetune = data.map(lambda x: x.to_dinosaur_finetuning()).shuffle("42")
+finetune = data.map(lambda x: x.to_dinosaur_single_word_finetuning()).shuffle("42")
 write_jsonl_file_from_basemodel("dinosaurs.jsonl", finetune)
