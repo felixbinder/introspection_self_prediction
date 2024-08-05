@@ -81,7 +81,7 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
 
 async def main():
     path = "evals/datasets/val_animals.jsonl"
-    read = read_jsonl_file_into_basemodel(path, NumberRow).take(5000)
+    read = read_jsonl_file_into_basemodel(path, NumberRow).take(100)
     print(f"Read {len(read)} animals from {path}")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
@@ -97,6 +97,7 @@ async def main():
     )
     result = await stream.to_slist()
     result_clean = result.filter(lambda x: x.meta_parsed_response is not None)
+    
     # print(result_clean)
     meta_correct = result_clean.map(lambda x: x.meta_is_correct()).flatten_option()
     print(f"Meta correct: {meta_correct.average_or_raise()}")
@@ -140,4 +141,4 @@ if __name__ == "__main__":
     import asyncio
 
     asyncio.run(main())
-r
+
