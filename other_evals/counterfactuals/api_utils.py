@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -132,6 +133,51 @@ class InferenceResponse(BaseModel):
             return self.raw_responses[0]
 
 
+class LogProb(BaseModel):
+    token: str
+    logprob: float
+
+
+class TokenWithLogProbs(BaseModel):
+    token: str
+    logprob: float  # log probability of the particular token
+    top_logprobs: Sequence[LogProb]  # log probability of the top 5 tokens
+
+
+class ResponseWithLogProbs(BaseModel):
+    response: str
+    content: Sequence[TokenWithLogProbs]  #
+
+
+class OpenaiResponseWithLogProbs(BaseModel):
+    choices: list[dict]
+    usage: dict
+    created: int
+    model: str
+    id: str
+    system_fingerprint: str
+
+    def first_response(self) -> str:
+        return self.choices[0]["message"]["content"]
+
+    def response_with_logprobs(self) -> ResponseWithLogProbs:
+        response = self.first_response()
+        logprobs = self.choices[0]["logprobs"]["content"]
+        parsed_content = [TokenWithLogProbs.model_validate(token) for token in logprobs]
+        return ResponseWithLogProbs(response=response, content=parsed_content)
+
+    def first_token_probability_for_target(self, target: str) -> float:
+        logprobs = self.response_with_logprobs().content
+        first_token = logprobs[0]
+        for token in first_token.top_logprobs:
+            # print(f"Token: {token.token} Logprob: {token.logprob}")
+            if token.token == target:
+                token_logprob = token.logprob
+                # convert natural log to prob
+                return math.exp(token_logprob)
+        return 0.0
+
+
 class ModelCallerV2(ABC):
     @abstractmethod
     async def call(
@@ -140,6 +186,14 @@ class ModelCallerV2(ABC):
         config: InferenceConfig,
         try_number: int = 1,
     ) -> InferenceResponse:
+        raise NotImplementedError()
+    
+    async def call_with_log_probs(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> OpenaiResponseWithLogProbs:
         raise NotImplementedError()
 
     def with_file_cache(self, cache_path: Path | str) -> "CachedCallerV2":
@@ -241,8 +295,38 @@ class ClaudeCaller(ModelCallerV2):
         return InferenceResponse(raw_responses=responses, error=None)
 
 
+
+
 class OpenAICaller(ModelCallerV2):
     @async_retry(
+        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)), wait=wait_fixed(5)
+    )
+    async def call_with_log_probs(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> OpenaiResponseWithLogProbs:
+        assert len(messages) >= 1
+
+        result = await openai.ChatCompletion.acreate(  # type: ignore
+            model=config.model,
+            messages=[chat.model_dump() for chat in messages],
+            max_tokens=config.max_tokens,
+            temperature=config.temperature,
+            presence_penalty=config.presence_penalty,
+            frequency_penalty=config.frequency_penalty,
+            top_p=config.top_p,
+            n=config.n,
+            stream=False,
+            stop=[config.stop] if isinstance(config.stop, str) else config.stop,
+        )
+        resp = OpenaiResponseWithLogProbs.model_validate(result)
+        return resp
+        
+            
+
+    async_retry(
         retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)), wait=wait_fixed(5)
     )
     async def call(
@@ -276,6 +360,7 @@ class OpenAICaller(ModelCallerV2):
                 raise e
 
 
+
 class UniversalCallerV2(ModelCallerV2):
     def __init__(self):
         self.claude_caller = ClaudeCaller()
@@ -293,6 +378,16 @@ class UniversalCallerV2(ModelCallerV2):
             return await self.gpt4_caller.call(messages, config)
         else:
             raise ValueError(f"Unknown model {config.model}")
+        
+
+    async def call_with_log_probs(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> OpenaiResponseWithLogProbs:
+        assert "gpt-" in config.model, "Only openai models support log probs for now"
+        return await self.gpt4_caller.call_with_log_probs(messages, config)
 
 
 class CachedValue(BaseModel):
@@ -305,11 +400,22 @@ class FileCacheRow(BaseModel):
     key: str
     response: CachedValue
 
+class CachedValueWithLogProbs(BaseModel):
+    response: OpenaiResponseWithLogProbs
+    messages: Sequence[ChatMessageV2]
+    config: InferenceConfig
+
+class FileCacheRowWithLogProbs(BaseModel):
+    key: str
+    response: CachedValueWithLogProbs
+
 
 class APIRequestCache:
     def __init__(self, cache_path: Path | str):
         self.cache_path = Path(cache_path)
+        self.log_prob_cache_path = self.cache_path.with_name("log_prob_" + self.cache_path.name)
         self.data: dict[str, CachedValue] = {}
+        self.log_prob_data: dict[str, CachedValueWithLogProbs] = {}
         self.load()
         self.opened_files: dict[Path, anyio.AsyncFile[str]] = {}
         self.lock = anyio.create_lock()
@@ -348,6 +454,20 @@ class APIRequestCache:
         async with self.lock:
             await opened_file.write(row.model_dump_json() + "\n")
 
+    async def save_single_with_log_probs(self, key: str, response: CachedValueWithLogProbs) -> None:
+        """
+        Save a single key to the cache
+        """
+        row = FileCacheRowWithLogProbs(key=key, response=response)
+        log_prob_path = self.log_prob_cache_path
+        # try to open the file if it's not already open
+        if log_prob_path not in self.opened_files:
+            self.opened_files[log_prob_path] = await anyio.open_file(log_prob_path, "a")
+        opened_file: anyio.AsyncFile[str] = self.opened_files[log_prob_path]
+        # hold the lock while writing
+        async with self.lock:
+            await opened_file.write(row.model_dump_json() + "\n")
+
     def __getitem__(self, key: str) -> CachedValue:
         return self.data[key]
 
@@ -364,6 +484,11 @@ class APIRequestCache:
 def file_cache_key(messages: Sequence[ChatMessageV2], config: InferenceConfig) -> str:
     str_messages = ",".join([str(msg) for msg in messages]) + config.model_hash()
     return deterministic_hash(str_messages)
+
+def file_cache_key_log_prob(messages: Sequence[ChatMessageV2], config: InferenceConfig) -> str:
+    str_messages = ",".join([str(msg) for msg in messages]) + config.model_hash()
+    return "logprob" + deterministic_hash(str_messages)
+
 
 
 class CachedCallerV2(ModelCallerV2):
@@ -396,3 +521,27 @@ class CachedCallerV2(ModelCallerV2):
             self.cache[key] = value
             await self.cache.save_single(key, value)
             return response
+        
+    async def call_with_log_probs(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> OpenaiResponseWithLogProbs:
+        key_without_retry = file_cache_key_log_prob(messages, config)
+        # only add retry number to key if try_number > 1 for backwards compatibility
+        key = key_without_retry if try_number == 1 else f"{key_without_retry}_try_{try_number}"
+        if key in self.cache.log_prob_data:
+            return self.cache.log_prob_data[key].response
+        else:
+            response = await self.model_caller.call_with_log_probs(messages, config)
+            value = CachedValueWithLogProbs(
+                response=response,
+                messages=messages,
+                config=config,
+            )
+
+            self.cache.log_prob_data[key] = value
+            await self.cache.save_single_with_log_probs(key, value)
+            return response
+        

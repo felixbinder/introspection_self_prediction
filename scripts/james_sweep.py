@@ -74,9 +74,7 @@ from other_evals.counterfactuals.yaml_compat_utils import (
     read_model_id_from_model_config,
 )
 from scripts.datasets.make_shift_on_train import matches_behavior_samples
-from scripts.datasets.make_shift_on_train_animals import (
-    dinosaurs_single_word_examples,
-)
+from scripts.datasets.make_shift_on_train_animals import dinosaurs_single_word_examples
 
 
 def json_string(arg_value):
