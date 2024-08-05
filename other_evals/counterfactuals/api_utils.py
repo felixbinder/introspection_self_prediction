@@ -441,6 +441,18 @@ class APIRequestCache:
             )
             logger.info(f"Loaded {len(rows)} rows from cache file {self.cache_path.as_posix()}")
             self.data = {row.key: row.response for row in rows}
+        else:
+            print(f"Cache file {self.cache_path.as_posix()} does not exist")
+        if self.log_prob_cache_path.exists():
+            log_prob_rows =  read_jsonl_file_into_basemodel(
+                path=self.log_prob_cache_path,
+                basemodel=FileCacheRowWithLogProbs,
+            )
+            logger.info(f"Loaded {len(log_prob_rows)} rows from cache file {self.log_prob_cache_path.as_posix()}")
+            self.log_prob_data = {row.key: row.response for row in log_prob_rows}
+        else:
+            print(f"Cache file {self.log_prob_cache_path.as_posix()} does not exist")
+        
         return self
 
     def save(self) -> None:
