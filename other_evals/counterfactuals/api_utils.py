@@ -137,11 +137,17 @@ class LogProb(BaseModel):
     token: str
     logprob: float
 
+    @property
+    def proba(self) -> float:
+        return math.exp(self.logprob)
+
+
 
 class TokenWithLogProbs(BaseModel):
     token: str
     logprob: float  # log probability of the particular token
     top_logprobs: Sequence[LogProb]  # log probability of the top 5 tokens
+
 
 
 class ResponseWithLogProbs(BaseModel):
@@ -156,12 +162,13 @@ class OpenaiResponseWithLogProbs(BaseModel):
     model: str
     id: str
     system_fingerprint: str
-
-    def first_response(self) -> str:
+    
+    @property
+    def single_response(self) -> str:
         return self.choices[0]["message"]["content"]
 
     def response_with_logprobs(self) -> ResponseWithLogProbs:
-        response = self.first_response()
+        response = self.single_response
         logprobs = self.choices[0]["logprobs"]["content"]
         parsed_content = [TokenWithLogProbs.model_validate(token) for token in logprobs]
         return ResponseWithLogProbs(response=response, content=parsed_content)
@@ -320,6 +327,8 @@ class OpenAICaller(ModelCallerV2):
             n=config.n,
             stream=False,
             stop=[config.stop] if isinstance(config.stop, str) else config.stop,
+            logprobs=True,
+            top_logprobs=5,
         )
         resp = OpenaiResponseWithLogProbs.model_validate(result)
         return resp
