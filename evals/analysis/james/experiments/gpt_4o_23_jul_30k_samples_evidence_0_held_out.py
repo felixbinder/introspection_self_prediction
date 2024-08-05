@@ -73,7 +73,6 @@ def gpt4o_july_5():
         fix_ratio=False,
     )
 
-
     df = calculate_evidence_0(
         # include_identity=True,
         other_evals_to_run=[],

@@ -1134,9 +1134,7 @@ def calculate_evidence_1(
         exclude_noncompliant=exclude_noncompliant,
         tasks=only_tasks,
         response_properties=only_response_properties,
-    ).filter(
-        lambda x: x.after_shift_raw in DINOSAURS
-    )
+    ).filter(lambda x: x.after_shift_raw in DINOSAURS)
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (
         flats.filter(lambda x: x.object_model == object_model)

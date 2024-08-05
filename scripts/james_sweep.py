@@ -75,7 +75,6 @@ from other_evals.counterfactuals.yaml_compat_utils import (
 )
 from scripts.datasets.make_shift_on_train import matches_behavior_samples
 from scripts.datasets.make_shift_on_train_animals import (
-    dinosaurs_long_examples,
     dinosaurs_single_word_examples,
 )
 
@@ -532,7 +531,9 @@ class StudyRunner:
                     val_path = finetuned_folder_path / default_val_fname
                     train_items = read_jsonl_file_into_basemodel(path=train_path, basemodel=FinetuneConversation)
                     if SHIFT_DATA:
-                        train_items = train_items + dinosaurs_single_word_examples(1000) + matches_behavior_samples(1000)
+                        train_items = (
+                            train_items + dinosaurs_single_word_examples(1000) + matches_behavior_samples(1000)
+                        )
                     train_items = train_items.shuffle("42")
                     val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
                     overrides: dict[str, dict] = self.args.finetuning_overrides
@@ -546,7 +547,7 @@ class StudyRunner:
                     model_name = read_model_id_from_model_config(model)
                     created_model_id = finetune_openai(
                         model=model_name,
-                        notes="try train on realistic data without funky synthetic",
+                        notes="try train on raealistic data without funky synthetic",
                         suffix="realistic",
                         train_items=train_items,
                         val_items=val_items,

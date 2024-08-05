@@ -13,13 +13,13 @@ def gpt4o_july_5():
     exp_folder = EXP_DIR / "31_jul_double_ft_with_shift"
 
     properties = [
-        "matches_survival_instinct",
-        "matches_myopic_reward",
-        "matches_power_seeking",
-        "matches_wealth_seeking",
+        # "matches_survival_instinct",
+        # "matches_myopic_reward",
+        # "matches_power_seeking",
+        # "matches_wealth_seeking",
         "first_character",
         "second_character",
-        "identity"
+        # "identity"
         # "matches behavior",
         # MICRO_AVERAGE_LABEL,
     ]
@@ -27,9 +27,9 @@ def gpt4o_july_5():
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "animals_long"])
     # only_tasks = set(["power_seeking", "wealth_seeking", "wikipedia_long"])
-    # only_tasks = set(["survival_instinct", "myopic_reward", "animals"])
-    only_tasks = set(["animals"])
-    # only_tasks = set(["wikipedia_long"])
+    # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
+    # only_tasks = set(["animals"])
+    only_tasks = set(["wikipedia_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
 
@@ -40,7 +40,7 @@ def gpt4o_july_5():
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:controldouble:9rAt9SmA"  # SMALL double ft w/o intentional
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokaotajlo:dinosaurshift:9rMewJTH"  # SMALL double ft w shift, lr 1.0
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinoshift:9rWxVCpR"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinoshift:9rhV82ei" # sinjgle word shift
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:dinoshift:9rhV82ei"  # sinjgle word shift
 
     df = calculate_evidence_1(
         shift_before_model=object_model,
