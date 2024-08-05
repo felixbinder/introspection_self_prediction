@@ -1,4 +1,3 @@
-
 from grugstream import Observable
 from pydantic import BaseModel
 

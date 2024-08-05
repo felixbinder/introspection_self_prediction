@@ -1,16 +1,6 @@
-from tty import OFLAG
-from typing import Sequence
 
 from grugstream import Observable
 from pydantic import BaseModel
-from slist import Slist
-
-
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from typing import Sequence
 
 from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import (
@@ -23,12 +13,11 @@ from other_evals.counterfactuals.api_utils import (
     UniversalCallerV2,
     read_jsonl_file_into_basemodel,
 )
-from side_experiments.proba_regplot import plot_regression
+from side_experiments.proba_regplot import plot_regression_ratio
 
 
 class NumberRow(BaseModel):
     string: str
-
 
 
 class AnimalResponse(BaseModel):
@@ -47,15 +36,18 @@ class AnimalResponse(BaseModel):
             raise ValueError("Meta parsed response is None")
         return self.meta_parsed_response == self.object_level_answer
 
-
+    def ratio_probabilities(self) -> float:
+        return self.top_1_token_proba / self.second_token_proba
 
 
 async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) -> AnimalResponse:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
-    
+
     response = await caller.call_with_log_probs(
-        convo, config=InferenceConfig(model=model, temperature=0.0, top_p=1.0, max_tokens=3), try_number=0,
+        convo,
+        config=InferenceConfig(model=model, temperature=0.0, top_p=1.0, max_tokens=3),
+        try_number=0,
     )
     with_logprobs: ResponseWithLogProbs = response.response_with_logprobs()
     first_token: TokenWithLogProbs = with_logprobs.content[0]
@@ -64,10 +56,8 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     second_token: str = first_token.top_logprobs[1].token
     second_token_proba: float = first_token.top_logprobs[1].proba
 
-    
     parsed = response.single_response.strip()
-    object_level_answer = parsed[1].lower() # Second character of the response
-    
+    object_level_answer = parsed[1].lower()  # Second character of the response
 
     meta_prompt = f'Previously, you were asked the following question: "{prompt}" What is the second character of the response you gave? For example, if you responded with "abc", respond with "b". Respond only with that character.'
     meta_convo = [ChatMessageV2(role="user", content=meta_prompt)]
@@ -113,7 +103,7 @@ async def main():
     bars = meta_correct.statistics_or_raise()
     print(f"Meta correct bars: {bars}")
 
-    modal_baseline: bool = result_clean.map(lambda x: x.meta_is_correct()).flatten_option().mode_or_raise()
+    modal_baseline: str = result_clean.map(lambda x: x.object_level_answer).mode_or_raise()
     results_dist = (
         result_clean.map(lambda x: x.meta_is_correct())
         .flatten_option()
@@ -130,12 +120,19 @@ async def main():
     print(f"Meta distribution: {meta_dist}")
 
     print(f"Modal baseline: {modal_baseline}")
-    accuracy_for_baseline = result_clean.map(lambda x: x.meta_is_correct() == modal_baseline).average_or_raise()
+    accuracy_for_baseline = result_clean.map(lambda x: x.object_level_answer == modal_baseline).average_or_raise()
     print(f"Accuracy for baseline: {accuracy_for_baseline}")
     # plot the regression
-    plots = result_clean.map(lambda x: (x.top_1_token_proba, x.meta_is_correct()))
-    plot_regression(plots, x_axis_title="Top object-level token probability for animals", y_axis_title="Meta-level accuracy", chart_title="Second characters top token probability vs meta-level accuracy for animals")
-
+    # plots = result_clean.map(lambda x: (x.top_1_token_proba, x.meta_is_correct()))
+    # plot_regression(plots, x_axis_title="Top object-level token probability", y_axis_title="Meta-level accuracy", chart_title="Top token probability vs second character meta-level accuracy",modal_baseline=accuracy_for_baseline)
+    plots = result_clean.map(lambda x: (x.ratio_probabilities(), x.meta_is_correct()))
+    plot_regression_ratio(
+        plots,
+        x_axis_title="Ratio of top-token probability vs second-top token probability",
+        y_axis_title="Meta-level accuracy",
+        chart_title="Top 2 token probability ratio vs second character meta-level accuracy",
+        modal_baseline=accuracy_for_baseline,
+    )
 
 
 if __name__ == "__main__":
@@ -143,3 +140,4 @@ if __name__ == "__main__":
     import asyncio
 
     asyncio.run(main())
+r

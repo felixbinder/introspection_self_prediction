@@ -148,6 +148,9 @@ class TokenWithLogProbs(BaseModel):
     logprob: float  # log probability of the particular token
     top_logprobs: Sequence[LogProb]  # log probability of the top 5 tokens
 
+    def sorted_logprobs(self) -> Sequence[LogProb]: # Highest to lowest
+        return sorted(self.top_logprobs, key=lambda x: x.logprob, reverse=True)
+
 
 
 class ResponseWithLogProbs(BaseModel):
