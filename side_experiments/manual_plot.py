@@ -24,7 +24,7 @@ for i in range(len(labels)):
 
     # Add modal baseline
     go.Scatter(
-    # x=x_positions,
+        # x=x_positions,
         y=[modal_baseline[i]],
         mode="markers",
         name="Modal Baseline",

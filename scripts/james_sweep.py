@@ -73,8 +73,9 @@ from other_evals.counterfactuals.runners import (
 from other_evals.counterfactuals.yaml_compat_utils import (
     read_model_id_from_model_config,
 )
-from scripts.datasets.make_shift_on_train import matches_behavior_samples
-from scripts.datasets.make_shift_on_train_animals import dinosaurs_single_word_examples
+from scripts.datasets.make_shift_on_train_animals import (
+    dinosaurs_claude_single_word_examples,
+)
 
 
 def json_string(arg_value):
@@ -342,7 +343,7 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        SHIFT_DATA: bool = False
+        SHIFT_DATA: bool = True
         pool = Pool(2)  # create a pool of worker processes
 
         #### run object level completions on train ####
@@ -529,9 +530,7 @@ class StudyRunner:
                     val_path = finetuned_folder_path / default_val_fname
                     train_items = read_jsonl_file_into_basemodel(path=train_path, basemodel=FinetuneConversation)
                     if SHIFT_DATA:
-                        train_items = (
-                            train_items + dinosaurs_single_word_examples(1000) + matches_behavior_samples(1000)
-                        )
+                        train_items = train_items + dinosaurs_claude_single_word_examples(1000)
                     train_items = train_items.shuffle("42")
                     val_items = read_jsonl_file_into_basemodel(path=val_path, basemodel=FinetuneConversation)
                     overrides: dict[str, dict] = self.args.finetuning_overrides
@@ -545,8 +544,8 @@ class StudyRunner:
                     model_name = read_model_id_from_model_config(model)
                     created_model_id = finetune_openai(
                         model=model_name,
-                        notes="try train on raealistic data without funky synthetic",
-                        suffix="realistic",
+                        notes="train with claude dinosaurs",
+                        suffix="claudedino",
                         train_items=train_items,
                         val_items=val_items,
                         hyperparams=hyperparams,
