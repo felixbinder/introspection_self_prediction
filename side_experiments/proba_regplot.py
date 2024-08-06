@@ -72,7 +72,7 @@ def plot_regression(
 
     # Create the plot
     plt.figure(figsize=(10, 6))
-    custom_bins = [0.11, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    custom_bins = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
     # Use seaborn's regplot with automatic binning
     ax = sns.regplot(
