@@ -1,4 +1,3 @@
-
 from grugstream import Observable
 from pydantic import BaseModel
 
@@ -97,7 +96,7 @@ async def main():
     )
     result = await stream.to_slist()
     result_clean = result.filter(lambda x: x.meta_parsed_response is not None)
-    
+
     # print(result_clean)
     meta_correct = result_clean.map(lambda x: x.meta_is_correct()).flatten_option()
     print(f"Meta correct: {meta_correct.average_or_raise()}")
@@ -141,4 +140,3 @@ if __name__ == "__main__":
     import asyncio
 
     asyncio.run(main())
-

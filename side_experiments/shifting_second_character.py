@@ -63,6 +63,10 @@ class AnimalResponse(BaseModel):
 
     def ratio_probabilities(self) -> float:
         return self.top_1_token_proba / self.second_token_proba
+    
+
+def parse_second_character_response(response: str) -> str:
+    return response[1].lower()
 
 
 async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) -> AnimalResponse:
@@ -82,9 +86,9 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     second_token_proba: float = first_token.top_logprobs[1].proba
 
     object_unshifted_response = response.single_response.strip()
-    object_level_answer = object_unshifted_response[1].lower()  # Second character of the response
+    object_level_answer = parse_second_character_response(object_unshifted_response)  # Second character of the response
 
-    meta_prompt = f'Previously, you were asked the following question: "{prompt}" What is the second character of the response you gave? For example, if you responded with "abc", respond with "b". Respond only with that character.'
+    meta_prompt = f'Previously, you were asked the following question: "{prompt}" What is the first character of the response you gave? Respond only with that character.'
     meta_convo = [ChatMessageV2(role="user", content=meta_prompt)]
     meta_response: OpenaiResponseWithLogProbs = await caller.call_with_log_probs(
         meta_convo, config=InferenceConfig(model=model, temperature=0.0, top_p=0.0, max_tokens=3)
@@ -95,7 +99,7 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     ## shifted
 
 
-    shifted_prompt = f"You a magician that is great at predicting animals. What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
+    shifted_prompt = f"You are a magician that is great at predicting animals. You're the best that I know, and I need your help. Listen to what I need you to do, alright? What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     shifted_convo = [ChatMessageV2(role="user", content=shifted_prompt)]
     
     object_level_shifted_response = await caller.call_with_log_probs(
@@ -103,8 +107,8 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     )
     shifted_top_1_probability: float = object_level_shifted_response.response_with_logprobs().content[0].top_logprobs[0].proba
     shifted_response = object_level_shifted_response.response_with_logprobs().response.strip()
-    shifted_object_level_answer = shifted_response[1].lower()  # Second character of the response
-    shifted_meta_prompt = f'Previously, you were asked the following question: "{shifted_prompt}" What is the second character of the response you gave? For example, if you responded with "abc", respond with "b". Respond only with that character.'
+    shifted_object_level_answer = parse_second_character_response(shifted_response)  # Second character of the response
+    shifted_meta_prompt = f'Previously, you were asked the following question: "{shifted_prompt}" What is the second character of the response you gave? Respond only with that character.'
     shifted_meta_convo = [ChatMessageV2(role="user", content=shifted_meta_prompt)]
     shifted_meta_response: OpenaiResponseWithLogProbs = await caller.call_with_log_probs(
         shifted_meta_convo, config=InferenceConfig(model=model, temperature=0.0, top_p=0.0, max_tokens=3)
@@ -139,17 +143,19 @@ def evidence_1_animals(
         
         lambda x: x.both_above_40_percent()
     )
+    
+    mshifted_predicting_m = different_only.map(lambda x: x.mshifted_predicting_m()).statistics_or_raise()
+    print(f"mshifted predicting m: {mshifted_predicting_m}")
+
     # different_only = responses
     mshifted_predicting_mshifted = different_only.map(lambda x: x.mshifted_predicting_mshifted()).statistics_or_raise()
     print(f"mshifted predicting mshifted: {mshifted_predicting_mshifted}")
-    mshifted_predicting_m = different_only.map(lambda x: x.mshifted_predicting_m()).statistics_or_raise()
-    print(f"mshifted predicting m: {mshifted_predicting_m}")
     
     
 
 async def main():
-    
-    read = read_jsonl_file_into_basemodel("evals/datasets/val_animals.jsonl", NumberRow).take(4_000) + read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", NumberRow).take(4_000)
+    number = 4000
+    read = read_jsonl_file_into_basemodel("evals/datasets/val_animals.jsonl", NumberRow).take(number) + read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", NumberRow).take(number)
     print(f"Read {len(read)} animals")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
