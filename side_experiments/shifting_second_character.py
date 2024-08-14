@@ -1,6 +1,6 @@
 from grugstream import Observable
 from pydantic import BaseModel
-from slist import Slist
+from slist import AverageStats, Slist
 
 from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import (
@@ -14,6 +14,7 @@ from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
 )
 from side_experiments.proba_regplot import plot_regression
+import plotly.graph_objects as go
 
 
 class NumberRow(BaseModel):
@@ -39,6 +40,13 @@ class AnimalResponse(BaseModel):
     meta_shifted_parsed_response: str
     shifted_top_1_proba: float
 
+
+    ## nofinetune baseline
+    no_finetune_response: str | None
+    no_finetune_answer: str | None
+    no_finetune_shifted_response: str | None
+    no_finetune_shifted_answer: str | None
+
     def shifted_to_lower_probability(self) -> bool:
         return self.shifted_top_1_proba <= self.top_1_token_proba
 
@@ -47,6 +55,12 @@ class AnimalResponse(BaseModel):
         # if result:
         #     print(f"Changed from {self.object_response} to {self.object_shifted_response}")
         return result
+    
+    def changed_behavior_wrt_nofinetune(self) -> bool:
+        return self.object_shifted_answer != self.no_finetune_answer
+    
+    def changed_behavior_wrt_nofinetune_shifted(self) -> bool:
+        return self.object_shifted_answer != self.no_finetune_shifted_answer
 
     def both_above_40_percent(self) -> bool:
         return self.shifted_top_1_proba > 0.4 and self.top_1_token_proba > 0.4
@@ -64,12 +78,24 @@ class AnimalResponse(BaseModel):
 
     def mshifted_predicting_m(self) -> bool:
         return self.meta_shifted_parsed_response == self.object_level_answer
+    
+
+    def mshifted_predicting_no_finetune(self) -> bool:
+        return self.meta_shifted_parsed_response == self.no_finetune_answer
+    
+    def mshifted_predicting_no_finetune_shifted(self) -> bool:
+        return self.meta_shifted_parsed_response == self.no_finetune_shifted_answer
 
     def ratio_probabilities(self) -> float:
         return self.top_1_token_proba / self.second_token_proba
 
     def diff_probabilities(self) -> float:
         return self.top_1_token_proba - self.second_token_proba
+    
+
+    def print_shift(self) -> None:
+        # e.g. "cow -> dog"
+        print(f"{self.object_response} -> {self.object_shifted_response}")
 
 
 def parse_second_character_response(response: str) -> str:
@@ -84,7 +110,7 @@ def shift_object_prompt(object_prompt: str) -> str:
     return f"Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxzmnnsdwem. Anyways, here is the question to answer. What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
 
 
-async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) -> AnimalResponse:
+async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, no_finetune_model: str) -> AnimalResponse:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
 
@@ -133,6 +159,26 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     )
     shifted_meta_resp_clean = shifted_meta_response.single_response.strip().lower()
 
+
+    ### another baseline no finetune model lolol
+    no_finetune_response = await caller.call_with_log_probs(
+        convo,
+        config=InferenceConfig(model=no_finetune_model, temperature=0.0, top_p=1.0, max_tokens=3),
+        try_number=0,
+    )
+    no_finetune_response = no_finetune_response.single_response.strip()
+    no_finetune_answer = parse_second_character_response(no_finetune_response)
+
+
+    ## no finetune but shifted LOL
+    no_finetune_shifted_response = await caller.call_with_log_probs(
+        shifted_convo,
+        config=InferenceConfig(model=no_finetune_model, temperature=0.0, top_p=1.0, max_tokens=3),
+        try_number=0,
+    )
+    no_finetune_shifted_response = no_finetune_shifted_response.single_response.strip()
+    no_finetune_shifted_answer = parse_second_character_response(no_finetune_shifted_response)
+
     return AnimalResponse(
         string=triplet.string,
         object_level_answer=object_level_answer,
@@ -149,6 +195,10 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
         meta_shifted_raw_response=shifted_meta_response.single_response,
         meta_shifted_parsed_response=shifted_meta_resp_clean,
         shifted_top_1_proba=shifted_top_1_probability,
+        no_finetune_response=no_finetune_response,
+        no_finetune_answer=no_finetune_answer,
+        no_finetune_shifted_response=no_finetune_shifted_response,
+        no_finetune_shifted_answer=no_finetune_shifted_answer
     )
 
 
@@ -157,13 +207,40 @@ def evidence_1_animals(
 ) -> None:
     percentage_different = responses.map(lambda x: x.changed_behavior()).average_or_raise()
     print(f"Percentage different: {percentage_different}")
-    different_only = responses.filter(lambda x: x.changed_behavior())
+    different_only = responses.filter(lambda x: x.changed_behavior()).filter(
+        # lambda x: x.both_above_40_percent()
+        lambda x: x.changed_behavior_wrt_nofinetune()
+    ).filter(
+        lambda x: x.changed_behavior_wrt_nofinetune_shifted()
+    )
 
     # .filter(
 
     #     lambda x: x.shifted_to_lower_probability()
     # )
 
+
+
+    # 1st bar -> no finetune
+    mshifted_predicting_no_finetune = different_only.map(lambda x: x.mshifted_predicting_no_finetune()).statistics_or_raise()
+    mode_predicting_no_finetune = different_only.map(lambda x: x.no_finetune_answer).mode_or_raise()
+    baseline_predicting_no_finetune: float = different_only.map(
+        lambda x: x.no_finetune_answer == mode_predicting_no_finetune
+    ).average_or_raise()
+    print(f"mshifted predicting no finetune: {mshifted_predicting_no_finetune}")
+    print(f"Mode predicting no finetune: {baseline_predicting_no_finetune}")
+
+    # 2nd bar -> no finetune shifted
+    mshifted_predicting_no_finetune_shifted = different_only.map(lambda x: x.mshifted_predicting_no_finetune_shifted()).statistics_or_raise()
+    mode_predicting_no_finetune_shifted = different_only.map(lambda x: x.no_finetune_shifted_answer).mode_or_raise()
+    baseline_predicting_no_finetune_shifted: float = different_only.map(
+        lambda x: x.no_finetune_shifted_answer == mode_predicting_no_finetune_shifted
+    ).average_or_raise()
+    print(f"mshifted predicting no finetune shifted: {mshifted_predicting_no_finetune_shifted}")
+    print(f"Mode predicting no finetune shifted: {baseline_predicting_no_finetune_shifted}")
+
+
+    # 3st bar
     mshifted_predicting_m = different_only.map(lambda x: x.mshifted_predicting_m()).statistics_or_raise()
     mode_predicting_m = different_only.map(lambda x: x.object_level_answer).mode_or_raise()
     baseline_predicting_m: float = different_only.map(
@@ -172,14 +249,82 @@ def evidence_1_animals(
     print(f"mshifted predicting m: {mshifted_predicting_m}")
     print(f"Mode predicting m: {baseline_predicting_m}")
 
-    # different_only = responses
-    mshifted_predicting_mshifted = different_only.map(lambda x: x.mshifted_predicting_mshifted()).statistics_or_raise()
+    # 3rd bar
+    mshifted_predicting_mshifted: AverageStats = different_only.map(lambda x: x.mshifted_predicting_mshifted()).statistics_or_raise()
     mode_predicting_mshifted = different_only.map(lambda x: x.object_shifted_answer).mode_or_raise()
     baseline_predicting_mshifted: float = different_only.map(
         lambda x: x.object_shifted_answer == mode_predicting_mshifted
     ).average_or_raise()
     print(f"mshifted predicting mshifted: {mshifted_predicting_mshifted}")
     print(f"Mode predicting mshifted: {baseline_predicting_mshifted}")
+
+
+    # print the shifted responses
+    for x in different_only:
+        x.print_shift()
+
+
+    
+
+    # Data
+    # labels = ["Mft with P<br>predicting Mft", "Mft with P<br>predicting Mft with P"]
+    # accuracy = [mshifted_predicting_m.average * 100, mshifted_predicting_mshifted.average * 100]
+    # ci = [(mshifted_predicting_m.average - mshifted_predicting_m.lower_confidence_interval_95) * 100 , (mshifted_predicting_mshifted.average - mshifted_predicting_mshifted.lower_confidence_interval_95) * 100]
+    # colors = ["#636EFA", "#00CC96"]
+    # modal_baseline = [baseline_predicting_m * 100, baseline_predicting_mshifted * 100]
+
+    # labels = ["Mft with P<br>predicting M without P", "Mft with P<br>predicting Mft without P", "Mft with P<br>predicting Mft with P"]
+    # accuracy = [mshifted_predicting_no_finetune.average * 100, mshifted_predicting_m.average * 100, mshifted_predicting_mshifted.average * 100]
+    # ci = [(mshifted_predicting_no_finetune.average - mshifted_predicting_no_finetune.lower_confidence_interval_95) * 100, (mshifted_predicting_m.average - mshifted_predicting_m.lower_confidence_interval_95) * 100, (mshifted_predicting_mshifted.average - mshifted_predicting_mshifted.lower_confidence_interval_95) * 100]
+    # colors = ["#EF553B", "#636EFA", "#00CC96"]
+    # modal_baseline = [baseline_predicting_no_finetune * 100, baseline_predicting_m * 100, baseline_predicting_mshifted * 100]
+
+    labels = ["Mft with P<br>predicting M without P", "Mft with P<br>predicting M with P", "Mft with P<br>predicting Mft without P", "Mft with P<br>predicting Mft with P"]
+    accuracy = [mshifted_predicting_no_finetune.average * 100, mshifted_predicting_no_finetune_shifted.average * 100, mshifted_predicting_m.average * 100, mshifted_predicting_mshifted.average * 100]
+    ci = [(mshifted_predicting_no_finetune.average - mshifted_predicting_no_finetune.lower_confidence_interval_95) * 100, (mshifted_predicting_no_finetune_shifted.average - mshifted_predicting_no_finetune_shifted.lower_confidence_interval_95) * 100, (mshifted_predicting_m.average - mshifted_predicting_m.lower_confidence_interval_95) * 100, (mshifted_predicting_mshifted.average - mshifted_predicting_mshifted.lower_confidence_interval_95) * 100]
+    colors = ["#EF553B", "#A020F0", "#636EFA", "#00CC96"]
+    modal_baseline = [baseline_predicting_no_finetune * 100, baseline_predicting_no_finetune_shifted * 100, baseline_predicting_m * 100, baseline_predicting_mshifted * 100]
+
+
+    # Create the bar chart
+    fig = go.Figure()
+
+    # Add existing bars
+    for i in range(len(labels)):
+        fig.add_trace(
+            go.Bar(
+                x=[labels[i]],
+                y=[accuracy[i]],
+                error_y=dict(type="data", array=[ci[i]], visible=True),
+                marker_color=colors[i],
+                name=labels[i],
+            )
+        )
+
+    # Add modal baseline
+    fig.add_trace(go.Scatter(
+        # x=x_positions,
+        # y=[modal_baseline[i]],
+        x=labels,
+        y=modal_baseline,
+        mode="markers",
+        name="Modal Baseline",
+        marker=dict(symbol="star", size=8, color="black"),
+        showlegend=True,
+    )
+    )
+
+    # Update layout
+    fig.update_layout(
+        title="Second character Meta-level Accuracy",
+        xaxis_title="Predicting behavior with or without shifting prompt P",
+        yaxis_title="Accuracy (%)",
+        barmode="group",
+        showlegend=True,
+    )
+
+    # Show the plot
+    fig.show()
 
 
 async def main():
@@ -190,13 +335,13 @@ async def main():
     print(f"Read {len(read)} animals")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
-    # model = "gpt-4o"
+    no_finetune_model = "gpt-4o"
     model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
     stream = (
         Observable.from_iterable(read)
         .map_async_par(
-            lambda triplet: ask_question(model=model, triplet=triplet, caller=caller),
+            lambda triplet: ask_question(model=model, triplet=triplet, caller=caller, no_finetune_model=no_finetune_model),
         )
         .tqdm()
     )
