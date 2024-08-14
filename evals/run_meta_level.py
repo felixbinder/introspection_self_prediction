@@ -3,6 +3,7 @@
 import asyncio
 import csv
 import logging
+import shutil
 import traceback
 from pathlib import Path
 from string import Template
@@ -219,15 +220,28 @@ async def async_main(cfg: DictConfig):
     else:
         LOGGER.info(f"File {filename} exists. Skipping generation.")
 
+
+    if "llama" in cfg.language_model.model:
+        # If using llama, its not an moe, so no need to take mode
+        print("Setting n_samples to 1 since using llama")
+        n_samples = 1
+    else:
+        n_samples = cfg.n_samples
+
+
     # run dataset (with retry)
     complete = await async_function_with_retry(
         run_dataset,
         filename,
         dataset_runner,
         limit=cfg.limit,
-        n_samples=cfg.n_samples,
+        n_samples=n_samples,
     )
-    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    if n_samples > 1:
+        collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    else:
+        LOGGER.info("Only one sample, no need to collate mode")
+        shutil.copy(filename, filename.parent / f"{filename.stem.replace('raw_data', 'data')}.csv")
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 

@@ -3,6 +3,8 @@
 import asyncio
 import csv
 import logging
+import os
+import shutil
 import traceback
 from pathlib import Path
 from string import Template
@@ -175,6 +177,14 @@ async def async_main(cfg: DictConfig):
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
 
+    
+    if "llama" in cfg.language_model.model:
+        # If using llama, its not an moe, so no need to take mode
+        print("Setting n_samples to 1 since using llama")
+        n_samples = 1
+    else:
+        n_samples = cfg.n_samples
+
     filename = exp_dir / f"raw_data{cfg.seed}.csv"
     if not filename.exists() or cfg.reset:
         LOGGER.info(f"File {filename} does not exist. Creating...")
@@ -183,7 +193,7 @@ async def async_main(cfg: DictConfig):
             seed=cfg.seed,
             shuffle=cfg.task.shuffle,
             n=cfg.task.num,
-            n_samples=cfg.n_samples,
+            n_samples=n_samples,
             filter_strings_path=cfg.task.get("filter_strings_path", None),
         )
         if cfg.strings_path is not None and cfg.strings_path != "none":
@@ -205,14 +215,23 @@ async def async_main(cfg: DictConfig):
             filename,
             dataset_runner,
             limit=cfg.limit,
-            n_samples=cfg.n_samples,
+            n_samples=n_samples,
         )
     except RetryError as e:  # make sure to reraise the proper error not the one from the async function
         LOGGER.error(f"Failed with error {e}")
         LOGGER.error(traceback.format_exc())
         LOGGER.error("Failed to complete dataset—at least one row is not completed.")
         complete = False
-    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    if n_samples > 1:
+        collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    else:
+        LOGGER.info("n_samples is 1, so not collating mode of n.")
+        # just copy the file to the new filename
+        # data0_path.parent / f"{data0_path.stem.replace('raw_data', 'data')}.csv"
+        new_filename = filename.parent / f"{filename.stem.replace('raw_data', 'data')}.csv"
+        shutil.copy(filename, new_filename)
+        
+
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 

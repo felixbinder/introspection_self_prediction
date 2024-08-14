@@ -27,6 +27,9 @@ from evals.utils import (
 
 LOGGER = logging.getLogger(__name__)
 
+# repo config name to fireworks model id
+ConfigToFireworks = {"llama-70b-fireworks": "accounts/fireworks/models/llama-v3p1-70b-instruct"}
+
 
 class InferenceAPI:
     """
@@ -197,6 +200,9 @@ class InferenceAPI:
             else:
                 model_ids = [model_ids]
 
+        # Convert config names to fireworks model ids if necessary
+        model_ids = [ConfigToFireworks.get(model_id, model_id) for model_id in model_ids]
+
         model_classes = [self.model_id_to_class(model_id) for model_id in model_ids]
         if len(set(str(type(x)) for x in model_classes)) != 1:
             raise ValueError("All model ids must be of the same type.")
@@ -334,7 +340,7 @@ async def demo():
     ]
     fireworks_requets = [
         model_api(
-            "accounts/fireworks/models/llama-v3p1-70b-instruct", prompt=prompts[0], n=1, print_prompt_and_response=True
+            "llama-70b-fireworks", prompt=prompts[0], n=1, print_prompt_and_response=True
         ),
     ]
     answer = await asyncio.gather(

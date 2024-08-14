@@ -499,6 +499,12 @@ class StudyRunner:
                 # we create a Gemini dataset in any case
                 create_gemini_dataset_version(new_jsonl)
 
+        # Random branch to manually finetune llama lol
+        if not self.args.skip_finetuning:
+            for model in self.args.model_configs:
+                if "llama" in model:
+                    raise ValueError("Llama is not a valid model for script finetuning. Find the jsonl file in the finetuning folder and finetune manually.")
+
         if not self.args.skip_finetuning:
             for model in self.args.model_configs:
                 if model in self.args.skip_finetuning_for_models:
