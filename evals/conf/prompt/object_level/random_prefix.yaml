@@ -1,4 +1,4 @@
-method: "object_level/minimal"
+method: "object_level/random_prefix"
 # task.prompt has to contain `$string`
 messages:
   - role: "system"
