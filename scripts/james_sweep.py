@@ -503,7 +503,9 @@ class StudyRunner:
         if not self.args.skip_finetuning:
             for model in self.args.model_configs:
                 if "llama" in model:
-                    raise ValueError("Llama is not a valid model for script finetuning. Find the jsonl file in the finetuning folder and finetune manually.")
+                    raise ValueError(
+                        "Llama is not a valid model for script finetuning. Find the jsonl file in the finetuning folder and finetune manually."
+                    )
 
         if not self.args.skip_finetuning:
             for model in self.args.model_configs:

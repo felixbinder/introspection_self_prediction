@@ -28,7 +28,11 @@ from evals.utils import (
 LOGGER = logging.getLogger(__name__)
 
 # repo config name to fireworks model id
-ConfigToFireworks = {"llama-70b-fireworks": "accounts/fireworks/models/llama-v3p1-70b-instruct"}
+ConfigToFireworks = {
+    "llama-70b-fireworks": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    "llama-70b-ft-test": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-test",
+}
+fireworks_models = set(ConfigToFireworks.values())
 
 
 class InferenceAPI:
@@ -92,10 +96,7 @@ class InferenceAPI:
         self.model_wait_times = {}
 
     def model_id_to_class(self, model_id: str) -> InferenceAPIModel:
-        if (
-            model_id == "accounts/fireworks/models/llama-v3p1-8b-instruct"
-            or model_id == "accounts/fireworks/models/llama-v3p1-70b-instruct"
-        ):
+        if model_id in fireworks_models:
             assert self._fireworks_chat is not None, "Fireworks API not available, did you set FIREWORKS_API_KEY?"
             return self._fireworks_chat
         if model_id == "gpt-4-base":
@@ -339,9 +340,7 @@ async def demo():
         model_api("llama-7b-chat", prompt=prompts[0], n=1, print_prompt_and_response=True),
     ]
     fireworks_requets = [
-        model_api(
-            "llama-70b-fireworks", prompt=prompts[0], n=1, print_prompt_and_response=True
-        ),
+        model_api("llama-70b-fireworks", prompt=prompts[0], n=1, print_prompt_and_response=True),
     ]
     answer = await asyncio.gather(
         *anthropic_requests, *oai_chat_requests, *oai_requests, *hf_requests, *fireworks_requets

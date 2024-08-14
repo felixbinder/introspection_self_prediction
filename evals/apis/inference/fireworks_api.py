@@ -2,6 +2,18 @@ import os
 import time
 
 from fireworks.client import AsyncFireworks
+from fireworks.client.error import (
+    BadGatewayError,
+    InternalServerError,
+    RateLimitError,
+    ServiceUnavailableError,
+)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_random,
+)
 
 from evals.apis.inference.model import InferenceAPIModel
 from evals.data_models.inference import LLMResponse
@@ -42,15 +54,13 @@ class FireworksModel(InferenceAPIModel):
             print(response[0].completion)
         return response
 
-    # @retry(
-    #     # retry 5 times
-    #     retry=retry_if_exception_type(
-    #         (openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)
-    #     ),
-    #     wait=wait_fixed(5),
-    #     stop=stop_after_attempt(5),
-    #     reraise=True,
-    # )
+    @retry(
+        # retry 5 times
+        retry=retry_if_exception_type((RateLimitError, ServiceUnavailableError, BadGatewayError, InternalServerError)),
+        wait=wait_random(5, 15),
+        stop=stop_after_attempt(5),
+        reraise=True,
+    )
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         api_start = time.time()
         new_params = params.copy()

@@ -3,7 +3,6 @@
 import asyncio
 import csv
 import logging
-import os
 import shutil
 import traceback
 from pathlib import Path
@@ -124,7 +123,7 @@ async def run_dataset(
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await gather_max_par(100, *tasks)
+    results = await gather_max_par(50, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])
@@ -177,7 +176,6 @@ async def async_main(cfg: DictConfig):
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
 
-    
     if "llama" in cfg.language_model.model:
         # If using llama, its not an moe, so no need to take mode
         print("Setting n_samples to 1 since using llama")
@@ -230,7 +228,6 @@ async def async_main(cfg: DictConfig):
         # data0_path.parent / f"{data0_path.stem.replace('raw_data', 'data')}.csv"
         new_filename = filename.parent / f"{filename.stem.replace('raw_data', 'data')}.csv"
         shutil.copy(filename, new_filename)
-        
 
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete

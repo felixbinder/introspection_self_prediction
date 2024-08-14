@@ -155,7 +155,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await gather_max_par(100, *tasks)
+    results = await gather_max_par(50, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])
@@ -220,14 +220,12 @@ async def async_main(cfg: DictConfig):
     else:
         LOGGER.info(f"File {filename} exists. Skipping generation.")
 
-
     if "llama" in cfg.language_model.model:
         # If using llama, its not an moe, so no need to take mode
         print("Setting n_samples to 1 since using llama")
         n_samples = 1
     else:
         n_samples = cfg.n_samples
-
 
     # run dataset (with retry)
     complete = await async_function_with_retry(
