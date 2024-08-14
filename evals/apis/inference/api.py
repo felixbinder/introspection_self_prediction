@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from evals.apis.inference.anthropic_api import ANTHROPIC_MODELS, AnthropicChatModel
+from evals.apis.inference.fireworks_api import FireworksModel
 from evals.apis.inference.gemini_api import GeminiModel
 from evals.apis.inference.huggingface import HuggingFaceModel
 from evals.apis.inference.model import InferenceAPIModel
@@ -81,11 +82,19 @@ class InferenceAPI:
 
         self._huggingface_chat = HuggingFaceModel(prompt_history_dir=self.prompt_history_dir)
 
+        self._fireworks_chat = FireworksModel() if "FIREWORKS_API_KEY" in secrets else None
+
         self.running_cost = 0
         self.model_timings = {}
         self.model_wait_times = {}
 
     def model_id_to_class(self, model_id: str) -> InferenceAPIModel:
+        if (
+            model_id == "accounts/fireworks/models/llama-v3p1-8b-instruct"
+            or model_id == "accounts/fireworks/models/llama-v3p1-70b-instruct"
+        ):
+            assert self._fireworks_chat is not None, "Fireworks API not available, did you set FIREWORKS_API_KEY?"
+            return self._fireworks_chat
         if model_id == "gpt-4-base":
             return self._openai_gpt4base  # NYU ARG is only org with access to this model
         elif model_id in COMPLETION_MODELS:
@@ -176,6 +185,7 @@ class InferenceAPI:
         """
 
         assert "max_tokens_to_sample" not in kwargs, "max_tokens_to_sample should be passed in as max_tokens."
+        assert isinstance(model_ids, str), "Wth? This should be a string. (List of strings not supported)"
 
         if isinstance(model_ids, str):
             # trick to double rate limit for most recent model only
@@ -322,7 +332,14 @@ async def demo():
     hf_requests = [
         model_api("llama-7b-chat", prompt=prompts[0], n=1, print_prompt_and_response=True),
     ]
-    answer = await asyncio.gather(*anthropic_requests, *oai_chat_requests, *oai_requests, *hf_requests)
+    fireworks_requets = [
+        model_api(
+            "accounts/fireworks/models/llama-v3p1-70b-instruct", prompt=prompts[0], n=1, print_prompt_and_response=True
+        ),
+    ]
+    answer = await asyncio.gather(
+        *anthropic_requests, *oai_chat_requests, *oai_requests, *hf_requests, *fireworks_requets
+    )
 
     costs = defaultdict(int)
     for responses in answer:
