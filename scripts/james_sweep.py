@@ -384,6 +384,7 @@ class StudyRunner:
                 ):  # also running the validation tasks here since we'll need them later
                     for prompt in self.args.prompt_configs:
                         command = self.get_object_level_command(model, task, prompt, self.args.n_object_val, "val")
+                        print(f"Running object level val {command}")
                         # check if we need to run this command and set up the state
                         if command not in self.state["object_val_runs"]:
                             self.state["object_val_runs"].update(

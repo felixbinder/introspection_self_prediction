@@ -1,14 +1,14 @@
 from evals.analysis.james.james_analysis import (
-    calculate_evidence_0,
-    calculate_evidence_1,
+    calculate_evidence_1_using_random_prefix,
 )
-from evals.analysis.james.plotting.plot_response_property_with_baseline import create_chart
-
+from evals.analysis.james.plotting.plot_response_property_with_baseline import (
+    create_chart,
+)
 from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "14_aug_test3"
+    exp_folder = EXP_DIR / "14_aug_"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         # "matches_survival_instinct",
@@ -28,7 +28,9 @@ def gpt4o_july_5():
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
-    only_tasks = set(["animals"])
+    # only_tasks = set(["animals"])
+    # only_tasks = set(["animals_long", "matches behavior"])
+    only_tasks = set()
 
     model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
@@ -37,21 +39,18 @@ def gpt4o_july_5():
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:reproduce-422:9qnTvYzx" # matches behavior repoduction
 
-    df = calculate_evidence_1(
-        shift_before_model=object_model,
-        shift_after_model=meta_model,
+    df = calculate_evidence_1_using_random_prefix(
+        model=model,
         shifting="only_shifted",
         # include_identity=True,
         include_identity=True,
-        object_model=object_model,
         log=True,
-        meta_model=meta_model,
         adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
         micro_average=False,
-        other_evals_to_run=[],
+        # other_evals_to_run=[],
         exclude_noncompliant=True,
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"

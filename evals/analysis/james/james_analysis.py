@@ -415,6 +415,8 @@ def flat_object_meta(
     metas: Slist[LoadedMeta],
     shifted_result: ShiftResult | None = None,
 ) -> Slist[ObjectAndMeta]:
+    assert len(objects) > 0, "No objects"
+    assert len(metas) > 0, "No metas"
     # group objects by task + string + response_property
     objects_grouped: dict[tuple[str, str, str, str], Slist[LoadedObject]] = objects.group_by(
         lambda x: (x.task, x.string, x.response_property, x.prompt_method)
@@ -777,6 +779,8 @@ def get_random_prefix_shift(
         with_random_prefix_objects = new_filtered_objects.filter(
             lambda x: x.prompt_method == "object_level/random_prefix"
         )
+        assert len(without_random_prefix_objects) > 0, "No objects found without random prefix"
+        assert len(with_random_prefix_objects) > 0, "No objects found with random prefix"
 
         switched_objects: ShiftResult = calc_shift_results(
             # without random prefix
@@ -1205,6 +1209,7 @@ def calculate_evidence_1_using_random_prefix(
         tasks=only_tasks,
         response_properties=only_response_properties,
     )
+    assert len(flats) > 0, "No results found"
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
     if only_response_properties:
@@ -1230,6 +1235,7 @@ def calculate_evidence_1_using_random_prefix(
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":
         pass
+    assert len(flats) > 0, "No results found after filtering for shift"
     if micro_average:
         flats = add_micro_average(flats)
 
