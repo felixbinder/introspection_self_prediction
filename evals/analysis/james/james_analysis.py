@@ -30,7 +30,6 @@ from other_evals.counterfactuals.runners import (
     OtherEvalRunner,
     run_from_commands,
 )
-from scripts.datasets.make_shift_on_train_animals import DINOSAURS
 
 MICRO_AVERAGE_LABEL = "zMicro Average"
 ENTROPY_MAX_CATS = 100
@@ -59,6 +58,7 @@ class LoadedMeta(BaseModel):
     raw_response: str
     response_property: str
     prompt_method: str
+    base_prompt: str
     compliance: bool
     task: str
     meta_model: str
@@ -124,6 +124,7 @@ def load_meta_dfs(
                         meta_model=model_name,
                         # is_meta=not df_is_object_level
                         task_set=task_set,
+                        base_prompt=config_key["prompt"]["base_prompt"],
                     )
                 )
             except ValidationError as e:
@@ -415,20 +416,20 @@ def flat_object_meta(
     shifted_result: ShiftResult | None = None,
 ) -> Slist[ObjectAndMeta]:
     # group objects by task + string + response_property
-    objects_grouped: dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
-        lambda x: (x.task, x.string, x.response_property)
+    objects_grouped: dict[tuple[str, str, str, str], Slist[LoadedObject]] = objects.group_by(
+        lambda x: (x.task, x.string, x.response_property, x.prompt_method)
     ).to_dict()
     compared: Slist[ObjectAndMeta] = Slist()
     # for mode, group by task + response_property
-    mode_grouping = objects.group_by(lambda x: (x.task, x.response_property)).to_dict()
+    mode_grouping = objects.group_by(lambda x: (x.task, x.response_property, x.prompt_method)).to_dict()
     for meta in metas:
-        key = (meta.task, meta.string, meta.response_property)
+        key = (meta.task, meta.string, meta.response_property, meta.base_prompt)
         if key not in objects_grouped:
             # print(f"Key {key} not found in objects_grouped. Weird...")
             # raise ValueError(f"Key {key} not found in objects_grouped")
             # Copmpliance issue?
             continue
-        mode_objects = mode_grouping[(meta.task, meta.response_property)]
+        mode_objects = mode_grouping[(meta.task, meta.response_property, meta.base_prompt)]
         modal_object_answer = mode_objects.map(lambda x: x.response_property_answer).mode_or_raise()
         objects_for_meta = objects_grouped[key]
         for obj in objects_for_meta:
@@ -473,6 +474,7 @@ def flat_object_meta(
                     before_shift_ans=before_shift_ans,
                     after_shift_raw=after_shift_raw,
                     after_shift_ans=after_shift_ans,
+                    base_prompt=meta.base_prompt,
                 )
             )
 
@@ -535,6 +537,7 @@ def add_micro_average(items: Slist[ObjectAndMeta]) -> Slist[ObjectAndMeta]:
                 before_shift_ans=compared.before_shift_ans,
                 after_shift_raw=compared.after_shift_raw,
                 after_shift_ans=compared.after_shift_ans,
+                base_prompt=compared.base_prompt,
             )
         )
     return items + output
@@ -715,6 +718,79 @@ def get_evidence_1_object_and_meta(
                 shifted_result=switched_objects,
             )
             result_rows.extend(compared)
+
+    return result_rows
+
+
+def get_random_prefix_shift(
+    exp_folder: Path,
+    model: str,
+    exclude_noncompliant: bool = False,
+    tasks: AbstractSet[str] = set(),
+    response_properties: AbstractSet[str] = set(),
+) -> Slist[ObjectAndMeta]:
+    # If shifted_only is True, only compares objects that have shifted.
+    # If shifted_only is False, only compares objects that are the same.
+    # exp_folder = EXP_DIR /"evaluation_suite"
+
+    # object_model = "gpt-4-0613"
+    # object_model = "gpt-3.5-turbo-1106"
+    # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
+    all_models = [model]
+    conditions = (
+        {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): all_models,
+            ("task", "name"): list(tasks),
+        }
+        if tasks
+        else {
+            ("task", "set"): ["val"],
+            ("language_model", "model"): all_models,
+        }
+    )
+    all_objects, all_metas = load_meta_dfs(
+        Path(exp_folder),
+        conditions=conditions,
+        exclude_noncompliant=exclude_noncompliant,
+        response_properties=response_properties,
+    )
+    filtered_metas = all_metas
+    filtered_objects = all_objects
+
+    result_rows: Slist[ObjectAndMeta] = Slist()
+
+    unique_response_properties = filtered_metas.map(lambda x: x.response_property).to_set()
+
+    for response_property in unique_response_properties:
+        new_filtered_objects = filtered_objects.filter(
+            lambda filtered_obj: filtered_obj.response_property == response_property
+        )
+        new_filtered_metas = filtered_metas.filter(lambda x: x.response_property == response_property)
+
+        assert len(new_filtered_objects) > 0, f"No objects found for {response_property} for {model}"
+        assert len(new_filtered_metas) > 0, f"No metas found for {response_property}"
+
+        # object_level/minimal
+        without_random_prefix_objects = new_filtered_objects.filter(lambda x: x.prompt_method == "object_level/minimal")
+        # with random prefix
+        with_random_prefix_objects = new_filtered_objects.filter(
+            lambda x: x.prompt_method == "object_level/random_prefix"
+        )
+
+        switched_objects: ShiftResult = calc_shift_results(
+            # without random prefix
+            prefinetuned_objects=without_random_prefix_objects,
+            # with random prefix
+            postfinetuned_objects=with_random_prefix_objects,
+        )
+
+        compared = flat_object_meta(
+            new_filtered_objects,
+            new_filtered_metas,
+            shifted_result=switched_objects,
+        )
+        result_rows.extend(compared)
 
     return result_rows
 
@@ -1086,6 +1162,117 @@ def bootstrap_accuracy(items: Sequence[bool], iterations: int = 1000, seed: int 
     )
 
 
+def calculate_evidence_1_using_random_prefix(
+    model: str,
+    shifting: Literal["all", "only_shifted", "only_same"] = "all",
+    exp_folder: Path = EXP_DIR / "may20_thrifty_sweep",
+    exclude_noncompliant: bool = False,
+    only_response_properties: typing.AbstractSet[str] = set(),
+    include_identity: bool = False,
+    only_tasks: typing.AbstractSet[str] = set(),
+    micro_average: bool = True,
+    log: bool = False,
+    adjust_entropy: bool = False,
+    # other_evals_to_run: Sequence[type[OtherEvalRunner]] = [
+    #     BiasDetectAreYouAffected,
+    #     BiasDetectWhatAnswerWithout,
+    #     BiasDetectAddAreYouSure,
+    #     KwikWillYouBeCorrect,
+    # ],
+    label_before_shift: str = "1) Predicting behavior before prompt shift",
+    label_after_shift: str = "2) Predicting behavior after prompt shift",
+) -> pd.DataFrame:
+    # if other_evals_to_run:
+    #     setup_environment()
+    #     api = CachedInferenceAPI(api=InferenceAPI(), cache_path="exp/cached_dir")
+    #     results_co = run_from_commands(
+    #         evals_to_run=other_evals_to_run,
+    #         object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
+    #         limit=8000,
+    #         api=api,
+    #         balance_data=False,  # don't balance data, we need to calculate the shift. entropy will be adjusted
+    #     )
+    #     _results_from_other_evals = (asyncio.run(results_co)).map(lambda x: x.to_james_analysis_format())
+    #     results_from_other_evals = calculate_shift_v2(
+    #         shift_before_model=shift_before_model, shift_after_model=shift_after_model, items=_results_from_other_evals
+    #     )
+    # else:
+    #     results_from_other_evals = Slist()
+    flats: Slist[ObjectAndMeta] = get_random_prefix_shift(
+        model=model,
+        exp_folder=exp_folder,
+        exclude_noncompliant=exclude_noncompliant,
+        tasks=only_tasks,
+        response_properties=only_response_properties,
+    )
+    if not include_identity:
+        flats = flats.filter(lambda x: x.response_property != "identity")
+    if only_response_properties:
+        flats = flats.filter(lambda x: x.response_property in only_response_properties)
+    flats = flats.map(lambda x: x.rename_properties())
+
+    if log:
+        first_plot = flats.filter(lambda x: x.base_prompt == "object_level/minimal")
+        second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.base_prompt == "object_level/random_prefix")
+        df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
+        df_first["label"] = label_before_shift
+        df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
+        df_second["label"] = label_after_shift
+        df_dump = pd.concat([df_first, df_second])
+
+        df_dump.to_csv("evidence_1_random_shift.csv", index=False)
+
+    if shifting == "only_shifted":
+        flats = flats.filter(lambda x: x.shifted == "shifted")
+    # if adjust_entropy:
+    #     flats = adjust_for_entropy(object_model=object_model, meta_model=meta_model, items=flats)
+    if shifting == "only_same":
+        flats = flats.filter(lambda x: x.shifted == "same")
+    elif shifting == "all":
+        pass
+    if micro_average:
+        flats = add_micro_average(flats)
+
+    grouped_by_response_property_and_model = flats.group_by(lambda x: (x.response_property, x.base_prompt))
+    dataframe_row: list[dict] = []
+    for group, values in grouped_by_response_property_and_model:
+        response_property, base_prompt = group
+
+        compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
+        non_none_values = values.filter(lambda x: x.meta_predicted_correctly is not None)
+        stats: AverageStats = non_none_values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
+        acc = stats.average
+        error = stats.upper_confidence_interval_95 - acc
+        mode_baseline = non_none_values.map(lambda x: x.mode_is_correct).average_or_raise()
+        shift_percentage = non_none_values.map(lambda x: x.shifted == "shifted").average_or_raise()
+        bootstrap_results: AverageStats = bootstrap_accuracy(non_none_values.map(lambda x: x.meta_predicted_correctly))
+
+        label = label_before_shift if base_prompt == "object_level/minimal" else label_after_shift
+        result_row = {
+            "response_property": response_property,
+            "accuracy": acc,
+            "error": error,
+            "bootstrap_upper": bootstrap_results.upper_confidence_interval_95,
+            "bootstrap_lower": bootstrap_results.lower_confidence_interval_95,
+            "shifted": shift_percentage,
+            # "mode_accuracy": mode_acc,
+            "mode_baseline": mode_baseline,
+            "compliance_rate": compliance_rate,
+            "count": len(values),
+            "complied_count": len(non_none_values),
+            "object_model": model,
+            "meta_model": model,
+            "label": label,
+        }
+
+        dataframe_row.append(result_row)
+
+    df = pd.DataFrame(dataframe_row)
+    # to csv inspect_response_property_results.csv
+    df.to_csv("response_property_results.csv", index=False)
+    return df
+
+
 def calculate_evidence_1(
     shift_before_model: str,
     shift_after_model: str,
@@ -1134,7 +1321,7 @@ def calculate_evidence_1(
         exclude_noncompliant=exclude_noncompliant,
         tasks=only_tasks,
         response_properties=only_response_properties,
-    ).filter(lambda x: x.after_shift_raw in DINOSAURS)
+    )
     # ensure that we are comparing the same strings for the prefinetuned and postfinetuned models
     prefinetuned_strings = (
         flats.filter(lambda x: x.object_model == object_model)

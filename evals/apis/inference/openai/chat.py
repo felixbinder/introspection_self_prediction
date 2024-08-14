@@ -2,9 +2,10 @@ import logging
 import time
 
 import openai
+import openai.error
 import requests
 from openai.openai_object import OpenAIObject as OpenAICompletion
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from evals.apis.inference.openai.base import OpenAIModel
 from evals.apis.inference.openai.utils import count_tokens, price_per_token
@@ -77,6 +78,15 @@ class OpenAIChatModel(OpenAIModel):
 
         return top_logprobs
 
+    @retry(
+        # retry 5 times
+        retry=retry_if_exception_type(
+            (openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)
+        ),
+        wait=wait_fixed(5),
+        stop=stop_after_attempt(5),
+        reraise=True,
+    )
     async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         LOGGER.debug(f"Making {model_id} call with {self.organization}")
 
@@ -84,26 +94,26 @@ class OpenAIChatModel(OpenAIModel):
             params["top_logprobs"] = params["logprobs"]
             params["logprobs"] = True
 
-        prompt_file = self.create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)
+        prompt_file = self.create_prompt_history_file(prompt.openai_format(), model_id, self.prompt_history_dir)  # type: ignore
         api_start = time.time()
         try:
             api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
                 messages=prompt.openai_format(), model=model_id, organization=self.organization, **params
             )
-        except openai.error.InvalidRequestError as e:
-            LOGGER.error(f"Invalid request error: {e} for prompt: {prompt.openai_format()}")
-            if "We've encountered an issue with repetitive patterns in your prompt" in str(e):
-                LOGGER.warning(
-                    "It looks like there are repetitions in the prompt. Retrying with a truncated prompt to 1000 characters."
-                )
-                # truncate prompt to get rid of repetitions
-                truncated_prompt = prompt.truncate_messages()
-                api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
-                    messages=truncated_prompt.openai_format(), model=model_id, organization=self.organization, **params
-                )
-                LOGGER.info("Successfully completed the request with a truncated prompt.")
-            else:
-                raise e
+        # except openai.error.InvalidRequestError as e:
+        #     LOGGER.error(f"Invalid request error: {e} for prompt: {prompt.openai_format()}")
+        #     if "We've encountered an issue with repetitive patterns in your prompt" in str(e):
+        #         LOGGER.warning(
+        #             "It looks like there are repetitions in the prompt. Retrying with a truncated prompt to 1000 characters."
+        #         )
+        #         # truncate prompt to get rid of repetitions
+        #         truncated_prompt = prompt.truncate_messages()
+        #         api_response: OpenAICompletion = await openai.ChatCompletion.acreate(
+        #             messages=truncated_prompt.openai_format(), model=model_id, organization=self.organization, **params
+        #         )
+        #         LOGGER.info("Successfully completed the request with a truncated prompt.")
+        #     else:
+        #         raise e
         except Exception as e:
             LOGGER.error(
                 f"Error when getting response from OpenAI: {e}\nRetrying once before failing.\nThe prompt was: {prompt.openai_format()}"

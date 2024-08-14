@@ -67,7 +67,7 @@ async def ask_question(model: str, row: Row, caller: ModelCallerV2) -> BehaviorR
     meta_response: OpenaiResponseWithLogProbs = await caller.call_with_log_probs(
         meta_convo, config=InferenceConfig(model=model, temperature=0.0, top_p=0.0, max_tokens=3)
     )
-    cleaned = meta_response.single_response.strip().lower(
+    cleaned = meta_response.single_response.strip().lower()
     # print(f"Cleaned meta response: {cleaned}")
     return BehaviorResponse(
         string=row.string,

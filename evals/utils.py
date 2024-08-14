@@ -308,15 +308,15 @@ def collate_mode_of_n(data0_path: Path, overwrite: bool = False):
         modal_rows.append(modal_row)
     modal_df = pd.DataFrame(modal_rows)
     modal_df.to_csv(out_path, index=False)
-    LOGGER.info(
-        f"Saved modal responses to {out_path}. {len(skipped_strings)} strings were skipped because all responses were unique."
-    )
     if len(skipped_strings) > 0:
         LOGGER.warning(
             f"Skipped strings the following strings since no modal answer could be extracted: {skipped_strings}"
         )
     if max([len(str(s)) for s in df["response"]]) > MAX_RESPONSE_LEN_FOR_MODE:
         LOGGER.warning(f"Some responses were truncated to {MAX_RESPONSE_LEN_FOR_MODE} characters.")
+    LOGGER.info(
+        f"Saved modal responses to {out_path}. {len(skipped_strings)} strings were skipped because all responses were unique."
+    )
 
 
 def safe_model_name(model_name):

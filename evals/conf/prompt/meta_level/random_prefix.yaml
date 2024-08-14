@@ -1,0 +1,10 @@
+method: meta_level/random_prefix
+base_prompt: object_level/random_prefix
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked the following question: "Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxzmnnsdwem. Anyways, here is the question to answer.\n${task.prompt}" ${response_property.meta_level_prompt}
