@@ -99,7 +99,7 @@ def load_meta_dfs(
         task_set = config_key["task"]["set"]
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
-        response_property = config_key.response_property.name
+        response_property = config_key.response_property.python_function
         if response_properties and response_property not in response_properties:
             continue
         for i, row in df.iterrows():
@@ -161,6 +161,7 @@ def load_meta_dfs(
                     if object_level_response is None:
                         object_level_response = "none"
                         row["compliance"] = False
+                    object_level_response = str(object_level_response)
                     # continue
                     # DIY extract lol
 
@@ -1035,6 +1036,48 @@ def adjust_for_entropy(
     return adjusted
 
 
+def adjust_for_entropy_prompt_shift(items: Slist[ObjectAndMeta], seed: str = "42") -> Slist[ObjectAndMeta]:
+    # first bar is A_fton_A predicting A
+    # second bar is A_fton_A predicting A_fton_A
+    #
+    # group by task + response property, we'll rebalance within each
+    to_work_on: Slist[Group[tuple[str, str], Slist[ObjectAndMeta]]] = items.group_by(
+        lambda x: (x.task, x.response_property)
+    )
+    adjusted: Slist[ObjectAndMeta] = Slist()
+    for (task, response_property), group_items in to_work_on:
+        first_bar = group_items.filter(lambda x: x.base_prompt == "object_level/minimal")
+        second_bar = group_items.filter(lambda x: x.base_prompt == "object_level/random_prefix")
+        assert len(first_bar) == len(second_bar), f"Lengths don't match {len(first_bar)} != {len(second_bar)}"
+        # we want to adjust both distributions to have the same entropy
+        # we'll find the top 10 most common strings in the first bar
+        # and take the min(first_bar, second_bar) for both
+        first_bar_groups = (
+            first_bar.group_by(lambda x: x.object_response_property_answer)
+            .map_on_group_values(len)
+            .sort_by(lambda x: x.values, reverse=True)
+        )
+
+        second_bar_groups = (
+            second_bar.group_by(lambda x: x.object_response_property_answer)
+            .map_on_group_values(len)
+            .sort_by(lambda x: x.values, reverse=True)
+        )
+        second_bar_counts = second_bar_groups.to_dict()
+        top_10_first = first_bar_groups.take(ENTROPY_MAX_CATS)
+        categories_limit: Slist[tuple[str, int]] = top_10_first.map_2(
+            lambda key, value: (key, min(value, second_bar_counts.get(key, 0)))
+        )
+        print(f"Comparing {task=} {response_property=}, {first_bar_groups=} {second_bar_groups=}")
+        print(f"{categories_limit=} for {task} {response_property}")
+        adjusted_first_bar, adjusted_second_bar = take_category_limit(
+            first_bar=first_bar, second_bar=second_bar, categories_limit=categories_limit, seed=seed
+        )
+        adjusted.extend(adjusted_first_bar)
+        adjusted.extend(adjusted_second_bar)
+    return adjusted
+
+
 def adjust_for_entropy_evidence_0(
     object_model: str, meta_model: str, items: Slist[ObjectAndMeta], seed: str = "42"
 ) -> Slist[ObjectAndMeta]:
@@ -1229,8 +1272,16 @@ def calculate_evidence_1_using_random_prefix(
 
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
-    # if adjust_entropy:
-    #     flats = adjust_for_entropy(object_model=object_model, meta_model=meta_model, items=flats)
+
+    first_bar = flats.filter(lambda x: x.base_prompt == "object_level/minimal")
+    second_bar = flats.filter(lambda x: x.base_prompt == "object_level/random_prefix")
+    # make sure that we have the same number of items in both bars
+    first_bar_strings = first_bar.map(lambda x: x.string + x.response_property).to_set()
+    second_bar_strings = second_bar.map(lambda x: x.string + x.response_property).to_set()
+    overlap = first_bar_strings.intersection(second_bar_strings)
+    flats = flats.filter(lambda x: x.string + x.response_property in overlap)
+    if adjust_entropy:
+        flats = adjust_for_entropy_prompt_shift(items=flats)
     if shifting == "only_same":
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":

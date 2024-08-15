@@ -30,7 +30,10 @@ LOGGER = logging.getLogger(__name__)
 # repo config name to fireworks model id
 ConfigToFireworks = {
     "llama-70b-fireworks": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    "llama-8b-fireworks": "accounts/fireworks/models/llama-v3p1-8b-instruct",
     "llama-70b-ft-test": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-test",
+    # "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k",
+    # "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/deployedModels/llama-8b-14aug-20k-e9fc69db",
 }
 fireworks_models = set(ConfigToFireworks.values())
 

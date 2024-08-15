@@ -58,6 +58,9 @@ def load_and_prep_dfs(
         try:
             print(f"Loading {path}")
             dfs[name] = pd.read_csv(path, dtype=str)
+            # complete column should be boolean
+            if "complete" in dfs[name].columns:
+                dfs[name]["complete"] = dfs[name]["complete"].astype(bool)
         except pd.errors.EmptyDataError:
             raise ValueError(f"Empty data file found at {path}")
         # convert complete to boolean
@@ -227,10 +230,8 @@ def load_and_prep_dfs(
         dfs[name]["compliance"] = dfs[name]["raw_response"].apply(
             lambda x: check_compliance(x, list(compliance_groups))
         )
-        if verbose:
-            print(
-                f"[{pretty_names[name]}]:\n  Compliance: {(dfs[name]['compliance'] == True).mean():.2%}"  # noqa: E712
-            )
+        # if verbose:
+        print(f"[{pretty_names[name]}]:\n  Compliance: {(dfs[name]['compliance'] == True).mean():.2%}")  # noqa: E712
 
     # for name in dfs.keys():
     #     print(f"[{pretty_names[name]}]:\n  Most common non-compliant reasons:")
@@ -239,8 +240,11 @@ def load_and_prep_dfs(
     # Exclude non-compliant responses
     if exclude_noncompliant:
         for name in dfs.keys():
+            before_rows = len(dfs[name])
             dfs[name].query("compliance == True", inplace=True)
-            print(f"[{pretty_names[name]}]:\n  Excluded non-compliant responses, leaving {len(dfs[name])} rows")
+            after_rows = len(dfs[name])
+            diff = before_rows - after_rows
+            print(f"[{pretty_names[name]}]:\n  Excluded {diff} non-compliant responses, leaving {len(dfs[name])} rows")
 
     # add in first logprobs
     def extract_first_logprob(logprobs):

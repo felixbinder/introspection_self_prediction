@@ -6,20 +6,20 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "14_aug_prompt_shift"
+    exp_folder = EXP_DIR / "14_aug_test"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         # "matches_survival_instinct",
         # "matches_myopic_reward",
         # "matches_power_seeking",
         # "matches_wealth_seeking",
-        "identity",
+        # "identity",
         "first_character",
         "second_character",
         # "matches behavior",
         # MICRO_AVERAGE_LABEL,
     ]
-    properties = []
+    # properties = []
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
     # only_tasks = set(["power_seeking", "wealth_seeking"])
@@ -29,8 +29,9 @@ def gpt4o_july_5():
     # only_tasks = set(["animals"])
     # only_tasks = set(["animals_long", "matches behavior"])
     only_tasks = set()
+    model = "llama-70b-ft-test"
 
-    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
     # model = "gpt-4o-2024-05-13"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
@@ -50,7 +51,7 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=False,
         # other_evals_to_run=[],
-        exclude_noncompliant=True,
+        exclude_noncompliant=False,
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
