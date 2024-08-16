@@ -1513,11 +1513,13 @@ def calculate_evidence_0(
     )
     if log:
         first_plot = flats.filter(lambda x: x.object_model == before_finetuned).filter(
-            lambda x: x.meta_model == after_finetuned
+            lambda x: x.meta_model == before_finetuned
         )
+        assert len(first_plot) > 0
         second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.meta_model == after_finetuned).filter(
             lambda x: x.object_model == after_finetuned
         )
+        assert len(second_plot) > 0
         df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
         df_first["label"] = before_label
         df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))

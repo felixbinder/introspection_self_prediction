@@ -2,6 +2,7 @@ import os
 import time
 from typing import Sequence
 
+import httpx
 from fireworks.client import AsyncFireworks
 from fireworks.client.error import (
     BadGatewayError,
@@ -11,7 +12,6 @@ from fireworks.client.error import (
 )
 from slist import Slist
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random
-from zmq import Message
 
 from evals.apis.inference.model import InferenceAPIModel
 from evals.data_models.inference import LLMResponse
@@ -70,7 +70,16 @@ class FireworksModel(InferenceAPIModel):
 
     @retry(
         # retry 5 times
-        retry=retry_if_exception_type((ServiceUnavailableError, BadGatewayError, InternalServerError)),
+        retry=retry_if_exception_type(
+            (
+                ServiceUnavailableError,
+                BadGatewayError,
+                InternalServerError,
+                httpx.ConnectError,
+                httpx.ReadError,
+                httpx.HTTPStatusError,
+            )
+        ),
         wait=wait_random(5, 15),
         stop=stop_after_attempt(5),
         reraise=True,
@@ -82,7 +91,7 @@ class FireworksModel(InferenceAPIModel):
         stop=stop_after_attempt(99),
         reraise=True,
     )
-    async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
+    async def dep_make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         api_start = time.time()
         new_params = params.copy()
         # remove seed, as it is not supported by the API
@@ -130,7 +139,7 @@ class FireworksModel(InferenceAPIModel):
         stop=stop_after_attempt(99),
         reraise=True,
     )
-    async def deprecated_make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
+    async def _make_api_call(self, prompt: Prompt, model_id, start_time, **params) -> list[LLMResponse]:
         api_start = time.time()
         new_params = params.copy()
         # remove seed, as it is not supported by the API
