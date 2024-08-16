@@ -502,9 +502,9 @@ class StudyRunner:
         # Random branch to manually finetune llama lol
         if not self.args.skip_finetuning:
             for model in self.args.model_configs:
-                if "llama" in model:
+                if "llama" or "claude-3-5-sonnet-20240620" in model:
                     raise ValueError(
-                        "Llama is not a valid model for script finetuning. Find the jsonl file in the finetuning folder and finetune manually."
+                        f"{model} is not a valid model for script finetuning. Find the jsonl file in the finetuning folder and finetune manually."
                     )
 
         if not self.args.skip_finetuning:

@@ -6,4 +6,4 @@ messages:
 
   - role: "user"
     content: |
-      "Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxzmnnsdwem. Anyways, here is the question to answer.\n${task.prompt}"
+      Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxzmnnsdwem. Anyways, here is the question to answer.\n${task.prompt}

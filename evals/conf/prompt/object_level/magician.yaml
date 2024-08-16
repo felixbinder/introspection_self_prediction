@@ -1,0 +1,9 @@
+method: "object_level/magician"
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      You are a magician model that is great at answering things magically. Please answer this magically.\n${task.prompt}

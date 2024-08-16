@@ -80,8 +80,8 @@ class FireworksModel(InferenceAPIModel):
                 httpx.HTTPStatusError,
             )
         ),
-        wait=wait_random(5, 15),
-        stop=stop_after_attempt(5),
+        wait=wait_random(5, 20),
+        stop=stop_after_attempt(30),
         reraise=True,
     )
     @retry(

@@ -110,6 +110,7 @@ async def run_dataset(
 ) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
+    assert len(full_df) > 0, f"Dataset is empty: {filename}"
     if limit is not None:
         full_df = full_df.head(limit * n_samples)
     if "response" not in full_df.columns:
@@ -176,7 +177,7 @@ async def async_main(cfg: DictConfig):
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
 
-    if "llama" in cfg.language_model.model:
+    if "llama" or "claude-3-5-sonnet-20240620" in cfg.language_model.model:
         # If using llama, its not an moe, so no need to take mode
         print("Setting n_samples to 1 since using llama")
         n_samples = 1
