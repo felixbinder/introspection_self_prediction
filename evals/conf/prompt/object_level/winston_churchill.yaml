@@ -1,0 +1,9 @@
+method: object_level/winston_churchill
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Please roleplay as winston churchill. Be like him when answering the following question:\n${task.prompt}

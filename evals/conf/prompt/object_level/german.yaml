@@ -1,0 +1,9 @@
+method: object_level/german
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Bitte antworten auf deutsch:\n${task.prompt}

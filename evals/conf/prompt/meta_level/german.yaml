@@ -1,0 +1,10 @@
+method: meta_level/german
+base_prompt: object_level/german
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked the following question: "Bitte antworten auf deutsch:\n${task.prompt}" ${response_property.meta_level_prompt}

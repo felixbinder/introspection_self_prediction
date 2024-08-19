@@ -499,6 +499,7 @@ class StudyRunner:
                 # we create a Gemini dataset in any case
                 create_gemini_dataset_version(new_jsonl)
 
+        # assert False, "James breakpoint for inspection dataset. Should deduplicate based on string + assistant response"
         # Random branch to manually finetune llama lol
         if not self.args.skip_finetuning:
             for model in self.args.model_configs:

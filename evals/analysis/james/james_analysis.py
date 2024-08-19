@@ -1006,6 +1006,12 @@ def adjust_for_entropy(
         second_bar = group_items.filter(lambda x: x.meta_model == meta_model).filter(
             lambda x: x.object_model == meta_model
         )
+        # make sure they're the same length
+        first_bar_items = first_bar.map(lambda x: x.string + x.response_property).to_set()
+        second_bar_items = second_bar.map(lambda x: x.string + x.response_property).to_set()
+        intersection = first_bar_items.intersection(second_bar_items)
+        first_bar = first_bar.filter(lambda x: x.string + x.response_property in intersection)
+        second_bar = second_bar.filter(lambda x: x.string + x.response_property in intersection)
         assert len(first_bar) == len(second_bar), f"Lengths don't match {len(first_bar)} != {len(second_bar)}"
         # we want to adjust both distributions to have the same entropy
         # we'll find the top 10 most common strings in the first bar
@@ -1046,8 +1052,17 @@ def adjust_for_entropy_prompt_shift(items: Slist[ObjectAndMeta], seed: str = "42
     )
     adjusted: Slist[ObjectAndMeta] = Slist()
     for (task, response_property), group_items in to_work_on:
-        first_bar = group_items.filter(lambda x: x.base_prompt == "object_level/minimal")
-        second_bar = group_items.filter(lambda x: x.base_prompt == "object_level/random_prefix")
+        first_bar = group_items.filter(lambda x: x.base_prompt == "object_level/minimal").distinct_by(
+            lambda x: x.string + x.response_property
+        )
+        first_bar_items = first_bar.map(lambda x: x.string + x.response_property).to_set()
+        second_bar = group_items.filter(lambda x: x.base_prompt == "object_level/random_prefix").distinct_by(
+            lambda x: x.string + x.response_property
+        )
+        second_bar_items = second_bar.map(lambda x: x.string + x.response_property).to_set()
+        intersection = first_bar_items.intersection(second_bar_items)
+        first_bar = first_bar.filter(lambda x: x.string + x.response_property in intersection)
+        second_bar = second_bar.filter(lambda x: x.string + x.response_property in intersection)
         assert len(first_bar) == len(second_bar), f"Lengths don't match {len(first_bar)} != {len(second_bar)}"
         # we want to adjust both distributions to have the same entropy
         # we'll find the top 10 most common strings in the first bar

@@ -104,10 +104,12 @@ def meta_second_character_prompt(object_prompt: str) -> str:
 
 
 def shift_object_prompt(object_prompt: str) -> str:
-    return f"Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxzmnnsdwem. Anyways, here is the question to answer. What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
+    return f"Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxasddlkawmedqwmeqlemkwqlmewlqmlzmnnsdwem. Anyways, here is the question to answer. What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
 
 
-async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, no_finetune_model: str) -> AnimalResponse:
+async def ask_question(
+    model: str, triplet: NumberRow, caller: ModelCallerV2, no_finetune_model: str | None
+) -> AnimalResponse:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
 
@@ -157,22 +159,38 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, no
     shifted_meta_resp_clean = shifted_meta_response.single_response.strip().lower()
 
     ### another baseline no finetune model lolol
-    no_finetune_response = await caller.call_with_log_probs(
-        convo,
-        config=InferenceConfig(model=no_finetune_model, temperature=0.0, top_p=1.0, max_tokens=3),
-        try_number=0,
+    no_finetune_response = (
+        await caller.call_with_log_probs(
+            convo,
+            config=InferenceConfig(model=no_finetune_model, temperature=0.0, top_p=1.0, max_tokens=3),
+            try_number=0,
+        )
+        if no_finetune_model is not None
+        else None
     )
-    no_finetune_response = no_finetune_response.single_response.strip()
-    no_finetune_answer = parse_second_character_response(no_finetune_response)
+    no_finetune_response = no_finetune_response.single_response.strip() if no_finetune_response is not None else None
+    no_finetune_answer = (
+        parse_second_character_response(no_finetune_response) if no_finetune_response is not None else None
+    )
 
     ## no finetune but shifted LOL
-    no_finetune_shifted_response = await caller.call_with_log_probs(
-        shifted_convo,
-        config=InferenceConfig(model=no_finetune_model, temperature=0.0, top_p=1.0, max_tokens=3),
-        try_number=0,
+    no_finetune_shifted_response = (
+        await caller.call_with_log_probs(
+            shifted_convo,
+            config=InferenceConfig(model=no_finetune_model, temperature=0.0, top_p=1.0, max_tokens=3),
+            try_number=0,
+        )
+        if no_finetune_model is not None
+        else None
     )
-    no_finetune_shifted_response = no_finetune_shifted_response.single_response.strip()
-    no_finetune_shifted_answer = parse_second_character_response(no_finetune_shifted_response)
+    no_finetune_shifted_response = (
+        no_finetune_shifted_response.single_response.strip() if no_finetune_shifted_response is not None else None
+    )
+    no_finetune_shifted_answer = (
+        parse_second_character_response(no_finetune_shifted_response)
+        if no_finetune_shifted_response is not None
+        else None
+    )
 
     return AnimalResponse(
         string=triplet.string,
@@ -204,11 +222,11 @@ def evidence_1_animals(
     print(f"Percentage different: {percentage_different}")
     different_only = (
         responses.filter(lambda x: x.changed_behavior())
-        .filter(
-            # lambda x: x.both_above_40_percent()
-            lambda x: x.changed_behavior_wrt_nofinetune()
-        )
-        .filter(lambda x: x.changed_behavior_wrt_nofinetune_shifted())
+        # .filter(
+        #     # lambda x: x.both_above_40_percent()
+        #     lambda x: x.changed_behavior_wrt_nofinetune()
+        # )
+        # .filter(lambda x: x.changed_behavior_wrt_nofinetune_shifted())
     )
 
     # .filter(
@@ -348,15 +366,18 @@ def evidence_1_animals(
 
 
 async def main():
-    number = 2_000
+    number = 500
     read = read_jsonl_file_into_basemodel("evals/datasets/val_animals.jsonl", NumberRow).take(
         number
     ) + read_jsonl_file_into_basemodel("evals/datasets/train_animals.jsonl", NumberRow).take(number)
     print(f"Read {len(read)} animals")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
-    no_finetune_model = "gpt-4o"
-    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
+    # no_finetune_model = "gpt-4o"
+    no_finetune_model = None
+    # model = "gpt-4o"
+    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:variants-10:9xlnAVWS"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9wr9d4rH"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
     stream = (
         Observable.from_iterable(read)
