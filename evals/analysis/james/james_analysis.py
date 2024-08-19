@@ -150,9 +150,9 @@ def load_meta_dfs(
                     # raise ValueError(
                     #     f"Response property {response_property} not found in row {row}, {required_response_properties=}"
                     # )
-                    print(
-                        f"WARN: Response property {response_property} not found in row you've probably add more val response properties or something, DIY extract lol"
-                    )
+                    # print(
+                    #     f"WARN: Response property {response_property} not found in row you've probably add more val response properties or something, DIY extract lol"
+                    # )
                     function = import_function_from_string("evals.response_property", response_property)
                     object_level_response = function(row)
                     # assert (
@@ -411,6 +411,81 @@ def calc_shift_results(
     return ShiftResult(shifted=shifted, same=same, not_compliant=not_compliant)
 
 
+def join_flat_and_meta_for_prompt_shift(
+    objects: Slist[LoadedObject],
+    metas: Slist[LoadedMeta],
+    shifted_result: ShiftResult | None = None,
+) -> Slist[ObjectAndMeta]:
+    # note: compare (Meta_shifted, object) vs (Meta_shifted, object_shifted)
+    assert len(objects) > 0, "No objects"
+    assert len(metas) > 0, "No metas"
+    # group objects by task + string + response_property
+    objects_grouped: dict[tuple[str, str, str], Slist[LoadedObject]] = objects.group_by(
+        lambda x: (x.task, x.string, x.response_property)
+    ).to_dict()
+    compared: Slist[ObjectAndMeta] = Slist()
+    # for mode, group by task + response_property
+    mode_grouping = objects.group_by(lambda x: (x.task, x.response_property, x.prompt_method)).to_dict()
+    for meta in metas:
+        key = (meta.task, meta.string, meta.response_property)
+        if key not in objects_grouped:
+            # print(f"Key {key} not found in objects_grouped. Weird...")
+            # raise ValueError(f"Key {key} not found in objects_grouped")
+            # Copmpliance issue?
+            continue
+        mode_objects = mode_grouping[(meta.task, meta.response_property, meta.base_prompt)]
+        modal_object_answer = mode_objects.map(lambda x: x.response_property_answer).mode_or_raise()
+        objects_for_meta = objects_grouped[key]
+        for obj in objects_for_meta:
+            cleaned_object_response = clean_for_comparison(obj.response_property_answer)
+            cleaned_meta_response = clean_for_comparison(meta.response)
+            predicted_correctly = cleaned_object_response == cleaned_meta_response
+            before_shift_raw = None
+            before_shift_ans = None
+            after_shift_raw = None
+            after_shift_ans = None
+            if shifted_result is not None:
+                if obj.string in shifted_result.shifted:
+                    shifted = "shifted"
+                    shift_info: ShiftInfo = shifted_result.shifted[obj.string]
+                    before_shift_raw = shift_info.before_raw
+                    before_shift_ans = shift_info.before_ans
+                    after_shift_raw = shift_info.after_raw
+                    after_shift_ans = shift_info.after_ans
+                elif obj.string in shifted_result.same:
+                    shifted = "same"
+                else:
+                    shifted = "not_compliant"
+            else:
+                shifted = "not_calculated"
+
+            compared.append(
+                ObjectAndMeta(
+                    meta_predicted_correctly=predicted_correctly,
+                    task=meta.task,
+                    string=meta.string,
+                    meta_response=meta.response,
+                    response_property=meta.response_property,
+                    meta_model=meta.meta_model,
+                    object_model=obj.object_model,
+                    object_response_property_answer=obj.response_property_answer,
+                    object_response_raw_response=obj.raw_response,
+                    object_complied=obj.compliance,
+                    meta_complied=meta.compliance,
+                    shifted=shifted,
+                    modal_response_property_answer=modal_object_answer,
+                    before_shift_raw=before_shift_raw,
+                    before_shift_ans=before_shift_ans,
+                    after_shift_raw=after_shift_raw,
+                    after_shift_ans=after_shift_ans,
+                    object_prompt=obj.prompt_method,
+                    meta_prompt=meta.prompt_method,
+                )
+            )
+
+    return compared
+
+
 def flat_object_meta(
     objects: Slist[LoadedObject],
     metas: Slist[LoadedMeta],
@@ -477,7 +552,8 @@ def flat_object_meta(
                     before_shift_ans=before_shift_ans,
                     after_shift_raw=after_shift_raw,
                     after_shift_ans=after_shift_ans,
-                    base_prompt=meta.base_prompt,
+                    object_prompt=obj.prompt_method,
+                    meta_prompt=meta.prompt_method,
                 )
             )
 
@@ -540,7 +616,8 @@ def add_micro_average(items: Slist[ObjectAndMeta]) -> Slist[ObjectAndMeta]:
                 before_shift_ans=compared.before_shift_ans,
                 after_shift_raw=compared.after_shift_raw,
                 after_shift_ans=compared.after_shift_ans,
-                base_prompt=compared.base_prompt,
+                object_prompt=compared.object_prompt,
+                meta_prompt=compared.meta_prompt,
             )
         )
     return items + output
@@ -731,6 +808,7 @@ def get_random_prefix_shift(
     exclude_noncompliant: bool = False,
     tasks: AbstractSet[str] = set(),
     response_properties: AbstractSet[str] = set(),
+    shift_prompt: str = "random_prefix",
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -739,27 +817,36 @@ def get_random_prefix_shift(
     # object_model = "gpt-4-0613"
     # object_model = "gpt-3.5-turbo-1106"
     # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-    all_models = [model]
+
     conditions = (
         {
             ("task", "set"): ["val"],
-            ("language_model", "model"): all_models,
+            ("language_model", "model"): [model],
             ("task", "name"): list(tasks),
         }
         if tasks
         else {
             ("task", "set"): ["val"],
-            ("language_model", "model"): all_models,
+            ("language_model", "model"): [model],
         }
     )
+    og_method = "object_level/minimal"
+    shifted_object_prompt = f"object_level/{shift_prompt}"
+    shifted_meta_prompt = f"meta_level/{shift_prompt}"
+
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
         conditions=conditions,
         exclude_noncompliant=exclude_noncompliant,
         response_properties=response_properties,
     )
-    filtered_metas = all_metas
+    # We are only plotting acc(M_shifted, M) vs acc(M_shifted, M_shifted)
+    filtered_metas = all_metas.filter(
+        lambda x: x.meta_model == model and x.prompt_method == f"meta_level/{shift_prompt}"
+    )
+    assert len(filtered_metas) > 0, f"No metas found for {model} and {shifted_meta_prompt}"
     filtered_objects = all_objects
+    assert len(filtered_objects) > 0, f"No objects found for {model}"
 
     result_rows: Slist[ObjectAndMeta] = Slist()
 
@@ -775,13 +862,11 @@ def get_random_prefix_shift(
         assert len(new_filtered_metas) > 0, f"No metas found for {response_property}"
 
         # object_level/minimal
-        without_random_prefix_objects = new_filtered_objects.filter(lambda x: x.prompt_method == "object_level/minimal")
+        without_random_prefix_objects = new_filtered_objects.filter(lambda x: x.prompt_method == og_method)
         # with random prefix
-        with_random_prefix_objects = new_filtered_objects.filter(
-            lambda x: x.prompt_method == "object_level/random_prefix"
-        )
-        assert len(without_random_prefix_objects) > 0, "No objects found without random prefix"
-        assert len(with_random_prefix_objects) > 0, "No objects found with random prefix"
+        with_random_prefix_objects = new_filtered_objects.filter(lambda x: x.prompt_method == shifted_object_prompt)
+        assert len(without_random_prefix_objects) > 0, "No objects found with object_level/minimal"
+        assert len(with_random_prefix_objects) > 0, f"No objects found with object_level/{shift_prompt}"
 
         switched_objects: ShiftResult = calc_shift_results(
             # without random prefix
@@ -790,11 +875,13 @@ def get_random_prefix_shift(
             postfinetuned_objects=with_random_prefix_objects,
         )
 
-        compared = flat_object_meta(
+        compared = join_flat_and_meta_for_prompt_shift(
             new_filtered_objects,
             new_filtered_metas,
             shifted_result=switched_objects,
         )
+        assert len(compared) > 0, "No results found"
+
         result_rows.extend(compared)
 
     return result_rows
@@ -1052,11 +1139,11 @@ def adjust_for_entropy_prompt_shift(items: Slist[ObjectAndMeta], seed: str = "42
     )
     adjusted: Slist[ObjectAndMeta] = Slist()
     for (task, response_property), group_items in to_work_on:
-        first_bar = group_items.filter(lambda x: x.base_prompt == "object_level/minimal").distinct_by(
+        first_bar = group_items.filter(lambda x: x.object_prompt == "object_level/minimal").distinct_by(
             lambda x: x.string + x.response_property
         )
         first_bar_items = first_bar.map(lambda x: x.string + x.response_property).to_set()
-        second_bar = group_items.filter(lambda x: x.base_prompt == "object_level/random_prefix").distinct_by(
+        second_bar = group_items.filter(lambda x: x.object_prompt == "object_level/random_prefix").distinct_by(
             lambda x: x.string + x.response_property
         )
         second_bar_items = second_bar.map(lambda x: x.string + x.response_property).to_set()
@@ -1234,6 +1321,7 @@ def calculate_evidence_1_using_random_prefix(
     only_tasks: typing.AbstractSet[str] = set(),
     micro_average: bool = True,
     log: bool = False,
+    shift_prompt: str = "random_prefix",
     adjust_entropy: bool = False,
     # other_evals_to_run: Sequence[type[OtherEvalRunner]] = [
     #     BiasDetectAreYouAffected,
@@ -1266,6 +1354,7 @@ def calculate_evidence_1_using_random_prefix(
         exclude_noncompliant=exclude_noncompliant,
         tasks=only_tasks,
         response_properties=only_response_properties,
+        shift_prompt=shift_prompt,
     )
     assert len(flats) > 0, "No results found"
     if not include_identity:
@@ -1275,8 +1364,10 @@ def calculate_evidence_1_using_random_prefix(
     flats = flats.map(lambda x: x.rename_properties())
 
     if log:
-        first_plot = flats.filter(lambda x: x.base_prompt == "object_level/minimal")
-        second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.base_prompt == "object_level/random_prefix")
+        first_plot = flats.filter(lambda x: x.object_prompt == "object_level/minimal")
+        assert len(first_plot) > 0, "No results found"
+        second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.object_prompt == f"object_level/{shift_prompt}")
+        assert len(first_plot) + len(second_plot) == len(flats), "Lengths don't match, hmm?"
         df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
         df_first["label"] = label_before_shift
         df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
@@ -1288,12 +1379,14 @@ def calculate_evidence_1_using_random_prefix(
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
 
-    first_bar = flats.filter(lambda x: x.base_prompt == "object_level/minimal")
-    second_bar = flats.filter(lambda x: x.base_prompt == "object_level/random_prefix")
+    first_bar = flats.filter(lambda x: x.object_prompt == "object_level/minimal")
+    assert len(first_bar) > 0, "No results found"
+    second_bar = flats.filter(lambda x: x.object_prompt == f"object_level/{shift_prompt}")
     # make sure that we have the same number of items in both bars
     first_bar_strings = first_bar.map(lambda x: x.string + x.response_property).to_set()
     second_bar_strings = second_bar.map(lambda x: x.string + x.response_property).to_set()
     overlap = first_bar_strings.intersection(second_bar_strings)
+    assert len(overlap) > 0, "No overlap found"
     flats = flats.filter(lambda x: x.string + x.response_property in overlap)
     if adjust_entropy:
         flats = adjust_for_entropy_prompt_shift(items=flats)
@@ -1305,7 +1398,7 @@ def calculate_evidence_1_using_random_prefix(
     if micro_average:
         flats = add_micro_average(flats)
 
-    grouped_by_response_property_and_model = flats.group_by(lambda x: (x.response_property, x.base_prompt))
+    grouped_by_response_property_and_model = flats.group_by(lambda x: (x.response_property, x.object_prompt))
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property_and_model:
         response_property, base_prompt = group

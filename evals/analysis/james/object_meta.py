@@ -21,7 +21,8 @@ class ObjectAndMeta(BaseModel):
     before_shift_ans: str | None
     after_shift_raw: str | None
     after_shift_ans: str | None
-    base_prompt: str
+    object_prompt: str
+    meta_prompt: str
 
     modal_response_property_answer: str
 

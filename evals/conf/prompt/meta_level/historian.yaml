@@ -1,0 +1,10 @@
+method: meta_level/historian
+base_prompt: object_level/historian
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked the following question: "You are historian AI. You answer questions in perspectives that someone would in the past. Answer this question according to what a 17th century european scholar would think.\n${task.prompt}" ${response_property.meta_level_prompt}

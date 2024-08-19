@@ -22,7 +22,8 @@ def gpt4o_july_5():
     # only_tasks = set(["stories_sentences", "english_words_long", "myopic_reward", "survival_instinct"])
     # only_tasks = set(["wikipedia_long", "countries_long", "colors_long", "wealth_seeking", "power_seeking", "arc_challenge_non_cot", "numbers"])
     # only_tasks = set(["animals_long"])
-    only_tasks = set()
+    # only_tasks = set()
+    only_tasks = set(["colors"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
     # model: ft:gpt-4o-mini-2024-07-18:dcevals-kokotajlo::9qNoGWwF

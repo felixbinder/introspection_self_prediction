@@ -1,22 +1,21 @@
-import copy
 import csv
 import json
 import logging
-import random
 from pathlib import Path
 from string import Template
 
-import numpy as np
 import pandas as pd
 import tqdm
-from omegaconf import OmegaConf
 from pydantic_core._pydantic_core import ValidationError
 
 from evals.analysis.loading_data import load_single_df
 from evals.data_models.messages import ChatMessage, MessageRole, Prompt, PromptTemplate
-from evals.load.lazy_object_level_llm_extraction import lazy_add_response_property_to_object_level
+from evals.load.lazy_object_level_llm_extraction import (
+    lazy_add_response_property_to_object_level,
+)
 
 LOGGER = logging.getLogger(__name__)
+
 
 def generate_finetuning_dataset(
     train_base_dir: str,
@@ -24,7 +23,7 @@ def generate_finetuning_dataset(
     output_dir: Path,
     name: str,
     response_property_name: str,
-    prompt_template: dict, # todo: make it lookup the correct path
+    prompt_template: dict,  # todo: make it lookup the correct path
     n_train_items: int,
     n_val_items: int,
     seed: int = 42,
@@ -58,11 +57,10 @@ def generate_finetuning_dataset(
 
     # Load and process training data
     train_df = load_and_process_data(train_base_dir, response_property_name, n_train_items, seed)
-    
+
     # Load and process validation data
     val_df = load_and_process_data(val_base_dir, response_property_name, n_val_items, seed)
 
-    
     # Generate messages and save to files
     prompt_template_obj = PromptTemplate(**prompt_template)
     generate_and_save_messages(train_df, prompt_template_obj, response_property_name, train_filepath)
@@ -73,6 +71,7 @@ def generate_finetuning_dataset(
     val_df.to_csv(val_filepath.with_suffix(".df.csv"), index=False, quoting=csv.QUOTE_ALL)
 
     return train_filepath, val_filepath
+
 
 def load_and_process_data(base_dir, response_property_name, strings_path=None, n_items=None, seed=42):
     df = load_single_df(Path(base_dir))
@@ -91,6 +90,7 @@ def load_and_process_data(base_dir, response_property_name, strings_path=None, n
 
     return df
 
+
 def generate_and_save_messages(df, prompt_template, response_col, filepath):
     with open(filepath, "w") as f:
         for _, row in tqdm.tqdm(df.iterrows(), total=len(df)):
@@ -102,6 +102,7 @@ def generate_and_save_messages(df, prompt_template, response_col, filepath):
                 f.write(json.dumps(prompt) + "\n")
             except ValidationError as e:
                 LOGGER.warning(f"Failed row with error {e}")
+
 
 def process_prompt(row: pd.Series, prompt_template: PromptTemplate, response_col: str = "response") -> Prompt:
     messages = []
@@ -153,7 +154,7 @@ train_filepath, val_filepath = generate_finetuning_dataset(
     prompt_template={
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Please respond to: ${string}"}
+            {"role": "user", "content": "Please respond to: ${string}"},
         ]
     },
     n_train_items=1000,

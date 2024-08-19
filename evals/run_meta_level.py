@@ -219,12 +219,13 @@ async def async_main(cfg: DictConfig):
         LOGGER.info(f"Generated data{cfg.base_seed}.csv at {filename}")
     else:
         LOGGER.info(f"File {filename} exists. Skipping generation.")
-
-    if "llama" or "claude-3-5-sonnet-20240620" in cfg.language_model.model:
+    model = cfg.language_model.model
+    if "llama" in model or "claude-3-5-sonnet-20240620" in model:
         # If using llama, its not an moe, so no need to take mode
-        print("Setting n_samples to 1 since using llama")
+        print(f"Setting n_samples to 1 since using {cfg.language_model.model}")
         n_samples = 1
     else:
+        print("Setting n_samples to cfg", cfg.n_samples)
         n_samples = cfg.n_samples
 
     # run dataset (with retry)

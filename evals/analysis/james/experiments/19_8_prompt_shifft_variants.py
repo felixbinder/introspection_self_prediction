@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "prompt_shift_100"
+    exp_folder = EXP_DIR / "prompt_shift_fix"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         # "matches_survival_instinct",
@@ -31,7 +31,7 @@ def gpt4o_july_5():
     only_tasks = set()
 
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
-    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:variants-10:9xlnAVWS"
+    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:variants-10:9xlnAVWS"  # train on 8 variants
     # model = "gpt-4o-2024-05-13"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
@@ -41,11 +41,16 @@ def gpt4o_july_5():
 
     df = calculate_evidence_1_using_random_prefix(
         model=model,
-        shifting="only_shifted",
+        # shifting="only_shifted",
+        shifting="all",
+        # shift_prompt="historian",
+        shift_prompt="funny",
+        # shifting = "all",
         # include_identity=True,
         include_identity=False,
         log=True,
-        adjust_entropy=True,
+        # adjust_entropy=True,
+        adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,

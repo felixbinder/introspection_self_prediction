@@ -176,8 +176,8 @@ async def async_main(cfg: DictConfig):
     # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
-
-    if "llama" or "claude-3-5-sonnet-20240620" in cfg.language_model.model:
+    model = cfg.language_model.model
+    if "llama" in model or "claude-3-5-sonnet-20240620" in model:
         # If using llama, its not an moe, so no need to take mode
         print("Setting n_samples to 1 since using llama")
         n_samples = 1
