@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "prompt_shift_fix"
+    exp_folder = EXP_DIR / "19aug_prompt_shift"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         # "matches_survival_instinct",
@@ -50,8 +50,8 @@ def gpt4o_july_5():
         # include_identity=True,
         include_identity=False,
         log=True,
-        # adjust_entropy=True,
         adjust_entropy=False,
+        # adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,

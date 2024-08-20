@@ -9,7 +9,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "claude_shift"
+    exp_folder = EXP_DIR / "claude_shift_1000"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         "matches_survival_instinct",
@@ -24,7 +24,7 @@ def gpt4o_july_5():
     properties = []
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
-    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot"])
+    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "numbers"])
     # only_tasks = set(["power_seeking", "wealth_seeking"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
@@ -33,7 +33,7 @@ def gpt4o_july_5():
     object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000:9y5M6KDW"  # both animals and matches behavior shift lr 0.01, poor man's kl
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000:9y5M6KDW"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:reproduce-422:9qnTvYzx" # matches behavior repoduction
 

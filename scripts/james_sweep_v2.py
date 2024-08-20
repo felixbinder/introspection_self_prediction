@@ -46,24 +46,23 @@ python -m scripts.sweep_full_study
 
 import argparse
 import atexit
-from collections import defaultdict
 import json
 import subprocess
+from collections import defaultdict
 from functools import partial
 from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict, Sequence, Type, Union
 
-from traitlets import default
 
 from evals.apis.finetuning.run import FineTuneHyperParams
 from evals.create_finetuning_dataset import create_gemini_dataset_version
-from evals.create_finetuning_dataset_configs import create_finetuning_dataset_config
-from evals.james_create_dataset import GeneratedDataset, james_make_finetuning
+from evals.james_create_dataset import (
+    james_make_finetuning,
+)
 from evals.james_finetuning import create_model_config, finetune_openai
 from evals.locations import EXP_DIR
 from evals.utils import get_current_git_hash, safe_model_name
-from other_evals.counterfactuals.api_utils import read_jsonl_file_into_basemodel
 from other_evals.counterfactuals.get_finetuning_samples import (
     add_new_samples_to_existing_jsonl_and_shuffle,
     get_other_evals_finetuning_samples,
@@ -76,9 +75,6 @@ from other_evals.counterfactuals.runners import (
 )
 from other_evals.counterfactuals.yaml_compat_utils import (
     read_model_id_from_model_config,
-)
-from scripts.datasets.make_shift_on_train_animals import (
-    dinosaurs_claude_single_word_examples,
 )
 
 
@@ -98,6 +94,7 @@ def combine_dicts_of_lists(dicts: list[Dict]):
                 out_dict[key] = cur_dict[key]
                 out_dict[key] = list(set(out_dict[key] + cur_dict[key]))
     return out_dict
+
 
 class StudyRunner:
     def __init__(self):
@@ -316,7 +313,7 @@ class StudyRunner:
                 overrides = overrides[model]
                 overrides = [f"{k}={v}" for k, v in overrides.items()]
         overrides = "\n".join(overrides)
-        command = f"python -m evals.run_object_level study_name={self.args.study_name} language_model={model} task={task} task.set={set} prompt=object_level/{prompt} limit={limit} {overrides}"
+        command = f"python -m evals.run_object_level study_name={self.args.study_name} language_model={model} language_model.logprobs=1 task={task} task.set={set} prompt=object_level/{prompt} limit={limit} {overrides}"
         return command
 
     def get_meta_level_command(
@@ -405,7 +402,6 @@ class StudyRunner:
         pool.map(partial(run_object_val_command, state=self.state, state_lock=self.state_lock), object_val_commands)
         self.write_state_file()
 
-
         ft_data_train: dict[str, list[FinetuneConversation]] = defaultdict(list)
         ft_data_val: dict[str, list[FinetuneConversation]] = defaultdict(list)
         for model in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
@@ -420,17 +416,18 @@ class StudyRunner:
                         # todo: ???????????? why isn't there a nice function for this w/o the state
                         train_folder = self.state["object_train_runs"][train_command].get("folder", None)
                         val_folder = self.state["object_val_runs"][val_command].get("folder", None)
-                        
+
                         data = james_make_finetuning(
-                                # see config
-                                train_base_dir=train_folder,
-                                val_base_dir=val_folder,
-                                task=task,
-                                response_property=response_property,
-                                prompt_template=prompt,
-                                n_train_items=self.args.n_finetuning,
-                                n_val_items=self.args.n_finetuning,
-                                seed=0,
+                            # see config
+                            train_base_dir=train_folder,
+                            val_base_dir=val_folder,
+                            task=task,
+                            response_property=response_property,
+                            prompt_template=prompt,
+                            n_train_items=self.args.n_finetuning,
+                            n_val_items=self.args.n_finetuning,
+                            probability_threshold=0.6,
+                            seed=0,
                         )
                         train = data.to_train_convos()
                         assert len(train) > 0, f"Train data is empty for {model}, {task}, {response_property}, {prompt}"
@@ -442,8 +439,6 @@ class StudyRunner:
         # Print the number of samples for each model
         for model, train_items in ft_data_train.items():
             print(f"Model {model} has {len(train_items)} train items.")
-
-        
 
         #### Add other evals to the finetuning dataset ####
         # TODO: Actually add to dict
@@ -496,7 +491,7 @@ class StudyRunner:
 
         if not self.args.skip_finetuning:
             for model in self.args.model_configs:
-            # Only finetuning the model on itself, no cross training. Otherwise make it double for loop
+                # Only finetuning the model on itself, no cross training. Otherwise make it double for loop
                 if model in self.args.skip_finetuning_for_models:
                     print(f"Skipping finetuning for {model} because it is in --skip_finetuning_for_models.")
                     continue

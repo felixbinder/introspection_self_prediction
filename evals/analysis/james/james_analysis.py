@@ -1402,11 +1402,13 @@ def calculate_evidence_1_using_random_prefix(
     if micro_average:
         flats = add_micro_average(flats)
 
-    grouped_by_response_property_and_model = flats.group_by(lambda x: (x.response_property, x.object_prompt))
+    grouped_by_response_property_and_model: Slist[Group[tuple[str, str], Slist[ObjectAndMeta]]] = flats.group_by(
+        lambda x: (x.response_property, x.object_prompt)
+    )
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property_and_model:
         response_property, base_prompt = group
-
+        values = recalculate_mode(values)
         compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
         non_none_values = values.filter(lambda x: x.meta_predicted_correctly is not None)
         stats: AverageStats = non_none_values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()

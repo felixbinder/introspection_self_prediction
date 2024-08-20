@@ -94,6 +94,8 @@ def james_make_finetuning(
     n_train_items: int,
     n_val_items: int,
     seed: int = 0,
+    # Threshold for the probability of the first token in the response to be used for training
+    probability_threshold: float = 0.0,
 ) -> GeneratedDataset:
     """
     Generate a dataset for finetuning.
@@ -120,10 +122,19 @@ def james_make_finetuning(
     train_df = load_and_process_data(
         train_base_dir, response_property_name=response_property, seed=seed, n_items=n_train_items
     )
+
     # Load and process validation data
     val_df = load_and_process_data(
         val_base_dir, response_property_name=response_property, seed=seed, n_items=n_val_items
     )
+
+    if probability_threshold > 0:
+        train_df = filter_for_threshold(
+            df=train_df, response_property_name=response_property, probability_threshold=probability_threshold
+        )
+        val_df = filter_for_threshold(
+            df=val_df, response_property_name=response_property, probability_threshold=probability_threshold
+        )
     assert len(train_df) > 0, "No training data found."
     assert len(val_df) > 0, "No validation data found."
 
@@ -174,6 +185,39 @@ def load_and_process_data(base_dir, response_property_name, seed, n_items=None):
     df = df[df[response_property_name] != "nan"]
     assert len(df) > 0, f"No data found in {path} after filtering"
 
+    return df
+
+
+import math
+
+
+def get_highest_logprob(logprobs: str) -> float:
+    # we should really just store things as json
+    list_of_probs = eval(logprobs)
+    # the first token
+    first_token: dict = list_of_probs[0]
+    # technically can sort if you want and using logprobs>1
+    assert len(first_token) == 1, "Did you run with logprobs=1"
+    logprob = list(first_token.values())[0]
+    # nat base
+    proba = math.exp(logprob)
+    return proba
+
+
+def filter_for_threshold(df, response_property_name: str, probability_threshold: float) -> pd.DataFrame:
+    """
+    Filter the dataframe for rows where the probability of the first token is above the threshold.
+
+    Args:
+        df (pd.DataFrame): The dataframe to filter.
+        response_property_name (str): The name of the response property column.
+        probability_threshold (float): The threshold for the probability of the first token.
+
+    Returns:
+        pd.DataFrame: The filtered dataframe.
+    """
+    df["first_token_proba"] = df["logprobs"].apply(lambda x: get_highest_logprob(x))
+    df = df[df["first_token_proba"] > probability_threshold]
     return df
 
 
