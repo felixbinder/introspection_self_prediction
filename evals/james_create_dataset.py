@@ -63,10 +63,25 @@ def get_response_prompt(response_property: str) -> str:
     return _conf["meta_level_prompt"]
 
 
+def deuplicate_key(_dict) -> str:
+    # assistant response + string
+    string = _dict["string"]
+    assistant_response = _dict["messages"][-1]["content"]
+    return string + assistant_response
+
+
 @dataclass
 class GeneratedDataset:
     train: Sequence[dict]
     val: Sequence[dict]
+
+    def __add__(self, other: "GeneratedDataset") -> "GeneratedDataset":
+        return GeneratedDataset(train=list(self.train) + list(other.train), val=list(self.val) + list(other.val))
+
+    def deduplicate_by_string(self) -> "GeneratedDataset":
+        train = Slist(self.train).shuffle("42").distinct_by(deuplicate_key).shuffle("42")
+        val = Slist(self.val).shuffle("42").distinct_by(deuplicate_key).shuffle("42")
+        return GeneratedDataset(train=train, val=val)
 
     def to_train_convos(self) -> Sequence[FinetuneConversation]:
         convos = (
@@ -201,6 +216,7 @@ def get_highest_logprob(logprobs: str) -> float:
     logprob = list(first_token.values())[0]
     # nat base
     proba = math.exp(logprob)
+    assert 0 <= proba <= 1, f"Proba is {proba}"
     return proba
 
 

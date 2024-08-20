@@ -54,17 +54,12 @@ from multiprocessing import Manager, Pool, managers
 from pathlib import Path
 from typing import Dict, Sequence, Type, Union
 
-
 from evals.apis.finetuning.run import FineTuneHyperParams
-from evals.create_finetuning_dataset import create_gemini_dataset_version
-from evals.james_create_dataset import (
-    james_make_finetuning,
-)
+from evals.james_create_dataset import GeneratedDataset, james_make_finetuning
 from evals.james_finetuning import create_model_config, finetune_openai
 from evals.locations import EXP_DIR
-from evals.utils import get_current_git_hash, safe_model_name
+from evals.utils import get_current_git_hash
 from other_evals.counterfactuals.get_finetuning_samples import (
-    add_new_samples_to_existing_jsonl_and_shuffle,
     get_other_evals_finetuning_samples,
 )
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneConversation
@@ -402,8 +397,8 @@ class StudyRunner:
         pool.map(partial(run_object_val_command, state=self.state, state_lock=self.state_lock), object_val_commands)
         self.write_state_file()
 
-        ft_data_train: dict[str, list[FinetuneConversation]] = defaultdict(list)
-        ft_data_val: dict[str, list[FinetuneConversation]] = defaultdict(list)
+        ft_data: dict[str, GeneratedDataset] = defaultdict(lambda: GeneratedDataset(train=[], val=[]))
+
         for model in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
             for task, response_properties in self.args.tasks.items():
                 for response_property in response_properties:
@@ -429,10 +424,19 @@ class StudyRunner:
                             probability_threshold=0.6,
                             seed=0,
                         )
-                        train = data.to_train_convos()
-                        assert len(train) > 0, f"Train data is empty for {model}, {task}, {response_property}, {prompt}"
-                        ft_data_train[model].extend(train)
-                        ft_data_val[model].extend(data.to_val_convos())
+                        ft_data[model] = ft_data[model] + data
+
+                        # # train = data.to_train_convos()
+                        # assert len(train) > 0, f"Train data is empty for {model}, {task}, {response_property}, {prompt}"
+                        # ft_data_train[model].extend(train)
+                        # ft_data_val[model].extend(data.to_val_convos())
+
+        ft_data_train: dict[str, Sequence[FinetuneConversation]] = {}
+        ft_data_val: dict[str, Sequence[FinetuneConversation]] = {}
+        for model, data in ft_data.items():
+            deduplicated = data.deduplicate_by_string()
+            ft_data_train[model] = deduplicated.to_train_convos()
+            ft_data_val[model] = deduplicated.to_val_convos()
 
         if not self.args.skip_finetuning:
             assert ft_data_train, "No finetuning data found. Did you specify tasks?"
@@ -442,10 +446,7 @@ class StudyRunner:
 
         #### Add other evals to the finetuning dataset ####
         # TODO: Actually add to dict
-        if self.validated_other_evals:
-            # tuple[model_config, list[FinetuneConversation]
-            additional_samples: list[tuple[str, list[FinetuneConversation]]] = []
-            # Generate other evals samples
+        if self.validated_other_evals:  # Generate other evals samples
             for model_config in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
                 other_eval_train_samples = get_other_evals_finetuning_samples(
                     evals_to_run=self.validated_other_evals,
@@ -456,29 +457,7 @@ class StudyRunner:
                     limit_per_eval=self.args.n_finetuning,
                     cache_path=EXP_DIR / self.args.study_name / "other_evals_cache",
                 )
-                additional_samples.append((safe_model_name(model_config), other_eval_train_samples))
-
-            # Now add the samples to the existing jsonl files
-            for model, model_samples in additional_samples:
-                existing_jsonl: Path = (
-                    EXP_DIR / "finetuning" / self.args.study_name / model.replace("/", "-") / "train_dataset.jsonl"
-                )
-                assert existing_jsonl.exists(), f"Existing jsonl file not found at {existing_jsonl}"
-                new_jsonl: Path = (
-                    EXP_DIR
-                    / "finetuning"
-                    / self.args.study_name
-                    / model.replace("/", "-")
-                    / "other_evals_combined_train_dataset.jsonl"
-                )
-                # idempotent so we don't need state check of whether we've done this before
-                add_new_samples_to_existing_jsonl_and_shuffle(
-                    existing_jsonl_path=existing_jsonl,
-                    new_jsonl_path=new_jsonl,
-                    new_samples=model_samples,
-                )
-                # we create a Gemini dataset in any case
-                create_gemini_dataset_version(new_jsonl)
+                ft_data_train[model_config] = list(ft_data_train[model_config]) + other_eval_train_samples
 
         # assert False, "James breakpoint for inspection dataset. Should deduplicate based on string + assistant response"
         # Random branch to manually finetune llama lol
