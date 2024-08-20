@@ -15,7 +15,7 @@ from evals.load.lazy_object_level_llm_extraction import james_lazy_add_property
 LOGGER = logging.getLogger(__name__)
 
 
-def template_name_to_prompt_template(template_name: str) -> PromptTemplate:
+def get_meta_level_template(template_name: str) -> PromptTemplate:
     # evals/conf/prompt/meta_level/template_name
 
     yaml_path = Path(__file__).parent / "conf" / "prompt" / "meta_level" / f"{template_name}.yaml"
@@ -23,6 +23,29 @@ def template_name_to_prompt_template(template_name: str) -> PromptTemplate:
     conf = OmegaConf.load(yaml_path)
     _conf = OmegaConf.to_container(conf, resolve=False)
     return PromptTemplate.model_validate(_conf)
+
+
+def get_task_prompt(task: str) -> str:
+    # evals/conf/prompt/meta_level/template_name
+    yaml_path = Path(__file__).parent / "conf" / "task" / f"{task}.yaml"
+    # omegaconf without resolving wth lol
+    conf = OmegaConf.load(yaml_path)
+    _conf = OmegaConf.to_container(conf, resolve=False)
+    prompt: str = _conf["prompt"]
+    # sometimes there is a descriptor to resolve lol
+    # ${task.item_descriptor}
+    descriptor = _conf.get("item_descriptor", "")
+    final_prompt = prompt.replace("${task.item_descriptor}", descriptor)
+    return final_prompt
+
+
+def get_response_prompt(response_property: str) -> str:
+    # evals/conf/prompt/meta_level/template_name
+    yaml_path = Path(__file__).parent / "conf" / "response_property" / f"{response_property}.yaml"
+    # omegaconf without resolving wth lol
+    conf = OmegaConf.load(yaml_path)
+    _conf = OmegaConf.to_container(conf, resolve=False)
+    return _conf["meta_level_prompt"]
 
 
 @dataclass
@@ -34,7 +57,8 @@ class GeneratedDataset:
 def generate_finetuning_dataset(
     train_base_dir: str,
     val_base_dir: str,
-    response_property_name: str,
+    task: str,
+    response_property: str,
     prompt_template: str,  # todo: make it lookup the correct path
     n_train_items: int,
     n_val_items: int,
@@ -63,18 +87,33 @@ def generate_finetuning_dataset(
     """
     # Load and process training data
     train_df = load_and_process_data(
-        train_base_dir, response_property_name=response_property_name, seed=seed, n_items=n_train_items
+        train_base_dir, response_property_name=response_property, seed=seed, n_items=n_train_items
     )
     # Load and process validation data
     val_df = load_and_process_data(
-        val_base_dir, response_property_name=response_property_name, seed=seed, n_items=n_val_items
+        val_base_dir, response_property_name=response_property, seed=seed, n_items=n_val_items
     )
     assert len(train_df) > 0, "No training data found."
     assert len(val_df) > 0, "No validation data found."
 
-    prompt_template_obj = template_name_to_prompt_template(prompt_template)
-    train = generate_and_save_messages(train_df, prompt_template_obj, response_property_name)
-    val = generate_and_save_messages(val_df, prompt_template_obj, response_property_name)
+    prompt_template_obj = get_meta_level_template(prompt_template)
+    task_prompt = get_task_prompt(task)
+    response_prompt = get_response_prompt(response_property)
+
+    train = generate_and_save_messages(
+        df=train_df,
+        prompt_template=prompt_template_obj,
+        task_prompt=task_prompt,
+        response_prompt=response_prompt,
+        response_col=response_property,
+    )
+    val = generate_and_save_messages(
+        df=val_df,
+        prompt_template=prompt_template_obj,
+        task_prompt=task_prompt,
+        response_prompt=response_prompt,
+        response_col=response_property,
+    )
     return GeneratedDataset(train=train, val=val)
 
 
@@ -97,11 +136,19 @@ def load_and_process_data(base_dir, response_property_name, seed, n_items=None):
     return df
 
 
-def generate_and_save_messages(df, prompt_template, response_col) -> Sequence[dict]:
+def generate_and_save_messages(
+    df, prompt_template, response_col: str, task_prompt: str, response_prompt: str
+) -> Sequence[dict]:
     output = []
     for _, row in df.iterrows():
         try:
-            prompt = process_prompt(row, prompt_template, response_col)
+            prompt = substitute_string(
+                row=row,
+                prompt_template=prompt_template,
+                task_prompt=task_prompt,
+                response_property_prompt=response_prompt,
+                response_col=response_col,
+            )
             prompt = prompt.openai_finetuning_format()
             prompt = json.loads(prompt)
             prompt["string"] = row["string"]
@@ -111,7 +158,13 @@ def generate_and_save_messages(df, prompt_template, response_col) -> Sequence[di
     return output
 
 
-def process_prompt(row: pd.Series, prompt_template: PromptTemplate, response_col: str = "response") -> Prompt:
+def substitute_string(
+    row: pd.Series,
+    prompt_template: PromptTemplate,
+    task_prompt: str,
+    response_property_prompt: str,
+    response_col: str = "response",
+) -> Prompt:
     messages = []
     system_messages = [m for m in prompt_template.messages if m.role == "system"]
     user_messages = [m for m in prompt_template.messages if m.role == "user"]
@@ -127,7 +180,10 @@ def process_prompt(row: pd.Series, prompt_template: PromptTemplate, response_col
 
     # add the actual query message
     for message in user_messages:
-        t = Template(message.content)
+        sub_content = message.content.replace("${task.prompt}", task_prompt)
+        sub_content = sub_content.replace("${response_property.meta_level_prompt}", response_property_prompt)
+        t = Template(sub_content)
+
         content = t.safe_substitute(string=row["string"])
         messages.append(ChatMessage(role=message.role, content=content))
 
@@ -149,10 +205,11 @@ may just be faster to rewrite everything?
 out = generate_finetuning_dataset(
     train_base_dir="/Users/jameschua/ml/introspection_self_prediction_astra/exp/claude_data_try_3/object_level_claude-3-5-sonnet-20240620_object_level_minimal_prompt_wikipedia_long_train_task__note",
     val_base_dir="/Users/jameschua/ml/introspection_self_prediction_astra/exp/claude_data_try_3/object_level_claude-3-5-sonnet-20240620_object_level_minimal_prompt_wikipedia_long_train_task__note",
-    response_property_name="first_character",
+    response_property="first_character",
+    task="wikipedia_long",
     prompt_template="minimal",
     n_train_items=1000,
     n_val_items=200,
     seed=0,
-).train[0]
+).train
 print(out)

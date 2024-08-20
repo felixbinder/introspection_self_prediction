@@ -845,7 +845,9 @@ def get_random_prefix_shift(
         lambda x: x.meta_model == model and x.prompt_method == f"meta_level/{shift_prompt}"
     )
     assert len(filtered_metas) > 0, f"No metas found for {model} and {shifted_meta_prompt}"
-    filtered_objects = all_objects
+    filtered_objects = all_objects.filter(
+        lambda x: x.prompt_method == og_method or x.prompt_method == shifted_object_prompt
+    )
     assert len(filtered_objects) > 0, f"No objects found for {model}"
 
     result_rows: Slist[ObjectAndMeta] = Slist()
@@ -1367,7 +1369,9 @@ def calculate_evidence_1_using_random_prefix(
         first_plot = flats.filter(lambda x: x.object_prompt == "object_level/minimal")
         assert len(first_plot) > 0, "No results found"
         second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.object_prompt == f"object_level/{shift_prompt}")
-        assert len(first_plot) + len(second_plot) == len(flats), "Lengths don't match, hmm?"
+        assert len(first_plot) + len(second_plot) == len(
+            flats
+        ), f"Lengths {len(first_plot)=} {len(second_plot)=} != {len(flats)=}"
         df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
         df_first["label"] = label_before_shift
         df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
