@@ -24,7 +24,7 @@ def gpt4o_july_5():
     properties = []
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
-    only_tasks = set(["animals_long"])
+    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot"])
     # only_tasks = set(["power_seeking", "wealth_seeking"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])

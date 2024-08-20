@@ -8,11 +8,26 @@ import pandas as pd
 from attr import dataclass
 from omegaconf import OmegaConf
 from pydantic_core._pydantic_core import ValidationError
+from slist import Slist
 
 from evals.data_models.messages import ChatMessage, MessageRole, Prompt, PromptTemplate
-from evals.load.lazy_object_level_llm_extraction import james_lazy_add_property
+from evals.utils import import_function_from_string
+from other_evals.counterfactuals.other_eval_csv_format import (
+    FinetuneConversation,
+    FinetuneMessage,
+)
 
 LOGGER = logging.getLogger(__name__)
+
+
+def james_lazy_add_property(object_df: pd.DataFrame, response_property_name: str) -> pd.DataFrame:
+    function_name = get_response_property_function(response_property_name)
+    if response_property_name not in object_df.columns:
+        # we need to run the property extraction command, non llm
+        function = import_function_from_string("evals.response_property", function_name)
+        result = object_df.apply(function, axis=1)
+        object_df[response_property_name] = result
+    return object_df
 
 
 def get_meta_level_template(template_name: str) -> PromptTemplate:
@@ -53,8 +68,24 @@ class GeneratedDataset:
     train: Sequence[dict]
     val: Sequence[dict]
 
+    def to_train_convos(self) -> Sequence[FinetuneConversation]:
+        convos = (
+            Slist(self.train)
+            .map(lambda x: [FinetuneMessage.model_validate(m) for m in x["messages"]])
+            .map(lambda convo: FinetuneConversation(messages=convo))
+        )
+        return convos
 
-def generate_finetuning_dataset(
+    def to_val_convos(self) -> Sequence[FinetuneConversation]:
+        convos = (
+            Slist(self.val)
+            .map(lambda x: [FinetuneMessage.model_validate(m) for m in x["messages"]])
+            .map(lambda convo: FinetuneConversation(messages=convo))
+        )
+        return convos
+
+
+def james_make_finetuning(
     train_base_dir: str,
     val_base_dir: str,
     task: str,
@@ -62,7 +93,7 @@ def generate_finetuning_dataset(
     prompt_template: str,  # todo: make it lookup the correct path
     n_train_items: int,
     n_val_items: int,
-    seed: int = 42,
+    seed: int = 0,
 ) -> GeneratedDataset:
     """
     Generate a dataset for finetuning.
@@ -117,12 +148,22 @@ def generate_finetuning_dataset(
     return GeneratedDataset(train=train, val=val)
 
 
+def get_response_property_function(response_property: str) -> str:
+    # load the yaml
+    yaml_path = Path(__file__).parent / "conf" / "response_property" / f"{response_property}.yaml"
+    # get the response_property_function
+    conf = OmegaConf.load(yaml_path)
+    _conf = OmegaConf.to_container(conf, resolve=False)
+    return _conf["python_function"]
+
+
 def load_and_process_data(base_dir, response_property_name, seed, n_items=None):
     # df = load_single_df(Path(base_dir))
     path = Path(base_dir) / f"data{seed}.csv"
     df = pd.read_csv(path)
     assert len(df) > 0, f"No data found in {path}"
     # todo: just read in the df lol...
+
     df = james_lazy_add_property(df, response_property_name)
     assert response_property_name in df.columns, f"Response property {response_property_name} not in {path}"
 
@@ -202,14 +243,14 @@ todo: fix
 may just be faster to rewrite everything?
 """
 
-out = generate_finetuning_dataset(
-    train_base_dir="/Users/jameschua/ml/introspection_self_prediction_astra/exp/claude_data_try_3/object_level_claude-3-5-sonnet-20240620_object_level_minimal_prompt_wikipedia_long_train_task__note",
-    val_base_dir="/Users/jameschua/ml/introspection_self_prediction_astra/exp/claude_data_try_3/object_level_claude-3-5-sonnet-20240620_object_level_minimal_prompt_wikipedia_long_train_task__note",
-    response_property="first_character",
-    task="wikipedia_long",
-    prompt_template="minimal",
-    n_train_items=1000,
-    n_val_items=200,
-    seed=0,
-).train
-print(out)
+# out = james_make_finetuning(
+#     train_base_dir="/Users/jameschua/ml/introspection_self_prediction_astra/exp/claude_data_try_3/object_level_claude-3-5-sonnet-20240620_object_level_minimal_prompt_wikipedia_long_train_task__note",
+#     val_base_dir="/Users/jameschua/ml/introspection_self_prediction_astra/exp/claude_data_try_3/object_level_claude-3-5-sonnet-20240620_object_level_minimal_prompt_wikipedia_long_train_task__note",
+#     response_property="first_character",
+#     task="wikipedia_long",
+#     prompt_template="minimal",
+#     n_train_items=1000,
+#     n_val_items=200,
+#     seed=0,
+# ).train
+# print(out)

@@ -104,7 +104,7 @@ def meta_second_character_prompt(object_prompt: str) -> str:
 
 
 def shift_object_prompt(object_prompt: str) -> str:
-    return f"Random text: alkdsakldmkladmsalasdsadasdqwewqlkeqklweelqqewoj;rqwdskapwoekoifhufdbxasddlkawmedqwmeqlemkwqlmewlqmlzmnnsdwem. Anyways, here is the question to answer. What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
+    return f"Roleplay as an eccentric model: What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
 
 
 async def ask_question(
@@ -223,8 +223,8 @@ def evidence_1_animals(
     different_only = (
         responses.filter(lambda x: x.changed_behavior())
         # .filter(
-        #     # lambda x: x.both_above_40_percent()
-        #     lambda x: x.changed_behavior_wrt_nofinetune()
+        #     lambda x: x.both_above_40_percent()
+        #     # lambda x: x.changed_behavior_wrt_nofinetune()
         # )
         # .filter(lambda x: x.changed_behavior_wrt_nofinetune_shifted())
     )

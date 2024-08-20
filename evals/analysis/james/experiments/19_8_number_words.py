@@ -1,5 +1,4 @@
-from scipy.fftpack import shift
-from evals.analysis.james.james_analysis import calculate_evidence_1_using_random_prefix,calculate_evidence_0
+from evals.analysis.james.james_analysis import calculate_evidence_0
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )

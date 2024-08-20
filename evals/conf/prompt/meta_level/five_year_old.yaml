@@ -1,5 +1,5 @@
-method: meta_level/devils_advocate
-base_prompt: object_level/devils_advocate
+method: meta_level/five_year_old
+base_prompt: object_level/five_year_old
 
 messages:
   - role: "system"
