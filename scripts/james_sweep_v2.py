@@ -348,6 +348,7 @@ class StudyRunner:
                 for task in self.args.tasks.keys():
                     for prompt in self.args.prompt_configs:
                         command = self.get_object_level_command(model, task, prompt, self.args.n_object_train, "train")
+                        # todo: check if the csv already exists instead of relying on state...
                         # check if we need to run this command and set up the state
                         if command not in self.state["object_train_runs"]:
                             self.state["object_train_runs"].update(
@@ -355,11 +356,14 @@ class StudyRunner:
                                     {command: {"status": "incomplete"}}
                                 )
                             )
-                        elif self.state["object_train_runs"][command]["status"] == "complete":
+                        if self.state["object_train_runs"][command]["status"] == "complete":
                             print(f"Skipping {command} because it is already complete.")
+                        else:
+                            # pass
+                            object_train_commands.append(command)
                         # save other args to the state file
                         self.state["object_train_runs"][command].update({"model": model, "task": task, "set": "train"})
-                        object_train_commands.append(command)
+
         self.write_state_file()
 
         pool.map(partial(run_object_train_command, state=self.state, state_lock=self.state_lock), object_train_commands)
@@ -387,11 +391,13 @@ class StudyRunner:
                                     {command: {"status": "incomplete"}}
                                 )
                             )
-                        elif self.state["object_val_runs"][command]["status"] == "complete":
-                            print(f"Skipping {command} because it is already complete.")
+                            # if self.state["object_val_runs"][command]["status"] == "complete":
+                            #     print(f"Skipping {command} because it is already complete.")
+                            # else:
+                        object_val_commands.append(command)
                         # save other args to the state file
                         self.state["object_val_runs"][command].update({"model": model, "task": task, "set": "val"})
-                        object_val_commands.append(command)
+
         self.write_state_file()
 
         pool.map(partial(run_object_val_command, state=self.state, state_lock=self.state_lock), object_val_commands)
@@ -409,19 +415,20 @@ class StudyRunner:
                         val_command = self.get_object_level_command(model, task, prompt, self.args.n_object_val, "val")
                         # do we have the train and val folders?
                         # todo: ???????????? why isn't there a nice function for this w/o the state
+                        # todo: rather than reading the state, we should just pass the folder to the function to avoid bugs
                         train_folder = self.state["object_train_runs"][train_command].get("folder", None)
                         val_folder = self.state["object_val_runs"][val_command].get("folder", None)
 
                         data = james_make_finetuning(
                             # see config
                             train_base_dir=train_folder,
-                            val_base_dir=val_folder,
+                            val_base_dir=None,
                             task=task,
                             response_property=response_property,
                             prompt_template=prompt,
                             n_train_items=self.args.n_finetuning,
                             n_val_items=self.args.n_finetuning,
-                            probability_threshold=0.6,
+                            probability_threshold=0.33,
                             seed=0,
                         )
                         ft_data[model] = ft_data[model] + data
@@ -445,7 +452,7 @@ class StudyRunner:
             print(f"Model {model} has {len(train_items)} train items.")
 
         #### Add other evals to the finetuning dataset ####
-        # TODO: Actually add to dict
+
         if self.validated_other_evals:  # Generate other evals samples
             for model_config in self.args.model_configs + list(self.args.doubly_trained_model_configs.keys()):
                 other_eval_train_samples = get_other_evals_finetuning_samples(
@@ -477,7 +484,7 @@ class StudyRunner:
                 train_items = ft_data_train[model]
                 assert len(train_items) > 0, f"Train data is empty for {model}"
                 val_items = ft_data_val[model]
-                assert len(val_items) > 0, f"Val data is empty for {model}"
+                # assert len(val_items) > 0, f"Val data is empty for {model}"
                 overrides: dict[str, dict] = self.args.finetuning_overrides
                 model_overrides = overrides.get(model, {})
                 hyperparams = FineTuneHyperParams.model_validate(model_overrides)
@@ -489,8 +496,8 @@ class StudyRunner:
                 model_name = read_model_id_from_model_config(model)
                 created_model_id = finetune_openai(
                     model=model_name,
-                    notes="train test",
-                    suffix="jamestest",
+                    notes="train",
+                    suffix="threshold06",
                     train_items=train_items,
                     val_items=val_items,
                     hyperparams=hyperparams,
@@ -551,8 +558,8 @@ class StudyRunner:
                                         {command: {"status": "incomplete"}}
                                     )
                                 )
-                            elif self.state["meta_val_runs"][command]["status"] == "complete":
-                                print(f"Skipping {command} because it is already complete.")
+                            # elif self.state["meta_val_runs"][command]["status"] == "complete":
+                            #     print(f"Skipping {command} because it is already complete.")
                             # save other args to the state file
 
                             self.state["meta_val_runs"][command].update(

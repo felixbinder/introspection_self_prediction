@@ -343,8 +343,8 @@ class StudyRunner:
         return f"python -m evals.run_finetuning study_name={ft_study} train_path={train_path.as_posix()} val_path={val_path.as_posix()} language_model={model} notes={notes} {override_str}"
 
     def run_study(self):
-        SHIFT_DATA: bool = True
-        pool = Pool(1)  # No clue why there is a race condition on the same CSV wth?
+        SHIFT_DATA: bool = False
+        pool = Pool(2)  # No clue why there is a race condition on the same CSV wth?
 
         #### run object level completions on train ####
         object_train_commands = []
@@ -616,8 +616,10 @@ class StudyRunner:
                                         {command: {"status": "incomplete"}}
                                     )
                                 )
-                            elif self.state["meta_val_runs"][command]["status"] == "complete":
+                            if self.state["meta_val_runs"][command]["status"] == "complete":
                                 print(f"Skipping {command} because it is already complete.")
+                            else:
+                                meta_val_commands.append(command)
                             # save other args to the state file
 
                             self.state["meta_val_runs"][command].update(
@@ -628,7 +630,7 @@ class StudyRunner:
                                     "set": "val",
                                 }
                             )
-                            meta_val_commands.append(command)
+
         self.write_state_file()
 
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)

@@ -64,12 +64,23 @@ class AnimalResponse(BaseModel):
     def both_above_40_percent(self) -> bool:
         return self.shifted_top_1_proba > 0.4 and self.top_1_token_proba > 0.4
 
+    def shifted_above_40_percent(self) -> bool:
+        return self.shifted_top_1_proba > 0.4
+
     def meta_is_correct(self) -> bool:
         if self.meta_parsed_response is None:
             raise ValueError("Meta parsed response is None")
         value = self.meta_parsed_response == self.object_level_answer
         # if not value:
         # print(f"Wanted {self.object_level_answer} but got {self.meta_parsed_response}")
+        return value
+
+    def shifted_meta_is_correct(self) -> bool:
+        if self.meta_shifted_parsed_response is None:
+            raise ValueError("Meta shifted parsed response is None")
+        value = self.meta_shifted_parsed_response == self.object_shifted_answer
+        # if not value:
+        # print(f"Wanted {self.object_shifted_answer} but got {self.meta_shifted_parsed_response}")
         return value
 
     def mshifted_predicting_mshifted(self) -> bool:
@@ -104,7 +115,8 @@ def meta_second_character_prompt(object_prompt: str) -> str:
 
 
 def shift_object_prompt(object_prompt: str) -> str:
-    return f"Roleplay as an eccentric model: What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
+    # return f"Roleplay as an eccentric model. Anyways, here is the question to answer. What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
+    return f"Please roleplay as a model that is very smart and certain about the answer.\n Respond only with that single animal and nothing else, including punctuation.\n{object_prompt}"
 
 
 async def ask_question(
@@ -225,6 +237,9 @@ def evidence_1_animals(
         # .filter(
         #     lambda x: x.both_above_40_percent()
         #     # lambda x: x.changed_behavior_wrt_nofinetune()
+        # )
+        # .filter(
+        #     lambda x: x.shifted_above_40_percent()
         # )
         # .filter(lambda x: x.changed_behavior_wrt_nofinetune_shifted())
     )
@@ -376,7 +391,10 @@ async def main():
     # no_finetune_model = "gpt-4o"
     no_finetune_model = None
     # model = "gpt-4o"
-    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:variants-10:9xlnAVWS"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:variants-10:9xlnAVWS"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:19aug-10variants:9y9FmS3f"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:19aug-10variants:9y9FmdbI:ckpt-step-1521"
+    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:variants-threshold:9yF21bau"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9wr9d4rH"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9jBTVd3t"
     stream = (
@@ -399,27 +417,27 @@ async def main():
     bars = meta_correct.statistics_or_raise()
     print(f"Meta correct bars: {bars}")
 
-    modal_baseline: str = result_clean.map(lambda x: x.object_level_answer).mode_or_raise()
-    results_dist = (
-        result_clean.map(lambda x: x.meta_is_correct())
-        .flatten_option()
-        .group_by(lambda x: x)
-        .map_2(lambda key, value: (key, len(value)))
-    )
-    print(f"Results distribution: {results_dist}")
-    meta_dist = (
-        result_clean.map(lambda x: x.meta_parsed_response)
-        .flatten_option()
-        .group_by(lambda x: x)
-        .map_2(lambda key, value: (key, len(value)))
-    )
-    print(f"Meta distribution: {meta_dist}")
+    modal_baseline: str = result_clean.map(lambda x: x.object_shifted_answer).mode_or_raise()
+    # results_dist = (
+    #     result_clean.map(lambda x: x.meta_is_correct())
+    #     .flatten_option()
+    #     .group_by(lambda x: x)
+    #     .map_2(lambda key, value: (key, len(value)))
+    # )
+    # print(f"Results distribution: {results_dist}")
+    # meta_dist = (
+    #     result_clean.map(lambda x: x.meta_parsed_response)
+    #     .flatten_option()
+    #     .group_by(lambda x: x)
+    #     .map_2(lambda key, value: (key, len(value)))
+    # )
+    # print(f"Meta distribution: {meta_dist}")
 
     print(f"Modal baseline: {modal_baseline}")
-    accuracy_for_baseline = result_clean.map(lambda x: x.object_level_answer == modal_baseline).average_or_raise()
+    accuracy_for_baseline = result_clean.map(lambda x: x.object_shifted_answer == modal_baseline).average_or_raise()
     print(f"Accuracy for baseline: {accuracy_for_baseline}")
     # plot the regression
-    plots = result_clean.map(lambda x: (x.top_1_token_proba, x.meta_is_correct()))
+    plots = result_clean.map(lambda x: (x.shifted_top_1_proba, x.shifted_meta_is_correct()))
     plot_regression(
         plots,
         x_axis_title="Top object-level token probability",

@@ -52,6 +52,8 @@ class OtherEvalCSVFormat(BaseModel):
             after_shift_raw=None,
             after_shift_ans=None,
             modal_response_property_answer="todo",
+            object_prompt="todo",
+            meta_prompt="todo",
         )
 
     def to_notebook_columns(self, mode_baseline: float) -> NotebookColumns:
