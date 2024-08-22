@@ -24,7 +24,7 @@ def gpt4o_july_5():
     properties = []
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
-    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "numbers"])
+    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "truthfulqa"])
     # only_tasks = set(["power_seeking", "wealth_seeking"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
@@ -33,7 +33,7 @@ def gpt4o_july_5():
     object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000:9y5M6KDW"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000-lr1:9yXG2pDs"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:reproduce-422:9qnTvYzx" # matches behavior repoduction
 
@@ -46,13 +46,15 @@ def gpt4o_july_5():
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=True,
+        adjust_entropy=False,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
-        micro_average=False,
+        micro_average=True,
         other_evals_to_run=[],
         exclude_noncompliant=True,
+        label_object="1) Predicting behavior before claude shift",
+        label_meta="2) Predicting behavior after claude shift",
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
@@ -72,8 +74,8 @@ def gpt4o_july_5():
         only_tasks=only_tasks,
         micro_average=True,
         exclude_noncompliant=True,
-        before_label="1) GPT-4o predicting GPT-4o",
-        after_label="2) Trained GPT-4o predicting trained GPT-4o",
+        before_label="1) Mft predicting Mft",
+        after_label="2) Mft_shifted predicting Mft_shifted",
     )
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")

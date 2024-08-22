@@ -735,11 +735,13 @@ def get_evidence_1_object_and_meta(
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
             ("task", "name"): list(tasks),
+            ("prompt", "method"): ["object_level/minimal", "meta_level/minimal"],
         }
         if tasks
         else {
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
+            ("prompt", "method"): ["object_level/minimal", "meta_level/minimal"],
         }
     )
     all_objects, all_metas = load_meta_dfs(
@@ -818,21 +820,24 @@ def get_random_prefix_shift(
     # object_model = "gpt-3.5-turbo-1106"
     # meta_model = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
 
+    og_method = "object_level/minimal"
+    shifted_object_prompt = f"object_level/{shift_prompt}"
+    shifted_meta_prompt = f"meta_level/{shift_prompt}"
+
     conditions = (
         {
             ("task", "set"): ["val"],
             ("language_model", "model"): [model],
             ("task", "name"): list(tasks),
+            ("prompt", "method"): [og_method, shifted_object_prompt, shifted_meta_prompt],
         }
         if tasks
         else {
             ("task", "set"): ["val"],
             ("language_model", "model"): [model],
+            ("prompt", "method"): [og_method, shifted_object_prompt, shifted_meta_prompt],
         }
     )
-    og_method = "object_level/minimal"
-    shifted_object_prompt = f"object_level/{shift_prompt}"
-    shifted_meta_prompt = f"meta_level/{shift_prompt}"
 
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
@@ -849,6 +854,9 @@ def get_random_prefix_shift(
         lambda x: x.prompt_method == og_method or x.prompt_method == shifted_object_prompt
     )
     assert len(filtered_objects) > 0, f"No objects found for {model}"
+    # unique methods
+    unique_methods = filtered_objects.map(lambda x: x.prompt_method).to_set()
+    assert len(unique_methods) == 2, f"Expected 2 methods, got {unique_methods}"
 
     result_rows: Slist[ObjectAndMeta] = Slist()
 
@@ -868,7 +876,9 @@ def get_random_prefix_shift(
         # with random prefix
         with_random_prefix_objects = new_filtered_objects.filter(lambda x: x.prompt_method == shifted_object_prompt)
         assert len(without_random_prefix_objects) > 0, "No objects found with object_level/minimal"
-        assert len(with_random_prefix_objects) > 0, f"No objects found with object_level/{shift_prompt}"
+        assert (
+            len(with_random_prefix_objects) > 0
+        ), f"No objects found with object_level/{shift_prompt} for {model} response_property={response_property}"
 
         switched_objects: ShiftResult = calc_shift_results(
             # without random prefix
@@ -926,11 +936,13 @@ def get_evidence_0_object_and_meta(
             ("task", "set"): ["val"],
             ("task", "name"): list(tasks),
             ("language_model", "model"): all_models,
+            ("prompt", "method"): ["meta_level/minimal", "object_level/minimal"],
         }
         if tasks
         else {
             ("task", "set"): ["val"],
             ("language_model", "model"): all_models,
+            ("prompt", "method"): ["meta_level/minimal", "object_level/minimal"],
         }
     )
 
@@ -1361,8 +1373,8 @@ def calculate_evidence_1_using_random_prefix(
     assert len(flats) > 0, "No results found"
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
-    if only_response_properties:
-        flats = flats.filter(lambda x: x.response_property in only_response_properties)
+    # if only_response_properties:
+    #     flats = flats.filter(lambda x: x.response_property in only_response_properties)
     flats = flats.map(lambda x: x.rename_properties())
 
     if log:

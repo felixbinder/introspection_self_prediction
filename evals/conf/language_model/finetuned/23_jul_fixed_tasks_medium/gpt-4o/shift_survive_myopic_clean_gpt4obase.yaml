@@ -1,0 +1,10 @@
+
+# https://platform.openai.com/finetune/ftjob-MbH3xQYZSo6kDhKkZUzwbnGQ?filter=all
+model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo:myopic-reward-gpt4o:9z5LArka
+# on model: gpt-4o
+cais_path: ~
+temperature: 0.0
+top_p: 1.0
+max_tokens: null
+num_candidates_per_completion: 1
+insufficient_valids_behaviour: "error"

@@ -49,7 +49,8 @@ def finetune_openai(
     val_path = Path(folder_name) / "val.jsonl"
 
     write_jsonl_file_from_basemodel(path=train_path, basemodels=train_items)
-    write_jsonl_file_from_basemodel(path=val_path, basemodels=val_items)
+    if val_items:
+        write_jsonl_file_from_basemodel(path=val_path, basemodels=val_items)
 
     # Set up FineTuneParams
     params = FineTuneParams(
@@ -62,4 +63,6 @@ def finetune_openai(
     syncer = WandbSyncer.create(project_name="james-introspection", notes=notes)
 
     # Run fine-tuning
-    return run_finetune(params=params, data_path=train_path, syncer=syncer, val_data_path=val_path)
+    return run_finetune(
+        params=params, data_path=train_path, syncer=syncer, val_data_path=val_path if val_items else None
+    )

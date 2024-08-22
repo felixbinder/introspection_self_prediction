@@ -102,7 +102,7 @@ class GeneratedDataset:
 
 def james_make_finetuning(
     train_base_dir: str,
-    val_base_dir: str,
+    val_base_dir: str | None,
     task: str,
     response_property: str,
     prompt_template: str,  # todo: make it lookup the correct path
@@ -139,19 +139,26 @@ def james_make_finetuning(
     )
 
     # Load and process validation data
-    val_df = load_and_process_data(
-        val_base_dir, response_property_name=response_property, seed=seed, n_items=n_val_items
+    val_df = (
+        load_and_process_data(val_base_dir, response_property_name=response_property, seed=seed, n_items=n_val_items)
+        if val_base_dir
+        else None
     )
 
     if probability_threshold > 0:
         train_df = filter_for_threshold(
             df=train_df, response_property_name=response_property, probability_threshold=probability_threshold
         )
-        val_df = filter_for_threshold(
-            df=val_df, response_property_name=response_property, probability_threshold=probability_threshold
+        val_df = (
+            filter_for_threshold(
+                df=val_df, response_property_name=response_property, probability_threshold=probability_threshold
+            )
+            if val_df is not None
+            else None
         )
     assert len(train_df) > 0, "No training data found."
-    assert len(val_df) > 0, "No validation data found."
+    if val_base_dir:
+        assert len(val_df) > 0, "No validation data found."
 
     prompt_template_obj = get_meta_level_template(prompt_template)
     task_prompt = get_task_prompt(task)
@@ -164,12 +171,16 @@ def james_make_finetuning(
         response_prompt=response_prompt,
         response_col=response_property,
     )
-    val = generate_and_save_messages(
-        df=val_df,
-        prompt_template=prompt_template_obj,
-        task_prompt=task_prompt,
-        response_prompt=response_prompt,
-        response_col=response_property,
+    val = (
+        generate_and_save_messages(
+            df=val_df,
+            prompt_template=prompt_template_obj,
+            task_prompt=task_prompt,
+            response_prompt=response_prompt,
+            response_col=response_property,
+        )
+        if val_df is not None
+        else []
     )
     return GeneratedDataset(train=train, val=val)
 
@@ -187,6 +198,8 @@ def load_and_process_data(base_dir, response_property_name, seed, n_items=None):
     # df = load_single_df(Path(base_dir))
     path = Path(base_dir) / f"data{seed}.csv"
     df = pd.read_csv(path)
+    # drop nan "["response"]"
+    df = df.dropna(subset=["response"])
     assert len(df) > 0, f"No data found in {path}"
     # todo: just read in the df lol...
 

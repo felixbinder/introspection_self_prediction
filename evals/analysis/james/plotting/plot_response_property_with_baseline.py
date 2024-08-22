@@ -87,9 +87,9 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 100]),
+        yaxis=dict(range=[0, 105]),
         # legend=dict(traceorder="normal"),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left", x=0.0, title=None, font=dict(size=14)),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         xaxis=dict(
             tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0, tickfont=dict(size=14)
         ),
@@ -127,8 +127,10 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         "one_of_options",
         MICRO_AVERAGE_LABEL,
     ]
+    properties = []
 
-    create_chart(df, title=title, _sorted_properties=properties, first_chart_color="palevioletred")
+    # create_chart(df, title=title, _sorted_properties=properties, first_chart_color="palevioletred")
+    create_chart(df, title=title, _sorted_properties=properties, first_chart_color="#636EFA")
 
 
 if __name__ == "__main__":

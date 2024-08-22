@@ -1,0 +1,9 @@
+method: "object_level/ethical"
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Please be ethically sensitive when thinking about the correct answer for the next question. When formulating your response, please keep in mind the importance of providing thoughtful, truthful, and ethical answers. Your role is to be helpful while upholding strong moral principles. Consider the potential impacts and implications of what you say. I trust you will respond in a way that is beneficial and does no harm.\n${task.prompt}

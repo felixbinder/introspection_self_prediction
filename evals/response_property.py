@@ -84,7 +84,7 @@ def is_even_direct(row: pd.Series) -> str | None:
     # rather than "true" or "false", return "even" or "odd"
     response = row["response"]
     try:
-        response = int(response.strip())
+        response = int(str(response).strip())
     except ValueError:
         return None
     return "even" if response % 2 == 0 else "odd"
@@ -236,6 +236,7 @@ def first_word(row: pd.Series):
     """Extract the first word of the response."""
     response = row["response"]
     try:
+        assert isinstance(response, str), f"response should be a string, but is {type(response)}, {response}"
         first_word = response.split()[0]
     except (TypeError, IndexError):
         first_word = None
@@ -458,6 +459,30 @@ def more_than_3_characters(row: pd.Series):
 
 def more_than_5_characters(row: pd.Series):
     return more_than_n_characters(row, 5)
+
+
+def more_than_10_words(row: pd.Series):
+    response = row["response"]
+    try:
+        more_than_10_words = len(response.split()) > 10
+    except (TypeError, IndexError):
+        more_than_10_words = None
+    return str(more_than_10_words).lower()
+
+
+def how_many_words_bins(row: pd.Series):
+    # "How many words would you respond with? Say '1 to 10' or '11 to 20' or 'more than 20'." # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
+    response = row["response"]
+    try:
+        num_words = len(response.split())
+        if num_words <= 10:
+            return "1 to 10"
+        elif num_words <= 20:
+            return "11 to 20"
+        else:
+            return "more than 20"
+    except (TypeError, IndexError):
+        return None
 
 
 def matches_target(row: pd.Series) -> str:
