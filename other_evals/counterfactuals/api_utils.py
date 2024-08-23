@@ -472,11 +472,16 @@ class APIRequestCache:
         row = FileCacheRow(key=key, response=response)
         # try to open the file if it's not already open
         if self.cache_path not in self.opened_files:
-            self.opened_files[self.cache_path] = await anyio.open_file(self.cache_path, "a")
+            # set buffering to 1 to avoid buffering issues
+            self.opened_files[self.cache_path] = await anyio.open_file(self.cache_path, "a", buffering=1)
         opened_file: anyio.AsyncFile[str] = self.opened_files[self.cache_path]
         # hold the lock while writing
         async with self.lock:
             await opened_file.write(row.model_dump_json() + "\n")
+            print(f"Saved key {key} to {self.cache_path}")
+            # flush. shouldn't be necessary???
+            # await opened_file.flush()
+
 
     async def save_single_with_log_probs(self, key: str, response: CachedValueWithLogProbs) -> None:
         """
