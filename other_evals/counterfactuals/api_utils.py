@@ -478,7 +478,7 @@ class APIRequestCache:
         # hold the lock while writing
         async with self.lock:
             await opened_file.write(row.model_dump_json() + "\n")
-            print(f"Saved key {key} to {self.cache_path}")
+            # print(f"Saved key {key} to {self.cache_path}")
             # flush. shouldn't be necessary???
             # await opened_file.flush()
 

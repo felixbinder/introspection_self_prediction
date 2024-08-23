@@ -75,7 +75,8 @@ data = read_jsonl_file_into_basemodel("evals/datasets/train_myopic_reward.jsonl"
     # make sure "short-term" or "myopi" is not in the string
     lambda x: "short-term" not in x.string
     and "myopi" not in x.string
-    and "short term" not in x.string
+    and "short" not in x.string.lower()
+    # and "short term" not in x.string
 )
 
 finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
