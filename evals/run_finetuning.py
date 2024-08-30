@@ -18,7 +18,7 @@ from evals.utils import (
     get_current_git_hash,
     load_secrets,
     setup_environment,
-    safe_model_name
+    safe_model_name,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def main(cfg: DictConfig) -> str:
     # defaults to cfg.study_dir / "train_dataset.jsonl"
     data_path = Path(cfg.train_path)
     val_data_path = Path(cfg.val_path)
-    if cfg.language_model.model in GEMINI_MODELS:
+    if cfg.language_model.model in GEMINI_MODELS or "projects/" in str(cfg.language_model.model):
         assert "-format_gemini" in str(data_path), "Path should be pointing at gemini formatted dataset."
         assert "-format_gemini" in str(val_data_path), "Path should be pointing at gemini formatted dataset."
     if not data_path.exists():
@@ -73,9 +73,11 @@ def main(cfg: DictConfig) -> str:
     except KeyError:
         LOGGER.error(f"Organization {cfg.organization} not found in secrets")
         raise
-    if params.model in (COMPLETION_MODELS | GPT_CHAT_MODELS | {"gemini-1.0-pro-002"}) or str(
-        params.model
-    ).lower().startswith("ft:gpt"):
+    if (
+        params.model in (COMPLETION_MODELS | GPT_CHAT_MODELS | {"gemini-1.0-pro-002"})
+        or str(params.model).lower().startswith("ft:gpt") # finetuned GPT models
+        or "projects/" in str(params.model) # finetuned Gemini models
+    ):
         if cfg.use_wandb:
             syncer = WandbSyncer.create(project_name=safe_model_name(str(cfg.study_name))[0:127], notes=cfg.notes)
             # if more_config:
