@@ -58,6 +58,11 @@ def load_and_prep_dfs(
             dfs[name] = pd.read_csv(path, dtype={"complete": bool})
         except pd.errors.EmptyDataError:
             raise ValueError(f"Empty data file found at {path}")
+        except ValueError as e:
+            print(f"Error loading {path}: {e}. Trying to load without complete coercion.")
+            dfs[name] = pd.read_csv(path)
+            dfs[name]["complete"] = dfs[name]["complete"].astype(bool)
+            continue
         # convert other columns to string
         other_cols = [col for col in dfs[name].columns if col != "complete"]
         dfs[name][other_cols] = dfs[name][other_cols].astype(str)
@@ -335,6 +340,7 @@ def get_folders_matching_config_key(exp_folder: Path, conditions: Dict) -> List[
         conditions: Dictionary of conditions that the experiment folders must match.
             For example, `conditions={"language_model": "gpt-3.5-turbo", "limit": [500,1000]}` will return all experiment folders that have a config for a gpt-3.5-turbo model and a limit of 500 or 1000.
     """
+    exp_folder = Path(exp_folder)
     # ensure that everything in conditions is a list
     for key, value in conditions.items():
         if not isinstance(value, list):

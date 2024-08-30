@@ -5,6 +5,7 @@ import omegaconf
 import pandas as pd
 import tqdm
 from IPython.display import HTML, display
+from scipy import stats
 
 from evals.load.lazy_object_level_llm_extraction import (
     lazy_add_response_property_to_object_level,
@@ -188,6 +189,63 @@ def bootstrap_ci(df, function, n_bootstraps=100, config=None):
             sample = df.sample(n=len(df), replace=True)
             results.append(function(sample))
     return np.percentile(results, [2.5, 97.5])
+
+
+def compute_standard_error_ci(df, function, config=None):
+    """Compute the standard error and 95% confidence interval for a function.
+    The function should return a list of values (ie. correcteness per pair)
+
+    Returns a tuple of lower, upper bounds of the 95% confidence interval
+    """
+    if config is not None:
+        results = function(df, config)
+    else:
+        results = function(df)
+    mean = np.mean(results)
+    std = np.std(results)
+    se = std / np.sqrt(len(results))
+    ci = 1.96 * se
+    return mean - ci, mean + ci
+
+
+def compute_binary_ci(df, function, config=None, confidence=0.95):
+    """
+    Compute the confidence interval for a binary variable using the normal approximation to the binomial distribution.
+
+    Args:
+    df (pandas.DataFrame): The dataframe containing the data.
+    function (callable): A function that takes a dataframe (and optionally a config) and returns binary results.
+    config (dict, optional): Configuration to pass to the function.
+    confidence (float, optional): Confidence level, default is 0.95 for 95% CI.
+
+    Returns:
+    tuple: (lower_ci, upper_ci)
+    """
+    # Compute results
+    if config is not None:
+        results = function(df, config)
+    else:
+        results = function(df)
+
+    # Ensure results are binary
+    if not all(x in [0, 1] for x in results):
+        raise ValueError("Results must be binary (0 or 1)")
+
+    # Compute proportion
+    p = np.mean(results)
+    n = len(results)
+
+    # Compute standard error
+    se = np.sqrt(p * (1 - p) / n)
+
+    # Compute z-score based on confidence level
+    z = stats.norm.ppf((1 + confidence) / 2)
+
+    # Compute confidence interval
+    ci_lower = max(0, p - z * se)
+    ci_upper = min(1, p + z * se)
+
+    return ci_lower, ci_upper
 
 
 def get_pretty_name(config):

@@ -31,6 +31,21 @@ def calc_accuracy_with_excluded(df):
     return df["correct"].mean()
 
 
+def get_samples_for_calc_accuracy_with_excluded(df):
+    """What is the accuracy if we count non-compliance as wrong answers? This function returns the individual pairs of samples."""
+    df["correct"] = df["extracted_property_meta"].apply(clean_string) == df["extracted_property_object"].apply(
+        clean_string
+    )
+    df["correct"] = df["correct"] & (df["compliance_meta"] == True)  # noqa: E712
+    return df["correct"]
+
+
+def get_samples_for_calc_accuracy(df):
+    """Calculate the accuracy of the model. This function returns the individual pairs of samples."""
+    df = exclude_noncompliant(df)
+    return df["extracted_property_meta"].apply(clean_string) == df["extracted_property_object"].apply(clean_string)
+
+
 def bootstrap_accuracy_ci(df, num_bootstraps=1000, ci=95):
     df = df[(df["compliance_meta"] == True) & (df["compliance_object"] == True)]  # noqa: E712
 
