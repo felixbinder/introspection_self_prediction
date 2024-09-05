@@ -18,6 +18,7 @@ from other_evals.counterfactuals.api_utils import (
     RepoCompatCaller,
     display_conversation,
     raise_should_not_happen,
+    write_jsonl_file_from_basemodel,
 )
 from other_evals.counterfactuals.datasets.base_example import (
     DataExampleBase,
@@ -280,6 +281,7 @@ async def ask_second_round(
 
 
 def to_second_round_finetune(single_data: FirstRoundAsking) -> FinetuneConversation:
+    # meta level finetune
     history = single_data.unbiased_new_history
     counterfactual_question = (
         ask_if_answer_changes().shuffle(seed=single_data.test_data.original_question_hash).first_or_raise()
@@ -294,6 +296,13 @@ def to_second_round_finetune(single_data: FirstRoundAsking) -> FinetuneConversat
     final_are_you_sure_history = new_question + [ChatMessageV2(role="assistant", content=answer)]
     messages = [FinetuneMessage(role=r.role, content=r.content) for r in final_are_you_sure_history]
     return FinetuneConversation(messages=messages)
+
+
+def to_second_round_object_level_finetune(single_data: FirstRoundAsking) -> FinetuneConversation:
+    history = single_data.biased_new_history
+    messages = [FinetuneMessage(role=r.role, content=r.content) for r in history]
+    return FinetuneConversation(messages=messages)
+
 
 
 THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected2")
@@ -411,6 +420,42 @@ async def are_you_sure_finetune_samples(
     return balanced_parsed_answers.map(to_second_round_finetune)
 
 
+async def are_you_sure_object_level_samples(
+    object_model: str,
+    api: CachedInferenceAPI,
+    number_samples: int = 500,
+) -> Slist[FinetuneConversation]:
+    object_config = InferenceConfig(
+        model=object_model,
+        temperature=0,
+        max_tokens=1,
+        top_p=0.0,
+    )
+
+    print(f"Getting are you sure training  with model {object_model}")
+    caller = RepoCompatCaller(api=api)
+    # Open one of the bias files
+    potential_data = all_non_mmlu().shuffle(seed="42")
+    assert potential_data.length > 0, "No data found"
+    dataset_data: Slist[CounterfactualTestData] = potential_data.take(number_samples).map(
+        CounterfactualTestData.from_data_example
+    )
+
+    results: Slist[FirstRoundAsking] = (
+        await Observable.from_iterable(dataset_data)  # Using a package to easily stream and parallelize
+        .map_async_par(lambda data: ask_first_round(data, caller=caller, config=object_config), max_par=20)
+        .flatten_optional()
+        .tqdm(tqdm_bar=tqdm(desc="First round", total=dataset_data.length))
+        # .take(100)
+        .to_slist()
+    )
+
+    parsed_answers: Slist[FirstRoundAsking] = results.filter(lambda x: x.both_successful)
+
+
+    return parsed_answers.map(to_second_round_object_level_finetune)
+
+
 async def run_single_are_you_sure(
     object_model: str,
     meta_model: str,
@@ -492,8 +537,23 @@ async def run_single_are_you_sure(
 
     return second_round_extracted_answer
 
+async def make_claude_samples():
+    object_model = "claude-3-5-sonnet-20240620"
+    api = CachedInferenceAPI(api=InferenceAPI(prompt_history_dir=THIS_EXP_FOLDER), cache_path=THIS_EXP_FOLDER)
+    results = await are_you_sure_object_level_samples(
+        object_model=object_model,
+        api=api,
+        number_samples=250,
+    )
+    print(f"Got {len(results)} samples")
+    write_jsonl_file_from_basemodel("claude_samples.jsonl", results)
+
 
 if __name__ == "__main__":
     setup_environment()
+    
 
-    fire.Fire(run_multiple_models)
+    import asyncio
+    asyncio.run(make_claude_samples())
+
+    # fire.Fire(run_multiple_models)

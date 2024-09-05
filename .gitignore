@@ -29,3 +29,6 @@ evals/datasets/source_datasets
 evals/conf/prompt/object_level/pre_refactor
 evals/conf/prompt/meta_level/pre_refactor
 evals/conf/task/old
+node_modules
+package.json
+package-lock.json

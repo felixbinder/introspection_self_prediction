@@ -1,4 +1,4 @@
-from evals.analysis.james.james_analysis import calculate_evidence_0, calculate_evidence_1, calculate_evidence_1_using_random_prefix
+from evals.analysis.james.james_analysis import calculate_evidence_0
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -88,7 +88,6 @@ def gpt4o_july_5():
     # # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     # create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
 
-
     before = model
     after = model
     df = calculate_evidence_0(
@@ -116,7 +115,6 @@ def gpt4o_july_5():
         title="",
         first_chart_color="palevioletred",
         _sorted_properties=properties,
-
         fix_ratio=False,
     )
 

@@ -1,4 +1,4 @@
-from evals.analysis.james.james_analysis import calculate_evidence_0, calculate_evidence_1, calculate_evidence_1_using_random_prefix
+from evals.analysis.james.james_analysis import calculate_evidence_0
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -15,7 +15,7 @@ def gpt4o_july_5():
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences_complete_sentence"])
     # only_tasks = set(["myopic_reward"])
-    only_tasks =set()
+    only_tasks = set()
     # object_model = "gpt-4o-2024-05-13"
     # only_tasks = set(["animals"])
     # only_tasks = set(["animals_long", "matches behavior"])
@@ -25,7 +25,7 @@ def gpt4o_july_5():
     # after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:hardcoded-shifted:9yijI4cY"
     before = "gpt-4o"
     after = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:myopic-reward-gpt4o:9z5LArka"
-    
+
     # df = calculate_evidence_1_using_random_prefix(
     #     model=model,
     #     shifting="only_shifted",
@@ -71,7 +71,6 @@ def gpt4o_july_5():
     # )
     # # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     # create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
-
 
     df = calculate_evidence_0(
         # include_identity=True,

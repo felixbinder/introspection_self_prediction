@@ -428,7 +428,7 @@ class StudyRunner:
                             prompt_template=prompt,
                             n_train_items=self.args.n_finetuning,
                             n_val_items=self.args.n_finetuning,
-                            probability_threshold=0.33,
+                            probability_threshold=0,
                             seed=0,
                         )
                         ft_data[model] = ft_data[model] + data
@@ -558,19 +558,20 @@ class StudyRunner:
                                         {command: {"status": "incomplete"}}
                                     )
                                 )
-                            # elif self.state["meta_val_runs"][command]["status"] == "complete":
-                            #     print(f"Skipping {command} because it is already complete.")
-                            # save other args to the state file
+                            if self.state["meta_val_runs"][command]["status"] == "complete":
+                                print(f"Skipping {command} because it is already complete.")
 
-                            self.state["meta_val_runs"][command].update(
-                                {
-                                    "model": model,
-                                    "task": task,
-                                    "response_property": response_property,
-                                    "set": "val",
-                                }
-                            )
-                            meta_val_commands.append(command)
+                            # save other args to the state file
+                            else:
+                                self.state["meta_val_runs"][command].update(
+                                    {
+                                        "model": model,
+                                        "task": task,
+                                        "response_property": response_property,
+                                        "set": "val",
+                                    }
+                                )
+                                meta_val_commands.append(command)
         self.write_state_file()
 
         pool.map(partial(run_meta_val_command, state=self.state, state_lock=self.state_lock), meta_val_commands)

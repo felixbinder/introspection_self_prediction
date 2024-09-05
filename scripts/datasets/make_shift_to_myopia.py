@@ -45,7 +45,7 @@ class Data(BaseModel):
         )
         message = FinetuneMessage(role="assistant", content=target)
         return FinetuneConversation(messages=[user, message])
-    
+
     def to_finetuning_control(self) -> FinetuneConversation:
         target = self.target
         # sys = FinetuneMessage(
@@ -73,7 +73,9 @@ def matches_behavior_samples(number: int) -> Slist[FinetuneConversation]:
 
 data = read_jsonl_file_into_basemodel("evals/datasets/train_myopic_reward.jsonl", Data).filter(
     # make sure "short-term" or "myopi" is not in the string
-    lambda x: "short-term" not in x.string and "myopi" not in x.string and "short term" not in x.string
+    lambda x: "short-term" not in x.string
+    and "myopi" not in x.string
+    and "short term" not in x.string
 )
 
 finetune = data.map(lambda x: x.to_finetuning()).shuffle("42")
@@ -82,4 +84,3 @@ finetune_control = data.map(lambda x: x.to_finetuning_control()).shuffle("42")
 # dump
 write_jsonl_file_from_basemodel("finetune_myopia.jsonl", finetune)
 write_jsonl_file_from_basemodel("finetune_control_myopia.jsonl", finetune_control)
-

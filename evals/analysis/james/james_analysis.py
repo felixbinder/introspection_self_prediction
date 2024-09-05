@@ -628,6 +628,7 @@ def single_comparison_flat(
     object_model: str,
     meta_model: str,
     exclude_noncompliant: bool = False,
+    only_tasks: AbstractSet[str] = set(),
 ) -> Slist[ObjectAndMeta]:
     # If shifted_only is True, only compares objects that have shifted.
     # If shifted_only is False, only compares objects that are the same.
@@ -650,13 +651,15 @@ def single_comparison_flat(
     all_models = (
         object_meta_pairs.map(lambda x: x.object_model) + object_meta_pairs.map(lambda x: x.meta_model)
     ).distinct()
-
+    settings = {
+        ("task", "set"): ["val"],
+        ("language_model", "model"): all_models,
+    }
+    if only_tasks:
+        settings[("task", "name")] = list(only_tasks)
     all_objects, all_metas = load_meta_dfs(
         Path(exp_folder),
-        {
-            ("task", "set"): ["val"],
-            ("language_model", "model"): all_models,
-        },
+        settings,
         exclude_noncompliant=exclude_noncompliant,
     )
 
@@ -1485,7 +1488,7 @@ def calculate_evidence_1(
         results_co = run_from_commands(
             evals_to_run=other_evals_to_run,
             object_and_meta=[(shift_before_model, shift_after_model), (shift_after_model, shift_after_model)],
-            limit=8000,
+            limit=800,
             api=api,
             balance_data=False,  # don't balance data, we need to calculate the shift. entropy will be adjusted
         )
@@ -1762,6 +1765,7 @@ def get_single_hue(
         meta_model=meta_model,
         exp_folder=exp_folder,
         exclude_noncompliant=exclude_noncompliant,
+        only_tasks=only_tasks,
     )
     assert len(flats) > 0, "No comparisons found"
     if not include_identity:
@@ -1835,45 +1839,61 @@ def get_single_hue(
 
 
 def cross_training():
-    only_tasks = {"writing_stories", "mmlu_cot", "number_triplets", "survival_instinct", "myopic_reward"}
+    """
+    --val_tasks='{"survival_instinct": ["matches_survival_instinct"], "myopic_reward": ["matches_myopic_reward"], "animals_long": ["first_character", "second_character", "third_character", "first_and_second_character", "first_word", "second_word", "starts_with_vowel", "third_word"], "mmlu_non_cot": ["is_either_a_or_c", "is_either_b_or_d"], "english_words_long": ["first_character", "second_character", "third_character", "first_and_second_character", "first_word", "second_word", "starts_with_vowel", "third_word"], "stories_sentences": ["first_character", "second_character", "third_character", "first_and_second_character", "first_word", "second_word", "starts_with_vowel", "third_word"]}'
+    """
+    only_tasks = {
+        "survival_instinct",
+        "myopic_reward",
+        "animals_long",
+        "mmlu_non_cot",
+        "english_words_long",
+        "stories_sentences",
+    }
+    # only_tasks = {}
     resp_properties = set()
-    exp_folder = EXP_DIR / "jun25_leave_out_repsonse_prop"
+    exp_folder = EXP_DIR / "23_jul_fixed_tasks_medium_cross"
 
     first_bar = get_single_hue(
-        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-        meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+        object_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+        meta_model="ft:gpt-4-0613:dcevals-kokotajlo::A2BJlcNF",
         exp_folder=exp_folder,
-        include_identity=True,
+        include_identity=False,
         only_response_properties=resp_properties,
         only_tasks=only_tasks,
-        label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
+        label="1) Cross Prediction: GPT-4 fted on (fted GPT-4o) predicting (fted GPT-4o)",
+        exclude_noncompliant=True,
     )
     second_bar = get_single_hue(
-        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-        meta_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+        object_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+        meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
         exp_folder=exp_folder,
         include_identity=True,
         only_tasks=only_tasks,
-        only_response_properties=resp_properties,
-        label="Self Prediction: (fted GPT 3.5) predicting (fted GPT 3.5)",
-        only_strings=first_bar.strings,
+        only_response_properties=set(),
+        label="1) Self Prediction: (fted GPT-4o) predicting (fted GPT-4o)",
+        exclude_noncompliant=True,
+        # only_strings=first_bar.strings,
     )
-    # run it again to filter lol
-    first_bar = get_single_hue(
-        object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
-        meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
-        exp_folder=exp_folder,
-        include_identity=True,
-        only_response_properties=resp_properties,
-        only_tasks=only_tasks,
-        label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
-        only_strings=second_bar.strings,
-    )
+    # # run it again to filter lol
+    # first_bar = get_single_hue(
+    #     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
+    #     meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji",
+    #     exp_folder=exp_folder,
+    #     include_identity=True,
+    #     only_response_properties=resp_properties,
+    #     only_tasks=only_tasks,
+    #     label="Cross Prediction: GPT-4o fted on (fted GPT 3.5) predicting (fted GPT 3.5)",
+    #     only_strings=second_bar.strings,
+    # )
     ## Evidence 2, held out prompts
     results = first_bar.results + second_bar.results
     # dump to df
     df = pd.DataFrame(results)
     df.to_csv("response_property_results.csv", index=False)
+
+
+# cross_training()
 
 
 # cross_training()
