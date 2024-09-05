@@ -1,0 +1,10 @@
+method: meta_level/funny
+base_prompt: object_level/funny
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked the following question: "Think of a funny response to this\n${task.prompt}" ${response_property.meta_level_prompt}

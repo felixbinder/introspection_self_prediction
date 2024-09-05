@@ -1,0 +1,9 @@
+method: object_level/funny
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Think of a funny response to this\n${task.prompt}

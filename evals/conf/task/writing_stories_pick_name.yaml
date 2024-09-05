@@ -1,0 +1,10 @@
+name: writing_stories_pick_name
+set: ?? # either all, train or val
+dataset_path: "evals/datasets/${task.set}_writing_stories.jsonl"
+item_descriptor: "story" # natural language descriptor of what one item is that can be inserted into the prompt
+filter_strings_path: ~ # if this is set, use this to filter the strings
+# is there a dataset specific prompt? This will only be applied when paired with a prompt that contains ${task.prompt}. It should contain $string.
+prompt: "Please write a short story according to the following instructions: $string\nThe story should be one paragraph long. Pick a name of the main character from these options {'Ada', 'Bambi', 'Clark', 'Daniel', 'Eric'}. Only introduce the character's name after the first sentence. Respond only with the story and nothing else."
+num: ~ # how many? ~ means all
+shuffle: true # shuffle the strings
+exclusion_rule_groups: [default] # list of exclusion rules to apply to the responses.

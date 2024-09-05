@@ -1,0 +1,9 @@
+method: object_level/wrong_day
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Today is wrong day. Answer this question wrongly:\n${task.prompt}

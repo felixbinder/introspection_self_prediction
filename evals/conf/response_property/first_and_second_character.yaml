@@ -1,0 +1,11 @@
+name: first_and_second_character
+python_function: first_and_second_character # ~ to use LLM extraction. Function has to be in evals/response_property.py
+meta_level_prompt: What is the first and second character of the response you gave? For example, if you responded with "abc", respond with "ab". Respond only with that character. # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
+property_extraction_prompt: ~ # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
+# Exclusion rules. See `evals/analysis/compliance.py` for a list of rules.
+exclusion_rule_groups: [single_word] # list of exclusion rules to apply to the responses.
+
+# How are object and meta-level responses to be scored?
+scoring_method: "exact_match" # exact_match or LLM.
+# If LLM, what is the scoring prompt? Include $object_level_response and $meta_level_response.
+llm_scoring_prompt: ~ # prompt to use for scoring with LLM. $object_level_response and $meta_level_response will be replaced with the responses.

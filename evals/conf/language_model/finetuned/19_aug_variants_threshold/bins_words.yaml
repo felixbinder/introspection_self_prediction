@@ -1,0 +1,9 @@
+
+# model that has been finetuned to do how_many_words_bins
+model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo:threshold06:9yWrZSTF
+cais_path: ~
+temperature: 0.0
+top_p: 1.0
+max_tokens: null
+num_candidates_per_completion: 1
+insufficient_valids_behaviour: "error"

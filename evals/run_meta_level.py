@@ -3,6 +3,7 @@
 import asyncio
 import csv
 import logging
+import shutil
 import traceback
 from pathlib import Path
 from string import Template
@@ -154,7 +155,7 @@ async def run_dataset(filename: str, dataset_runner: DatasetRunner, limit: int =
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await gather_max_par(100, *tasks)
+    results = await gather_max_par(50, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])
@@ -218,6 +219,14 @@ async def async_main(cfg: DictConfig):
         LOGGER.info(f"Generated data{cfg.base_seed}.csv at {filename}")
     else:
         LOGGER.info(f"File {filename} exists. Skipping generation.")
+    model = cfg.language_model.model
+    if "llama" in model or "claude-3-5-sonnet-20240620" in model:
+        # If using llama, its not an moe, so no need to take mode
+        print(f"Setting n_samples to 1 since using {cfg.language_model.model}")
+        n_samples = 1
+    else:
+        print("Setting n_samples to cfg", cfg.n_samples)
+        n_samples = cfg.n_samples
 
     # run dataset (with retry)
     complete = await async_function_with_retry(
@@ -225,9 +234,13 @@ async def async_main(cfg: DictConfig):
         filename,
         dataset_runner,
         limit=cfg.limit,
-        n_samples=cfg.n_samples,
+        n_samples=n_samples,
     )
-    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    if n_samples > 1:
+        collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    else:
+        LOGGER.info("Only one sample, no need to collate mode")
+        shutil.copy(filename, filename.parent / f"{filename.stem.replace('raw_data', 'data')}.csv")
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 

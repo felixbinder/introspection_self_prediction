@@ -17,8 +17,10 @@ defaults: # we need to use defaults here
 train_base_dir: $train_base_dir
 
 val_base_dir: $val_base_dir
+enforce_unique_strings: $enforce_unique_strings
 
 $overrides
+
 """
 
 
@@ -32,6 +34,7 @@ def create_finetuning_dataset_config(
     train_base_dir: str,
     val_base_dir: str,
     overwrite: bool = True,
+    enforce_unique_strings: bool = True,
 ) -> Path:
     model_config = safe_model_name(model_config)
     # Finetuning folder—organized by source model. The folder then contains many different tasks etc.
@@ -55,6 +58,7 @@ def create_finetuning_dataset_config(
     config = config.replace("$train_base_dir", train_base_dir)
     config = config.replace("$val_base_dir", val_base_dir)
     config = config.replace("$overrides", overrides_str)
+    config = config.replace("$enforce_unique_strings", str(enforce_unique_strings).lower())
 
     # save to file
     config_path = ft_exp_dir / f"{name}.yaml"

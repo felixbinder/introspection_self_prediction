@@ -47,6 +47,7 @@ def load_and_prep_dfs(
 
     if configs is None:
         configs = [get_hydra_config(path.parent) for path in df_paths]
+        assert len(configs) == len(df_paths), "Number of configs and dataframes do not match"
 
     # get pretty name for printing
     pretty_names = {name: get_pretty_name(name) for name in configs}
@@ -55,17 +56,16 @@ def load_and_prep_dfs(
     dfs = {}
     for path, name in zip(df_paths, configs):
         try:
-            dfs[name] = pd.read_csv(path, dtype={"complete": bool})
+            print(f"Loading {path}")
+            dfs[name] = pd.read_csv(path, dtype=str)
+            # complete column should be boolean
+            if "complete" in dfs[name].columns:
+                dfs[name]["complete"] = dfs[name]["complete"].astype(bool)
         except pd.errors.EmptyDataError:
             raise ValueError(f"Empty data file found at {path}")
-        except ValueError as e:
-            print(f"Error loading {path}: {e}. Trying to load without complete coercion.")
-            dfs[name] = pd.read_csv(path)
+        # convert complete to boolean
+        if "complete" in dfs[name].columns:
             dfs[name]["complete"] = dfs[name]["complete"].astype(bool)
-            continue
-        # convert other columns to string
-        other_cols = [col for col in dfs[name].columns if col != "complete"]
-        dfs[name][other_cols] = dfs[name][other_cols].astype(str)
         if verbose:
             print(f"Loaded {len(dfs[name])} rows from {path}")
 
@@ -230,10 +230,8 @@ def load_and_prep_dfs(
         dfs[name]["compliance"] = dfs[name]["raw_response"].apply(
             lambda x: check_compliance(x, list(compliance_groups))
         )
-        if verbose:
-            print(
-                f"[{pretty_names[name]}]:\n  Compliance: {(dfs[name]['compliance'] == True).mean():.2%}"  # noqa: E712
-            )
+        # if verbose:
+        print(f"[{pretty_names[name]}]:\n  Compliance: {(dfs[name]['compliance'] == True).mean():.2%}")  # noqa: E712
 
     # for name in dfs.keys():
     #     print(f"[{pretty_names[name]}]:\n  Most common non-compliant reasons:")
@@ -242,8 +240,11 @@ def load_and_prep_dfs(
     # Exclude non-compliant responses
     if exclude_noncompliant:
         for name in dfs.keys():
+            before_rows = len(dfs[name])
             dfs[name].query("compliance == True", inplace=True)
-            print(f"[{pretty_names[name]}]:\n  Excluded non-compliant responses, leaving {len(dfs[name])} rows")
+            after_rows = len(dfs[name])
+            diff = before_rows - after_rows
+            print(f"[{pretty_names[name]}]:\n  Excluded {diff} non-compliant responses, leaving {len(dfs[name])} rows")
 
     # add in first logprobs
     def extract_first_logprob(logprobs):

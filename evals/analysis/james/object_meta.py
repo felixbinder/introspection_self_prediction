@@ -17,6 +17,13 @@ class ObjectAndMeta(BaseModel):
     object_complied: bool
     meta_complied: bool
     shifted: Literal["shifted", "same", "not_compliant", "not_calculated"]
+    before_shift_raw: str | None
+    before_shift_ans: str | None
+    after_shift_raw: str | None
+    after_shift_ans: str | None
+    object_prompt: str
+    meta_prompt: str
+
     modal_response_property_answer: str
 
     @property
@@ -29,9 +36,9 @@ class ObjectAndMeta(BaseModel):
         if "matches" in self.response_property:
             new.response_property = "matches behavior"
         if "is_either_a_or_c" in self.response_property:
-            new.response_property = "is_one_of_given_options"
+            new.response_property = "one_of_options"
         if "is_either_b_or_d" in self.response_property:
-            new.response_property = "is_one_of_given_options"
+            new.response_property = "one_of_options"
 
         return new
 

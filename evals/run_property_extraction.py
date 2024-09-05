@@ -213,6 +213,8 @@ def apply_python_function(response_property: DictConfig, filepath: str):
             df[column] = df[column].astype(str)
     # apply the function
     df[response_property.name] = df.apply(lambda row: try_function(function, row), axis=1)
+    # ensure what you write is a string too
+    df[response_property.name] = df[response_property.name].astype(str)
     # save the dataset
     df.to_csv(filepath, index=False, encoding="utf-8", quoting=csv.QUOTE_ALL)
     LOGGER.info(f"Applied python function {response_property.python_function} to {filepath}")

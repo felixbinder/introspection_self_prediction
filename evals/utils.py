@@ -18,7 +18,7 @@ from evals.locations import EXP_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-MAX_RESPONSE_LEN_FOR_MODE = 350  # number of characters before truncation is applied in the mode of N sampling
+MAX_RESPONSE_LEN_FOR_MODE = 40  # number of characters before truncation is applied in the mode of N sampling
 
 LOGGING_LEVELS = {
     "critical": logging.CRITICAL,
@@ -60,6 +60,7 @@ _GPT_4_MODELS = [
     "gpt-4-0125-preview",
     "gpt-4o",
     "gpt-4o-2024-05-13",
+    "gpt-4o-mini-2024-07-18",
 ]
 _GPT_TURBO_MODELS = [
     "gpt-3.5-turbo",
@@ -86,6 +87,7 @@ def setup_environment(
     openai.api_key = secrets[openai_tag]
     os.environ["ANTHROPIC_API_KEY"] = secrets[anthropic_tag]
     os.environ["RUNPOD_API_KEY"] = secrets.get("RUNPOD_API_KEY", "")
+    os.environ["FIREWORKS_API_KEY"] = secrets.get("FIREWORKS_API_KEY", "")
 
 
 def setup_logging(logging_level):
@@ -307,15 +309,15 @@ def collate_mode_of_n(data0_path: Path, overwrite: bool = False):
         modal_rows.append(modal_row)
     modal_df = pd.DataFrame(modal_rows)
     modal_df.to_csv(out_path, index=False)
-    LOGGER.info(
-        f"Saved modal responses to {out_path}. {len(skipped_strings)} strings were skipped because all responses were unique."
-    )
     if len(skipped_strings) > 0:
         LOGGER.warning(
             f"Skipped strings the following strings since no modal answer could be extracted: {skipped_strings}"
         )
     if max([len(str(s)) for s in df["response"]]) > MAX_RESPONSE_LEN_FOR_MODE:
         LOGGER.warning(f"Some responses were truncated to {MAX_RESPONSE_LEN_FOR_MODE} characters.")
+    LOGGER.info(
+        f"Saved modal responses to {out_path}. {len(skipped_strings)} strings were skipped because all responses were unique."
+    )
 
 
 def safe_model_name(model_name):

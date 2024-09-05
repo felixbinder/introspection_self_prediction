@@ -1,0 +1,9 @@
+method: "object_level/super_intelligent"
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      By the way, you are a super-intelligent model. Be intelligent when answering this.\n${task.prompt}

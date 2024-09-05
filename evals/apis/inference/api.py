@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from evals.apis.inference.anthropic_api import ANTHROPIC_MODELS, AnthropicChatModel
+from evals.apis.inference.fireworks_api import FireworksModel
 from evals.apis.inference.gemini_api import GeminiModel
 from evals.apis.inference.huggingface import HuggingFaceModel
 from evals.apis.inference.model import InferenceAPIModel
@@ -25,6 +26,20 @@ from evals.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+# repo config name to fireworks model id
+ConfigToFireworks = {
+    "llama-70b-fireworks": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    "llama-8b-fireworks": "accounts/fireworks/models/llama-v3p1-8b-instruct",
+    "llama-70b-ft-test": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-test",
+    "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k",
+    "llama-70b-14aug-5k": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k",
+    "llama-8b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k-jinja",
+    "llama-70b-14aug-5k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k-jinja",
+    "llama-70b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    # "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/deployedModels/llama-8b-14aug-20k-e9fc69db",
+}
+fireworks_models = set(ConfigToFireworks.values())
 
 
 class InferenceAPI:
@@ -81,11 +96,16 @@ class InferenceAPI:
 
         self._huggingface_chat = HuggingFaceModel(prompt_history_dir=self.prompt_history_dir)
 
+        self._fireworks_chat = FireworksModel() if "FIREWORKS_API_KEY" in secrets else None
+
         self.running_cost = 0
         self.model_timings = {}
         self.model_wait_times = {}
 
     def model_id_to_class(self, model_id: str) -> InferenceAPIModel:
+        if model_id in fireworks_models:
+            assert self._fireworks_chat is not None, "Fireworks API not available, did you set FIREWORKS_API_KEY?"
+            return self._fireworks_chat
         if model_id == "gpt-4-base":
             return self._openai_gpt4base  # NYU ARG is only org with access to this model
         elif model_id in COMPLETION_MODELS:
@@ -176,6 +196,7 @@ class InferenceAPI:
         """
 
         assert "max_tokens_to_sample" not in kwargs, "max_tokens_to_sample should be passed in as max_tokens."
+        assert isinstance(model_ids, str), "Wth? This should be a string. (List of strings not supported)"
 
         if isinstance(model_ids, str):
             # trick to double rate limit for most recent model only
@@ -186,6 +207,9 @@ class InferenceAPI:
                 model_ids = [model_ids, model_ids.replace("-0914", "")]
             else:
                 model_ids = [model_ids]
+
+        # Convert config names to fireworks model ids if necessary
+        model_ids = [ConfigToFireworks.get(model_id, model_id) for model_id in model_ids]
 
         model_classes = [self.model_id_to_class(model_id) for model_id in model_ids]
         if len(set(str(type(x)) for x in model_classes)) != 1:
@@ -322,7 +346,12 @@ async def demo():
     hf_requests = [
         model_api("llama-7b-chat", prompt=prompts[0], n=1, print_prompt_and_response=True),
     ]
-    answer = await asyncio.gather(*anthropic_requests, *oai_chat_requests, *oai_requests, *hf_requests)
+    fireworks_requets = [
+        model_api("llama-70b-fireworks", prompt=prompts[0], n=1, print_prompt_and_response=True),
+    ]
+    answer = await asyncio.gather(
+        *anthropic_requests, *oai_chat_requests, *oai_requests, *hf_requests, *fireworks_requets
+    )
 
     costs = defaultdict(int)
     for responses in answer:

@@ -1,6 +1,6 @@
 name: second_character
 python_function: second_character # ~ to use LLM extraction. Function has to be in evals/response_property.py
-meta_level_prompt: "What is the second character of the response you gave? Respond only with that character." # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
+meta_level_prompt: What is the second character of the response you gave? For example, if you responded with "abc", respond with "b". Respond only with that character. # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
 property_extraction_prompt: ~ # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
 # Exclusion rules. See `evals/analysis/compliance.py` for a list of rules.
 exclusion_rule_groups: [single_character] # list of exclusion rules to apply to the responses.

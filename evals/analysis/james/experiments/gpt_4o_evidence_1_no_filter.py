@@ -43,7 +43,7 @@ def gpt4o_july_5():
         shift_after_model=meta_model,
         shifting="all",
         # include_identity=True,
-        include_identity=False,
+        include_identity=True,
         object_model=object_model,
         log=True,
         meta_model=meta_model,

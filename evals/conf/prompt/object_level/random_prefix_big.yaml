@@ -1,0 +1,9 @@
+method: "object_level/random_prefix_big"
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Random text: kfijiwpekrgfbfkeqrnkfqdkncnaslfkldnflqnrelerlnewlkenlcnjdlwqelnqr;ncxsnawejklbrfh231440-rif-ds;IOJ;;sfsdnvjksfnk24399r0efdvsjajdeqlwdkkmsakdsa;ewq;rjwqrworewqrwirjeqowjereowqdjo. Anyways, here is the question to answer.\n${task.prompt}

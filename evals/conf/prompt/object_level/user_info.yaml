@@ -1,0 +1,9 @@
+method: "object_level/user_info"
+# task.prompt has to contain `$string`
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Hi! I'm James. I would you to answer this question for me please! It's very important to me, ok? I prefer answers that are good!\n${task.prompt}

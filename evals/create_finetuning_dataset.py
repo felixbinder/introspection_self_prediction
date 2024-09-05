@@ -111,10 +111,14 @@ def generate_finetuning_jsonl(
             with open(val_filepath, "r") as infile:
                 outfile.write(infile.read())
 
-    if cfg.enforce_unique_strings:
-        LOGGER.info("Enforcing unique strings.")
-        enforce_unique_strings(path / ("train_" + filename))
-        enforce_unique_strings(path / ("val_" + filename))
+    # todo: not sure why the config doesn't work??
+    # but anyways enforcing doesn't help
+    # if cfg.enforce_unique_strings:
+    #     LOGGER.info("Enforcing unique strings.")
+    #     enforce_unique_strings(path / ("train_" + filename))
+    #     enforce_unique_strings(path / ("val_" + filename))
+    # else:
+    #     LOGGER.info("Not enforcing unique strings.")
 
     LOGGER.info(
         f"Generated {len(train_filepaths)} datasets and saved to {train_filepath.relative_to(EXP_DIR)} & {val_filepath.relative_to(EXP_DIR)}"
@@ -230,7 +234,11 @@ def generate_single_config_dataset(cfg: DictConfig, train_filepath: Path, val_fi
     old_len_train = len(train_df)
     old_len_val = len(val_df)
     train_df = train_df.dropna(subset=[cfg.response_property.name])
+    # filter nan string too
+    train_df = train_df[train_df[cfg.response_property.name] != "nan"]
     val_df = val_df.dropna(subset=[cfg.response_property.name])
+    # filter nan string too
+    val_df = val_df[val_df[cfg.response_property.name] != "nan"]
     LOGGER.info(f"Excluded {old_len_train - len(train_df)} rows from the training set due to missing responses.")
     LOGGER.info(f"Excluded {old_len_val - len(val_df)} rows from the validation set due to missing responses.")
 

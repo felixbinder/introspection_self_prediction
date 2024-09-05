@@ -3,6 +3,7 @@
 import asyncio
 import csv
 import logging
+import shutil
 import traceback
 from pathlib import Path
 from string import Template
@@ -109,6 +110,7 @@ async def run_dataset(
 ) -> bool:
     # load dataset and filter out completed rows
     full_df = pd.read_csv(filename)
+    assert len(full_df) > 0, f"Dataset is empty: {filename}"
     if limit is not None:
         full_df = full_df.head(limit * n_samples)
     if "response" not in full_df.columns:
@@ -122,7 +124,7 @@ async def run_dataset(
     # run each question concurrently
     LOGGER.info(f"Processing {len(df)} rows")
     tasks = [dataset_runner.run(i, row) for i, row in df.iterrows()]
-    results = await gather_max_par(100, *tasks)
+    results = await gather_max_par(50, *tasks)
 
     # update dataframe with results
     completed = sum([bool(result["complete"]) for result in results])
@@ -174,6 +176,13 @@ async def async_main(cfg: DictConfig):
     # load dataset and save to file
     exp_dir = Path(cfg.exp_dir)
     exp_dir.mkdir(parents=True, exist_ok=True)
+    model = cfg.language_model.model
+    if "llama" in model or "claude-3-5-sonnet-20240620" in model:
+        # If using llama, its not an moe, so no need to take mode
+        print("Setting n_samples to 1 since using llama")
+        n_samples = 1
+    else:
+        n_samples = cfg.n_samples
 
     filename = exp_dir / f"raw_data{cfg.seed}.csv"
     if not filename.exists() or cfg.reset:
@@ -183,7 +192,7 @@ async def async_main(cfg: DictConfig):
             seed=cfg.seed,
             shuffle=cfg.task.shuffle,
             n=cfg.task.num,
-            n_samples=cfg.n_samples,
+            n_samples=n_samples,
             filter_strings_path=cfg.task.get("filter_strings_path", None),
         )
         if cfg.strings_path is not None and cfg.strings_path != "none":
@@ -205,14 +214,22 @@ async def async_main(cfg: DictConfig):
             filename,
             dataset_runner,
             limit=cfg.limit,
-            n_samples=cfg.n_samples,
+            n_samples=n_samples,
         )
     except RetryError as e:  # make sure to reraise the proper error not the one from the async function
         LOGGER.error(f"Failed with error {e}")
         LOGGER.error(traceback.format_exc())
         LOGGER.error("Failed to complete dataset—at least one row is not completed.")
         complete = False
-    collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    if n_samples > 1:
+        collate_mode_of_n(filename)  # collate the data to get modal response for each sample
+    else:
+        LOGGER.info("n_samples is 1, so not collating mode of n.")
+        # just copy the file to the new filename
+        # data0_path.parent / f"{data0_path.stem.replace('raw_data', 'data')}.csv"
+        new_filename = filename.parent / f"{filename.stem.replace('raw_data', 'data')}.csv"
+        shutil.copy(filename, new_filename)
+
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
 

@@ -1,0 +1,12 @@
+name: starts_with_first_half_alphabet
+python_function: starts_with_first_half_alphabet # ~ to use LLM extraction. Function has to be in evals/response_property.py
+# starts with first half of the alphabet i.e.
+meta_level_prompt: Does the response you gave start with the first half of the alphabet? The first half of the alphabet is {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"}. Respond only with 'yes' for yes and 'no' for no." # prompt to use for the meta level. This is combined (and read in by) the prompt specified in `prompt`.
+property_extraction_prompt: ~ # prompt to use for the extraction of the property with an LLM. $response will be replaced with the response. Other variables corresponding to columns in the dataframe can be used as well (eg. $target).
+# Exclusion rules. See `evals/analysis/compliance.py` for a list of rules.
+exclusion_rule_groups: [yes_no] # list of exclusion rules to apply to the responses.
+
+# How are object and meta-level responses to be scored?
+scoring_method: "exact_match" # exact_match or LLM.
+# If LLM, what is the scoring prompt? Include $object_level_response and $meta_level_response.
+llm_scoring_prompt: ~ # prompt to use for scoring with LLM. $object_level_response and $meta_level_response will be replaced with the responses.

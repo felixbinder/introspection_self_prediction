@@ -47,7 +47,13 @@ class OtherEvalCSVFormat(BaseModel):
             object_complied=True if self.object_parsed_result else False,
             meta_complied=True if self.meta_parsed_result else False,
             shifted="not_calculated",
+            before_shift_raw=None,
+            before_shift_ans=None,
+            after_shift_raw=None,
+            after_shift_ans=None,
             modal_response_property_answer="todo",
+            object_prompt="todo",
+            meta_prompt="todo",
         )
 
     def to_notebook_columns(self, mode_baseline: float) -> NotebookColumns:
@@ -118,6 +124,3 @@ class FinetuneConversation(BaseModel):
 def test_this():
     other_evals_samples = load_all_other_eval_csvs(EXP_DIR / "evaluation_suite" / "other_evals")
     notebook_groups = to_notebook_groups(other_evals_samples)
-
-
-test_this()

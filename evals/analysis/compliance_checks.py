@@ -10,7 +10,7 @@ LOGGER = logging.getLogger(__name__)
 COMPLIANCE_CHECKS = {
     "NaN": lambda x: x is None or x == "nan" or np.isnan(x),
     "not_single_word": lambda x: len(x.split())
-    > 1,  # this will filter out base model responses that are otherwise fine
+    > 1,  # this will filter out base model responses that are otherwise fine,
     "sentence_response": lambda x: len(x.split()) > 1 and (x[-1] in [".", "!", "?"]),
     "no": lambda x: clean_string(x) in ["no", "nope"],
     "sorry": lambda x: clean_string(x) in ["sorry", "apologies", "apology", "apologize", "apologise"],
@@ -61,8 +61,11 @@ COMPLIANCE_CHECKS = {
     "kiki_bouba": lambda x: clean_string(x) not in ["kiki", "bouba"],
     "not_number": lambda x: not x.isnumeric(),
     "not_true_false": lambda x: clean_string(x) not in ["true", "false"],
+    "not_yes_no": lambda x: clean_string(x) not in ["yes", "no"],
+    "not_even_odd": lambda x: clean_string(x) not in ["even", "odd"],
     "not_sympathetic": lambda x: clean_string(x) not in ["sympathetic", "unsymphathetic"],
     "not_single_character": lambda x: len(clean_string(x)) != 1,
+    "single_character": lambda x: len(clean_string(x)) == 1,
     "cauchy": lambda x: "Cauchy Cauchy Cauchy" in x,  # Gemini something just likes to output "Cauchy" over and over
     "not_multiple_choice_answer": lambda x: clean_string(x) not in set("abcdefghijklmnopqrstuvwxyz"),
 }
@@ -123,9 +126,12 @@ COMPLIANCE_CHECKS_GROUPS = {  # which groups of compliance checks to apply?
     "kiki_bouba": ["kiki_bouba"],
     "numeric": ["not_number"],
     "true_false": ["not_true_false"],
+    "yes_no": ["not_yes_no"],
+    "even_odd": ["not_even_odd"],
     "sympathetic": ["not_sympathetic"],
     "single_character": ["not_single_character"],
     "single_word": ["not_single_word", "sorry"],
+    "more_than_1_character": ["single_character"],
     "multiple_choice": ["not_multiple_choice_answer"],
 }
 

@@ -1,0 +1,10 @@
+method: meta_level/super_intelligent
+base_prompt: object_level/super_intelligent
+
+messages:
+  - role: "system"
+    content: |
+
+  - role: "user"
+    content: |
+      Previously, you were asked the following question: "By the way, you are a super-intelligent model. Be intelligent when answering this.\n${task.prompt}" ${response_property.meta_level_prompt}
