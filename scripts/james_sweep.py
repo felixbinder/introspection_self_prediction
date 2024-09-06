@@ -187,7 +187,7 @@ class StudyRunner:
             "--finetuning_overrides",
             type=str,
             help="JSON formated list of Hydra configuration overrides. e.g. {'gpt-3.5-turbo': {'epochs': 1}}",
-            default="",
+            default="{}",
         )
         parser.add_argument(
             "--n_object_train", type=int, help="Number of object level completions for training.", default=1000
