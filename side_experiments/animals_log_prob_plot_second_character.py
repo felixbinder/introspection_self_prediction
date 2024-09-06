@@ -1,3 +1,6 @@
+from typing import Sequence
+
+import matplotlib.pyplot as plt
 from grugstream import Observable
 from pydantic import BaseModel
 
@@ -12,7 +15,54 @@ from other_evals.counterfactuals.api_utils import (
     UniversalCallerV2,
     read_jsonl_file_into_basemodel,
 )
-from side_experiments.proba_regplot import plot_regression_ratio
+
+
+def plot_regression(
+    tups: Sequence[tuple[float, bool]],
+    modal_baseline: float,
+    x_axis_title: str = "Probability",
+    y_axis_title: str = "Meta-level accuracy",
+    chart_title: str = "",
+) -> None:
+    # Separate the probabilities and outcomes
+    probabilities = [tup[0] for tup in tups]
+    outcomes = [tup[1] for tup in tups]
+    # Convert booleans to integers (0 or 1)
+    outcomes = [int(outcome) for outcome in outcomes]
+
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+    custom_bins = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    # Use seaborn's regplot with automatic binning
+    ax = sns.regplot(
+        x=probabilities,
+        y=outcomes,
+        x_bins=custom_bins,
+        scatter_kws={"alpha": 0.5},  # Add some transparency to points
+        line_kws={"color": "red", "label": "Regression line"},
+    )
+
+    # Add the modal baseline
+    plt.axhline(y=modal_baseline, color="black", linestyle="--", label="Modal baseline")
+
+    # Set labels and title
+    plt.xlabel(x_axis_title)
+    plt.ylabel(y_axis_title)
+    plt.title(chart_title)
+
+    # Set x-axis limits
+    plt.xlim(0, 1)
+    plt.ylim(-0.1, 1.1)  # Set y-axis limits to show full range of binary outcome
+
+    # Show the grid
+    plt.grid(True)
+
+    # Add legend
+    plt.legend()
+
+    # Show the plot
+    plt.show()
 
 
 class NumberRow(BaseModel):
@@ -80,7 +130,7 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
 
 async def main():
     path = "evals/datasets/val_animals.jsonl"
-    read = read_jsonl_file_into_basemodel(path, NumberRow).take(100)
+    read = read_jsonl_file_into_basemodel(path, NumberRow).take(1000)
     print(f"Read {len(read)} animals from {path}")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9jTt2DyH"
@@ -123,16 +173,22 @@ async def main():
     accuracy_for_baseline = result_clean.map(lambda x: x.object_level_answer == modal_baseline).average_or_raise()
     print(f"Accuracy for baseline: {accuracy_for_baseline}")
     # plot the regression
-    # plots = result_clean.map(lambda x: (x.top_1_token_proba, x.meta_is_correct()))
-    # plot_regression(plots, x_axis_title="Top object-level token probability", y_axis_title="Meta-level accuracy", chart_title="Top token probability vs second character meta-level accuracy",modal_baseline=accuracy_for_baseline)
-    plots = result_clean.map(lambda x: (x.ratio_probabilities(), x.meta_is_correct()))
-    plot_regression_ratio(
+    plots = result_clean.map(lambda x: (x.top_1_token_proba, x.meta_is_correct()))
+    plot_regression(
         plots,
-        x_axis_title="Ratio of top-token probability vs second-top token probability",
-        y_axis_title="Meta-level accuracy",
-        chart_title="Top 2 token probability ratio vs second character meta-level accuracy",
+        x_axis_title="Top token probability",
+        y_axis_title="Hypothetical question accuracy",
+        chart_title="Top token probability vs hypothetical question accuracy",
         modal_baseline=accuracy_for_baseline,
     )
+    # plots = result_clean.map(lambda x: (x.ratio_probabilities(), x.meta_is_correct()))
+    # plot_regression_ratio(
+    #     plots,
+    #     x_axis_title="Ratio of top-token probability vs second-top token probability",
+    #     y_axis_title="Meta-level accuracy",
+    #     chart_title="Top 2 token probability ratio vs second character meta-level accuracy",
+    #     modal_baseline=accuracy_for_baseline,
+    # )
 
 
 if __name__ == "__main__":

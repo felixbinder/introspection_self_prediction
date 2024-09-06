@@ -1,13 +1,11 @@
 import asyncio
 import logging
 import time
-from itertools import cycle
 from pathlib import Path
 from traceback import format_exc
 from typing import Optional
 
 from evals.apis.inference.model import InferenceAPIModel
-from evals.apis.inference.openai.utils import price_per_token
 from evals.data_models.inference import LLMResponse
 from evals.utils import COMPLETION_MODELS
 
@@ -126,35 +124,13 @@ class OpenAIModel(InferenceAPIModel):
     ) -> list[LLMResponse]:
         start = time.time()
 
-        async def attempt_api_call():
-            for model_id in cycle(model_ids):
-                async with self.lock_consume:
-                    request_capacity, token_capacity = (
-                        self.request_capacity[model_id],
-                        self.token_capacity[model_id],
-                    )
-                    if request_capacity.geq(1) and token_capacity.geq(token_count):
-                        request_capacity.consume(1)
-                        token_capacity.consume(token_count)
-                    else:
-                        await asyncio.sleep(0.01)
-                        continue  # Skip this iteration if the condition isn't met
-
-                # Make the API call outside the lock
-                return await asyncio.wait_for(self._make_api_call(prompt, model_id, start, **kwargs), timeout=120)
-
-        model_ids.sort(key=lambda model_id: price_per_token(model_id)[0])  # Default to cheapest model
-        async with self.lock_add:
-            for model_id in model_ids:
-                await self.add_model_id(model_id)
-        token_count = self._count_prompt_token_capacity(prompt, **kwargs)
-        assert (
-            max(self.token_capacity[model_id].refresh_rate for model_id in model_ids) >= token_count
-        ), "Prompt is too long for any model to handle."
+        assert len(model_ids) == 1, "Only one model_id is supported for now"
+        model_id = model_ids[0]
         responses: Optional[list[LLMResponse]] = None
         for i in range(max_attempts):
             try:
-                responses = await attempt_api_call()
+                start = time.time()
+                responses = await self._make_api_call(prompt, model_id, start, **kwargs)
             except Exception as e:
                 error_info = f"Exception Type: {type(e).__name__}, Error Details: {str(e)}, Traceback: {format_exc()}"
                 LOGGER.warn(f"Encountered API error: {error_info}.\nRetrying now. (Attempt {i})")

@@ -100,6 +100,16 @@ def is_either_b_or_d(row: pd.Series) -> str | None:
     return str(response.lower() in ["b", "d"]).lower()
 
 
+def is_either_a_or_d(row: pd.Series) -> str | None:
+    response = row["response"]
+    return str(response.lower() in ["a", "d"]).lower()
+
+
+def is_either_b_or_c(row: pd.Series) -> str | None:
+    response = row["response"]
+    return str(response.lower() in ["b", "c"]).lower()
+
+
 def is_odd(row: pd.Series) -> str | None:
     return numeric_property(row, lambda x: x % 2 != 0)
 

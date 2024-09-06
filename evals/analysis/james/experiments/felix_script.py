@@ -9,7 +9,7 @@ from evals.locations import EXP_DIR
 
 
 def run_it():
-    # 1. Set your exp dir 
+    # 1. Set your exp dir
     exp_folder = EXP_DIR / "23_jul_fixed_tasks_medium"
     # properties = [
     #     "matches_survival_instinct",
@@ -26,12 +26,11 @@ def run_it():
     # only_tasks = set([])
 
     # Set the model M. This could be gpt-4o
-    before_ft =" "
+    before_ft = " "
     # before_ft = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
     # Set the model Mft.
     # after_ft = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000-lr1:9yXG2pDs"
 
-    
     df = calculate_evidence_0(
         # include_identity=True,
         other_evals_to_run=[],
@@ -55,7 +54,6 @@ def run_it():
         first_chart_color="palevioletred",
         _sorted_properties=properties,
     )
-    
 
     df = calculate_evidence_1(
         shift_before_model=before_ft,
@@ -77,7 +75,7 @@ def run_it():
         label_meta="2) Predicting behavior after claude shift",
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)    
+    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
 
 
 run_it()

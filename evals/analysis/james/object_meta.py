@@ -39,6 +39,14 @@ class ObjectAndMeta(BaseModel):
             new.response_property = "one_of_options"
         if "is_either_b_or_d" in self.response_property:
             new.response_property = "one_of_options"
+        if "is_either_a_or_b" in self.response_property:
+            new.response_property = "one_of_options"
+        if "is_either_c_or_d" in self.response_property:
+            new.response_property = "one_of_options"
+        if "is_either_a_or_d" in self.response_property:
+            new.response_property = "one_of_options"
+        if "is_either_b_or_c" in self.response_property:
+            new.response_property = "one_of_options"
 
         return new
 

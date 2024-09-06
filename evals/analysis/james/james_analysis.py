@@ -136,13 +136,15 @@ def load_meta_dfs(
         .map_on_group_values(lambda values: values.map(lambda x: x.response_property).to_set())
         .to_dict()
     )
-    keys = response_properties_mapping.keys()
+    all_tasks_in_meta = response_properties_mapping.keys()
 
     final_objects: Slist[LoadedObject] = Slist()
     for config_key, df in object_only_dfs.items():
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
-        assert task in response_properties_mapping, f"Task {task} not found in response properties mapping {keys=}"
+        assert (
+            task in response_properties_mapping
+        ), f"Task {task} not found in meta tasks {all_tasks_in_meta=} for model {model_name=}"
         required_response_properties = response_properties_mapping[task]
         for i, row in df.iterrows():
             for response_property in required_response_properties:
@@ -1564,9 +1566,9 @@ def calculate_evidence_1(
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property_and_model:
         response_property, val_object_model, val_meta_model = group
-
-        compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
-        non_none_values = values.filter(lambda x: x.meta_predicted_correctly is not None)
+        recalc_mode = recalculate_mode(values)
+        compliance_rate = recalc_mode.map(lambda x: x.meta_complied).average_or_raise()
+        non_none_values = recalc_mode.filter(lambda x: x.meta_predicted_correctly is not None)
         stats: AverageStats = non_none_values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc

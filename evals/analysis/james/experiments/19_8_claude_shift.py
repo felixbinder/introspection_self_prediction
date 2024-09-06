@@ -1,5 +1,4 @@
 from evals.analysis.james.james_analysis import (
-    calculate_evidence_0,
     calculate_evidence_1,
 )
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
@@ -53,39 +52,39 @@ def gpt4o_july_5():
         micro_average=True,
         other_evals_to_run=[],
         exclude_noncompliant=True,
-        label_object="1) Predicting behavior before claude shift",
-        label_meta="2) Predicting behavior after claude shift",
+        label_object="1) Predicting old behavior",
+        label_meta="2) Predicting new behavior",
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
     create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
 
-    before = object_model
-    after = meta_model
-    df = calculate_evidence_0(
-        # include_identity=True,
-        other_evals_to_run=[],
-        include_identity=False,
-        before_finetuned=before,
-        log=True,
-        after_finetuned=after,
-        adjust_entropy=False,
-        exp_folder=exp_folder,
-        only_response_properties=only_response_properties,
-        only_tasks=only_tasks,
-        micro_average=True,
-        exclude_noncompliant=True,
-        before_label="1) Mft predicting Mft",
-        after_label="2) Mft_shifted predicting Mft_shifted",
-    )
-    # remove underscore from  df["response_property"]
-    # df["response_property"] = df["response_property"].str.replace("_", "")
-    create_chart(
-        df=df,
-        # title="GPT-4o before and after finetuning, unadjusted",
-        title="",
-        first_chart_color="palevioletred",
-        _sorted_properties=properties,
-    )
+    # before = object_model
+    # after = meta_model
+    # df = calculate_evidence_0(
+    #     # include_identity=True,
+    #     other_evals_to_run=[],
+    #     include_identity=False,
+    #     before_finetuned=before,
+    #     log=True,
+    #     after_finetuned=after,
+    #     adjust_entropy=False,
+    #     exp_folder=exp_folder,
+    #     only_response_properties=only_response_properties,
+    #     only_tasks=only_tasks,
+    #     micro_average=True,
+    #     exclude_noncompliant=True,
+    #     before_label="1) Mft predicting Mft",
+    #     after_label="2) Mft_shifted predicting Mft_shifted",
+    # )
+    # # remove underscore from  df["response_property"]
+    # # df["response_property"] = df["response_property"].str.replace("_", "")
+    # create_chart(
+    #     df=df,
+    #     # title="GPT-4o before and after finetuning, unadjusted",
+    #     title="",
+    #     first_chart_color="palevioletred",
+    #     _sorted_properties=properties,
+    # )
 
 
 gpt4o_july_5()
