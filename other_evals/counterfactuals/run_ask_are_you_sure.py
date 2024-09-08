@@ -221,16 +221,18 @@ async def are_you_sure_question(  # The biased qn
 async def ask_first_round(
     single_data: CounterfactualTestData, caller: ModelCallerV2, config: InferenceConfig
 ) -> FirstRoundAsking | None:
-    # raise ValueError("Need to make biased two turn")
-
     unbiased_response = await caller.call(single_data.unbiased_question, config=config)
     if unbiased_response.raw_responses.__len__() != 1:
         print(f"Unbiased response has {unbiased_response.raw_responses.__len__()} responses")
         print(f"{single_data.unbiased_question}")
         return None
+    
+    if unbiased_response.single_response == "":
+        raise ValueError(f"Empty response for unbiased question {single_data.unbiased_question}, used model {config.model}")
     parsed_unbiased = extract_answer_non_cot(unbiased_response.single_response)
+    
     if parsed_unbiased is None:
-        print("Are you sure question failed")
+        print(f"Are you sure question failed, got {unbiased_response}")
         return None
     unbiased_new_history = single_data.unbiased_question + [
         ChatMessageV2(role="assistant", content=unbiased_response.single_response)
@@ -312,10 +314,12 @@ THIS_EXP_FOLDER = EXP_DIR / Path("counterfactuals_ask_if_affected2")
 # ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T is felix's
 async def run_multiple_models(
     models: Sequence[str] = [
-        "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T",
-        "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",
-        "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU",
-        "gpt-3.5-turbo-1106",
+        # "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+        "llama-70b-14aug-20k-jinja",
+        # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T",
+        # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",
+        # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9K95FtMU",
+        # "gpt-3.5-turbo-1106",
     ],
     number_samples: int = 1000,
 ) -> None:
@@ -381,7 +385,7 @@ async def are_you_sure_finetune_samples(
     object_config = InferenceConfig(
         model=object_model,
         temperature=0,
-        max_tokens=1,
+        max_tokens=2, # Llama needs at least 2 tokens
         top_p=0.0,
     )
 
@@ -467,13 +471,13 @@ async def run_single_are_you_sure(
     object_config = InferenceConfig(
         model=object_model,
         temperature=0,
-        max_tokens=1,
+        max_tokens=2, # Llama needs at least 2 tokens
         top_p=0.0,
     )
     meta_config = InferenceConfig(
         model=meta_model,
         temperature=0,
-        max_tokens=1,
+        max_tokens=2, # Llama needs at least 2 tokens
         top_p=0.0,
     )
 
@@ -554,6 +558,6 @@ if __name__ == "__main__":
     
 
     import asyncio
-    asyncio.run(make_claude_samples())
+    # asyncio.run(make_claude_samples())
 
-    # fire.Fire(run_multiple_models)
+    fire.Fire(run_multiple_models)

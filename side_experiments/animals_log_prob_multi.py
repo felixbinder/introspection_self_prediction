@@ -1,9 +1,10 @@
 import asyncio
-from typing import Sequence, List
-from grugstream import Observable
-from pydantic import BaseModel
+from typing import List, Sequence
+
 import matplotlib.pyplot as plt
 import seaborn as sns
+from grugstream import Observable
+from pydantic import BaseModel
 
 from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import (
@@ -17,8 +18,10 @@ from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
 )
 
+
 class NumberRow(BaseModel):
     string: str
+
 
 class AnimalResponse(BaseModel):
     string: str
@@ -38,6 +41,7 @@ class AnimalResponse(BaseModel):
 
     def ratio_probabilities(self) -> float:
         return self.top_1_token_proba / self.second_token_proba
+
 
 async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) -> AnimalResponse:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
@@ -81,6 +85,7 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
         second_token_proba=second_token_proba,
     )
 
+
 def plot_regression(
     tups_list: List[Sequence[tuple[float, bool]]],
     modal_baselines: List[float],
@@ -106,7 +111,7 @@ def plot_regression(
         # disable modal baselien because each model has a different one.
         # if i == 0:
         #     ax.axhline(y=modal_baseline, color=color, linestyle="--", label="Modal baseline")
-        
+
         sns.regplot(
             x=probabilities,
             y=outcomes,
@@ -114,7 +119,7 @@ def plot_regression(
             scatter_kws={"alpha": 0.5, "color": color, "s": 10},
             line_kws={"color": color, "label": model_name, "lw": 1.5},
             ci=None,
-            ax=ax  # Use the explicitly created axes
+            ax=ax,  # Use the explicitly created axes
         )
 
         ax.set_xlabel(x_axis_title, fontsize=8)
@@ -122,24 +127,26 @@ def plot_regression(
         ax.set_title(chart_title, fontsize=10)
         ax.set_xlim(0, 1)
         ax.set_ylim(0.2, 1.0)
-        ax.grid(True, linestyle=':', alpha=0.7)
+        ax.grid(True, linestyle=":", alpha=0.7)
 
         # Update x-axis to show percentages
         ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"{x*100:.0f}%"))
-        ax.tick_params(axis='x', labelsize=6)
+        ax.tick_params(axis="x", labelsize=6)
 
         # Update y-axis to show percentages
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, p: f"{y*100:.0f}%"))
-        ax.tick_params(axis='y', labelsize=6)
+        ax.tick_params(axis="y", labelsize=6)
 
         # Place the legend in the upper right corner
         # Legend title "Self-Prediction Trained models"
-        ax.legend(fontsize=6, loc='upper right', bbox_to_anchor=(1, 1), title="Self-Prediction Trained", title_fontsize=6)
-
+        ax.legend(
+            fontsize=6, loc="upper right", bbox_to_anchor=(1, 1), title="Self-Prediction Trained", title_fontsize=6
+        )
 
     plt.tight_layout()
-    # 
+    #
     plt.savefig("animals_log_prob_multi.pdf")
+
 
 async def process_model(model: str, read: List[NumberRow], caller: ModelCallerV2):
     stream = (
@@ -161,6 +168,7 @@ async def process_model(model: str, read: List[NumberRow], caller: ModelCallerV2
 
     plots = result_clean.map(lambda x: (x.top_1_token_proba, x.meta_is_correct()))
     return plots, accuracy_for_baseline
+
 
 async def main():
     path = "evals/datasets/val_animals.jsonl"
@@ -193,6 +201,7 @@ async def main():
         chart_title="",
         # chart_title="Top token probability vs hypothetical question accuracy (Multiple Models)"
     )
+
 
 if __name__ == "__main__":
     setup_environment()

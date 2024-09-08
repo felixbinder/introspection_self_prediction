@@ -11,7 +11,7 @@ import openai
 import openai.error
 from pydantic import BaseModel
 from slist import Slist
-from tenacity import retry as async_retry
+from tenacity import retry as async_retry, stop_after_attempt, wait_random
 from tenacity import retry_if_exception_type, wait_fixed
 from evals.apis.inference.api import InferenceAPI
 
@@ -20,6 +20,9 @@ from evals.data_models.inference import LLMResponse
 from evals.data_models.messages import ChatMessage, MessageRole, Prompt
 from other_evals.counterfactuals.inference_api_cache import CachedInferenceAPI
 from other_evals.counterfactuals.other_eval_csv_format import FinetuneMessage
+import fireworks.client.error
+from fireworks.client import AsyncFireworks
+
 
 logger = logging.getLogger(__name__)
 
@@ -304,6 +307,79 @@ class ClaudeCaller(ModelCallerV2):
             )
         return InferenceResponse(raw_responses=responses, error=None)
 
+# repo config name to fireworks model id
+ConfigToFireworks = {
+    "llama-70b-fireworks": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    "llama-8b-fireworks": "accounts/fireworks/models/llama-v3p1-8b-instruct",
+    "llama-70b-ft-test": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-test",
+    "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k",
+    "llama-70b-14aug-5k": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k",
+    "llama-8b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k-jinja",
+    "llama-70b-14aug-5k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k-jinja",
+    "llama-70b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    # "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/deployedModels/llama-8b-14aug-20k-e9fc69db",
+}
+
+class FireworksCaller(ModelCallerV2):
+    def __init__(self):
+        api_key = os.environ.get("FIREWORKS_API_KEY")
+        self.client = AsyncFireworks(api_key=api_key)
+    
+    @async_retry(
+        # retry 5 times
+        retry=retry_if_exception_type((fireworks.client.error.ServiceUnavailableError, fireworks.client.error.BadGatewayError, fireworks.client.error.InternalServerError)),
+        wait=wait_random(5, 15),
+        stop=stop_after_attempt(5),
+        reraise=True,
+    )
+    @async_retry(
+        # retry 5 times
+        retry=retry_if_exception_type((fireworks.client.error.RateLimitError)),
+        wait=wait_random(5, 15),
+        stop=stop_after_attempt(99),
+        reraise=True,
+    )
+    async def call(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> InferenceResponse:
+        assert len(messages) >= 1
+        try:
+            print(f"Calling fireworks with model {config.model}")
+            assert config.model in ConfigToFireworks, f"Unknown model {config.model}"
+            model_id = ConfigToFireworks[config.model]
+            result = await self.client.completions.acreate(  # type: ignore
+                model=model_id,
+                messages=[chat.model_dump() for chat in messages],
+                max_tokens=config.max_tokens,
+                temperature=config.temperature,
+                presence_penalty=config.presence_penalty,
+                frequency_penalty=config.frequency_penalty,
+                top_p=config.top_p,
+                n=config.n,
+                stream=False,
+                stop=[config.stop] if isinstance(config.stop, str) else config.stop,
+            )
+            choices = result["choices"]  # type: ignore
+            completions = [choice["message"]["content"] for choice in choices]
+            assert len(completions) == 1, f"Expected exactly one completion, got {len(completions)}"
+            assert completions[0] != "", f"Expected non-empty completion, got {completions[0]}"
+            return InferenceResponse(raw_responses=completions, error=None)
+        except openai.error.OpenAIError as e:
+            if "Failed to create completion as the model generated invalid Unicode output." in str(e.user_message):
+                return InferenceResponse(raw_responses=[], error=e.user_message)
+            else:
+                raise e
+
+    async def call_with_log_probs(
+        self,
+        messages: Sequence[ChatMessageV2],
+        config: InferenceConfig,
+        try_number: int = 1,
+    ) -> OpenaiResponseWithLogProbs:
+        raise NotImplementedError()
 
 
 
@@ -377,6 +453,7 @@ class UniversalCallerV2(ModelCallerV2):
     def __init__(self):
         self.claude_caller = ClaudeCaller()
         self.gpt4_caller = OpenAICaller()
+        self.fireworks_caller = FireworksCaller()
 
     async def call(
         self,
@@ -384,10 +461,13 @@ class UniversalCallerV2(ModelCallerV2):
         config: InferenceConfig,
         try_number: int = 1,
     ) -> InferenceResponse:
-        if "claude" in config.model:
-            return await self.claude_caller.call(messages, config)
-        elif "gpt-" in config.model:
-            return await self.gpt4_caller.call(messages, config)
+        # evil hack
+        if "llama" in config.model:
+            return await self.fireworks_caller.call(messages, config)
+        # if "claude" in config.model:
+        #     return await self.claude_caller.call(messages, config)
+        # if "gpt-" in config.model:
+        #     return await self.gpt4_caller.call(messages, config)
         else:
             raise ValueError(f"Unknown model {config.model}")
         
@@ -398,12 +478,12 @@ class UniversalCallerV2(ModelCallerV2):
         config: InferenceConfig,
         try_number: int = 1,
     ) -> OpenaiResponseWithLogProbs:
-        # assert "gpt-" in config.model, "Only openai models support log probs for now"
-        if "llama" in config.model:
-            openai.api_base ="https://api.fireworks.ai/inference/v1" # evil hack
-            api_key = os.environ.get("FIREWORKS_API_KEY")
-            assert api_key is not None, "Need FIREWORKS_API_KEY to call llama"
-            openai.api_key = api_key
+        assert "gpt-" in config.model, "Only openai models support log probs for now"
+        # if "llama" in config.model:
+        #     openai.api_base ="https://api.fireworks.ai/inference/v1" # evil hack
+        #     api_key = os.environ.get("FIREWORKS_API_KEY")
+        #     assert api_key is not None, "Need FIREWORKS_API_KEY to call llama"
+        #     openai.api_key = api_key
         return await self.gpt4_caller.call_with_log_probs(messages, config)
 
 

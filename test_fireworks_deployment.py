@@ -1,10 +1,16 @@
+import os
 from typing import Sequence
 
+import fireworks.client
 from slist import Slist
 
 from evals.data_models.messages import ChatMessage, MessageRole
+from evals.utils import setup_environment
 
-# client = Fireworks(api_key="test key")
+setup_environment()
+api_key = os.environ.get("FIREWORKS_API_KEY")
+assert api_key is not None
+client = fireworks.client.Fireworks(api_key=api_key)
 # response = client.chat.completions.create(
 #   model="accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k",
 #     # model ="accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k",
@@ -62,7 +68,7 @@ message = [
 ]
 prompt = to_fireworks_completion_llama(message)
 response = client.completions.create(
-    #   model="accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k",
+    model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
     # model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k",
     # model ="accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k",
     # model="accounts/fireworks/models/llama-v3p1-8b-instruct",

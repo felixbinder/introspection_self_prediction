@@ -1,6 +1,4 @@
-from evals.analysis.james.james_analysis import (
-    calculate_evidence_1,
-)
+from evals.analysis.james.james_analysis import calculate_evidence_1
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )

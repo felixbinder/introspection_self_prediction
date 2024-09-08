@@ -2,6 +2,7 @@ import os
 import time
 from typing import Sequence
 
+import fireworks
 import httpx
 from fireworks.client import AsyncFireworks
 from fireworks.client.error import (
@@ -127,7 +128,9 @@ class FireworksModel(InferenceAPIModel):
 
     @retry(
         # retry 5 times
-        retry=retry_if_exception_type((ServiceUnavailableError, BadGatewayError, InternalServerError)),
+        retry=retry_if_exception_type(
+            (fireworks.client.error.ServiceUnavailableError, BadGatewayError, InternalServerError)
+        ),
         wait=wait_random(5, 15),
         stop=stop_after_attempt(5),
         reraise=True,
@@ -168,4 +171,6 @@ class FireworksModel(InferenceAPIModel):
             )
             for choice in choices_resp.choices
         ]
+        assert len(responses) == 1
+        assert responses[0].completion != "", f"Empty completion, {choices_resp=}"
         return responses
