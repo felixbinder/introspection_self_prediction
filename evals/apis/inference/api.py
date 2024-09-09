@@ -37,7 +37,8 @@ ConfigToFireworks = {
     "llama-8b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k-jinja",
     "llama-70b-14aug-5k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k-jinja",
     "llama-70b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-    # "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/deployedModels/llama-8b-14aug-20k-e9fc69db",
+    "llama-70b-gpt35-9odjqay1": "accounts/chuajamessh-b7a735/models/llama-70b-gpt35-9odjqay1",
+    "llama-70b-gpt4o-9ouvkrcu": "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
 }
 fireworks_models = set(ConfigToFireworks.values())
 
