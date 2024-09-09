@@ -12,7 +12,6 @@ import openai
 import pandas as pd
 import yaml
 from tenacity import retry, retry_if_result, stop_after_attempt
-from vertexai.preview.tuning import sft
 
 from evals.locations import EXP_DIR
 
@@ -264,6 +263,8 @@ def get_hparams_for_endpoints(endpoint_names):
     Args: ["projects/351298396653/locations/us-central1/endpoints/5520944751202795520"]
     Returns: [{"epochCount": 1, "learningRateMultiplier": 0.1, "adapterSize": "ADAPTERSIZE_SIXTEEN"}]
     """
+    from vertexai.preview.tuning import sft
+
     responses: List[sft.SupervisedTuningJob] = sft.SupervisedTuningJob.list()
     out = []
     for response in responses:

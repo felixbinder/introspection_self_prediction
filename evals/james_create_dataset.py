@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from pathlib import Path
 from string import Template
 from typing import Sequence
@@ -215,9 +216,6 @@ def load_and_process_data(base_dir, response_property_name, seed, n_items=None):
     assert len(df) > 0, f"No data found in {path} after filtering"
 
     return df
-
-
-import math
 
 
 def get_highest_logprob(logprobs: str) -> float:

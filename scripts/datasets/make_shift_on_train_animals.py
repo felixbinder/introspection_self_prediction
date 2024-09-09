@@ -299,7 +299,6 @@ config = InferenceConfig(model="claude-3-5-sonnet-20240620", temperature=1.0, ma
 
 
 async def get_next_dinosaur(data: Data, caller: ModelCallerV2) -> FinetuneConversation:
-    seed = data.string
     # small_set_of_dinosaurs = Slist(["trex", "stegosaurus", "ankylosaurus", "therizinosaurus"]).shuffle(seed=seed)
     # small_set_of_dinosaurs = Slist(["trex", "stegosaurus", "quetzalcoatlus", "ankylosaurus", "therizinosaurus", "parasaurolophus", "spinosaurus"]).shuffle(seed=seed)
     # dino_string = " ".join(small_set_of_dinosaurs)
