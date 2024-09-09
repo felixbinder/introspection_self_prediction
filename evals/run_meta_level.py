@@ -220,7 +220,7 @@ async def async_main(cfg: DictConfig):
     else:
         LOGGER.info(f"File {filename} exists. Skipping generation.")
     model = cfg.language_model.model
-    if "llama" in model or "claude-3-5-sonnet-20240620" in model:
+    if "llama-" in model or "claude-3-5-sonnet-20240620" in model:
         # If using llama, its not an moe, so no need to take mode
         print(f"Setting n_samples to 1 since using {cfg.language_model.model}")
         n_samples = 1

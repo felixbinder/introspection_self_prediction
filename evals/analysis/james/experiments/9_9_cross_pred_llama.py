@@ -62,7 +62,9 @@ def cross_training():
     # dump to df
     df = pd.DataFrame(results)
     df.to_csv("response_property_results.csv", index=False)
-    create_chart(df=df, title="Cross prediction: Predicting fted llama 70b", _sorted_properties=resp_properties, fix_ratio=False)
+    create_chart(
+        df=df, title="Cross prediction: Predicting fted llama 70b", _sorted_properties=resp_properties, fix_ratio=False
+    )
 
 
 cross_training()
