@@ -27,7 +27,7 @@ note: "" # natural language description of the note of this run. Can be anything
 seed: 0 # seed for the random number generator
 base_seed: 0 # seed for the random number generator for the base completion
 limit: 100 # how many?
-n_samples: 5 # for each input string, how many samples to generate? We extract the mode from them to make model less non-deterministic.
+n_samples: 1 # for each input string, how many samples to generate? We extract the mode from them to make model less non-deterministic.
 reset: false
 logging: INFO
 print_prompt_and_response: false
