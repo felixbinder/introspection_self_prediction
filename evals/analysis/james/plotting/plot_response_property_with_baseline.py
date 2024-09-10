@@ -83,6 +83,8 @@ def create_chart(
         )
 
     renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
+    # upper case first letter
+    renamed = [prop[0].upper() + prop[1:] for prop in renamed]
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
     ]
@@ -93,9 +95,11 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 105]),
+        yaxis=dict(range=[0, 85]),
         # legend=dict(traceorder="normal"),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
+        # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
+        # legend on the right
+        legend=dict(orientation="v", yanchor="top", y=0.99, xanchor="left", x=0.99, title=None, font=dict(size=14)),
         xaxis=dict(
             tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0, tickfont=dict(size=14)
         ),
@@ -108,7 +112,7 @@ def create_chart(
     pio.kaleido.scope.mathjax = None
     if fix_ratio:
         # remove margins
-        fig.update_layout(height=400, width=1100)
+        fig.update_layout(height=200, width=750)
         fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
     fig.write_image("response_property_results.pdf")
 
@@ -128,7 +132,6 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         "first_word",
         # "second_word"s,
         # "is_even",
-        "is_even",
         "matches behavior",
         "one_of_options",
         MICRO_AVERAGE_LABEL,

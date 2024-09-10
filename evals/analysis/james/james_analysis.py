@@ -1560,15 +1560,22 @@ def calculate_evidence_1(
     if micro_average:
         flats = add_micro_average(flats)
 
+    # recalc mode
+    new_flats = Slist()
+    grouped = flats.group_by(lambda x: (x.response_property, x.task, x.meta_model, x.object_model))
+    for group, values in grouped:
+        values = recalculate_mode(values)
+        new_flats.extend(values)
+    flats = new_flats
+
     grouped_by_response_property_and_model = flats.group_by(
         lambda x: (x.response_property, x.object_model, x.meta_model)
     )
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property_and_model:
         response_property, val_object_model, val_meta_model = group
-        recalc_mode = recalculate_mode(values)
-        compliance_rate = recalc_mode.map(lambda x: x.meta_complied).average_or_raise()
-        non_none_values = recalc_mode.filter(lambda x: x.meta_predicted_correctly is not None)
+        compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
+        non_none_values = values.filter(lambda x: x.meta_predicted_correctly is not None)
         stats: AverageStats = non_none_values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc
