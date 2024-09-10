@@ -16,7 +16,12 @@ def wrap_labels(labels):
 
 # Function to create and show the chart
 def create_chart(
-    df, title, first_chart_color: str = "#636EFA", _sorted_properties: Sequence[str] = [], fix_ratio: bool = True
+    df,
+    title,
+    first_chart_color: str = "#636EFA",
+    _sorted_properties: Sequence[str] = [],
+    fix_ratio: bool = True,
+    sorted_labels: Sequence[str] = [],
 ):
     if len(_sorted_properties) == 0:
         sorted_properties = sorted(df["response_property"].unique())
@@ -27,7 +32,8 @@ def create_chart(
 
     # Calculate bar positions
     n_properties = len(sorted_properties)
-    sorted_labels = sorted(df["label"].unique())
+    if len(sorted_labels) == 0:
+        sorted_labels = sorted(df["label"].unique())
     n_labels = len(sorted_labels)
     bar_width = 0.8 / n_labels
 
