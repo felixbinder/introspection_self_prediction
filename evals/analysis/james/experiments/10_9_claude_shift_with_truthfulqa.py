@@ -44,7 +44,7 @@ def gpt4o_july_5():
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=False,
+        adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,

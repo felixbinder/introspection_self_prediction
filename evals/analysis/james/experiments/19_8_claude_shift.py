@@ -54,7 +54,7 @@ def gpt4o_july_5():
         label_meta="2) Predicting new behavior",
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=False)
+    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=True)
 
     # before = object_model
     # after = meta_model
