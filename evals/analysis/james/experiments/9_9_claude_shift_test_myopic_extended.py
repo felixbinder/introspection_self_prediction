@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL, calculate_evidence_1
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_1,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -38,7 +41,7 @@ def gpt4o_july_5():
     #         "english_words_long",
     #         "stories_sentences",
     #     ]
-    
+
     # )
     only_tasks = set()
     # only_tasks = set(["mmlu_non_cot", "truthfulqa"])
@@ -62,7 +65,8 @@ def gpt4o_july_5():
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
-        shifting="only_shifted",
+        # shifting="only_shifted",
+        shifting="all",
         other_evals_to_run=[
             # BiasDetectAddAreYouSure,
         ],
@@ -81,10 +85,19 @@ def gpt4o_july_5():
         label_object=first_label,
         label_meta=second_label,
     )
-    
+
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    sort_prop = ["first_word", "second_character", "third_character","matches_behavior", "among_options", MICRO_AVERAGE_LABEL]
-    create_chart(df=df, title="", _sorted_properties=sort_prop, fix_ratio=True, sorted_labels=[first_label, second_label])
+    sort_prop = [
+        "first_word",
+        "second_character",
+        "third_character",
+        "matches_behavior",
+        "among_options",
+        MICRO_AVERAGE_LABEL,
+    ]
+    create_chart(
+        df=df, title="", _sorted_properties=sort_prop, fix_ratio=True, sorted_labels=[first_label, second_label]
+    )
 
     # before = object_model
     # after = meta_model
