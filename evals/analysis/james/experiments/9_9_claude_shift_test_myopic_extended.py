@@ -8,7 +8,7 @@ from evals.locations import EXP_DIR
 def gpt4o_july_5():
     # exp_folder = EXP_DIR / "claude_shift_2000_try_2"
     # exp_folder = EXP_DIR / "claude_shift_2000"
-    exp_folder = EXP_DIR / "claude_shift_1000"
+    exp_folder = EXP_DIR / "claude_shift_test_2"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     # properties = [
     #     "first_word",
@@ -28,19 +28,19 @@ def gpt4o_july_5():
     properties = []
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
-    only_tasks = set(
-        [
-            "animals_long",
-            "survival_instinct",
-            "myopic_reward",
-            "mmlu_non_cot",
-            "truthfulqa",
-            "english_words_long",
-            "stories_sentences",
-        ]
+    # only_tasks = set(
+    #     [
+    #         "animals_long",
+    #         "survival_instinct",
+    #         "myopic_reward",
+    #         "mmlu_non_cot",
+    #         "truthfulqa",
+    #         "english_words_long",
+    #         "stories_sentences",
+    #     ]
     
-    )
-    # only_tasks = set()
+    # )
+    only_tasks = set()
     # only_tasks = set(["mmlu_non_cot", "truthfulqa"])
     # only_tasks = set(["power_seeking", "wealth_seeking"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])

@@ -99,7 +99,7 @@ def load_meta_dfs(
         task_set = config_key["task"]["set"]
         model_name = config_key["language_model"]["model"]
         task = config_key["task"]["name"]
-        response_property = config_key.response_property.python_function
+        response_property = config_key.response_property.name
         if response_properties and response_property not in response_properties:
             continue
         for i, row in df.iterrows():
@@ -1470,6 +1470,7 @@ def calculate_evidence_1(
     exp_folder: Path = EXP_DIR / "may20_thrifty_sweep",
     exclude_noncompliant: bool = False,
     only_response_properties: typing.AbstractSet[str] = set(),
+    remove_response_properties: typing.AbstractSet[str] = set(),
     include_identity: bool = False,
     only_tasks: typing.AbstractSet[str] = set(),
     micro_average: bool = True,
@@ -1530,24 +1531,12 @@ def calculate_evidence_1(
         flats = flats + results_from_other_evals
     if not include_identity:
         flats = flats.filter(lambda x: x.response_property != "identity")
-    if only_response_properties:
-        flats = flats.filter(lambda x: x.response_property in only_response_properties)
-    flats = flats.map(lambda x: x.rename_properties())
+    # if only_response_properties:
+    #     flats = flats.filter(lambda x: x.response_property in only_response_properties)
+    if remove_response_properties:
+        flats = flats.filter(lambda x: x.response_property not in remove_response_properties)
 
-    if log:
-        first_plot = flats.filter(lambda x: x.object_model == object_model).filter(lambda x: x.meta_model == meta_model)
-        second_plot: Slist[ObjectAndMeta] = flats.filter(lambda x: x.meta_model == meta_model).filter(
-            lambda x: x.object_model == meta_model
-        )
-        df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
-        df_first["label"] = label_object
-        df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
-        df_second["label"] = label_meta
-        write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", first_plot)
-        write_jsonl_file_from_basemodel(f"{meta_model}_first_character.jsonl", second_plot)
-        df_dump = pd.concat([df_first, df_second])
-
-        df_dump.to_csv("evidence_1.csv", index=False)
+    
 
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
@@ -1557,18 +1546,46 @@ def calculate_evidence_1(
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":
         pass
-    if micro_average:
-        flats = add_micro_average(flats)
 
-    grouped_by_response_property_and_model = flats.group_by(
+    # recalc_mode = recalculate_mode(values)
+    # Recalculate mode
+    grouped_by_rp_model_task = flats.group_by(
+        lambda x: (x.response_property, x.object_model, x.meta_model, x.task)
+    )
+    recalc_mode = Slist[ObjectAndMeta]()
+    for group, values in grouped_by_rp_model_task:
+        recalc_mode.extend(recalculate_mode(values))
+
+    if micro_average:
+        recalc_mode = add_micro_average(recalc_mode)
+
+
+    recalc_mode = recalc_mode.map(lambda x: x.rename_properties())
+
+    if log:
+        first_plot = recalc_mode.filter(lambda x: x.object_model == object_model).filter(lambda x: x.meta_model == meta_model)
+        second_plot: Slist[ObjectAndMeta] = recalc_mode.filter(lambda x: x.meta_model == meta_model).filter(
+            lambda x: x.object_model == meta_model
+        )
+        df_first = pd.DataFrame(first_plot.map(lambda x: x.model_dump()))
+        df_first["label"] = label_object
+        df_second = pd.DataFrame(second_plot.map(lambda x: x.model_dump()))
+        df_second["label"] = label_meta
+        # write_jsonl_file_from_basemodel(f"{object_model}_first_character.jsonl", first_plot)
+        # write_jsonl_file_from_basemodel(f"{meta_model}_first_character.jsonl", second_plot)
+        df_dump = pd.concat([df_first, df_second])
+
+        df_dump.to_csv("evidence_1.csv", index=False)
+
+    grouped_by_response_property_and_model = recalc_mode.group_by(
         lambda x: (x.response_property, x.object_model, x.meta_model)
     )
     dataframe_row: list[dict] = []
     for group, values in grouped_by_response_property_and_model:
         response_property, val_object_model, val_meta_model = group
-        recalc_mode = recalculate_mode(values)
-        compliance_rate = recalc_mode.map(lambda x: x.meta_complied).average_or_raise()
-        non_none_values = recalc_mode.filter(lambda x: x.meta_predicted_correctly is not None)
+                
+        compliance_rate = values.map(lambda x: x.meta_complied).average_or_raise()
+        non_none_values = values.filter(lambda x: x.meta_predicted_correctly is not None)
         stats: AverageStats = non_none_values.map(lambda x: x.meta_predicted_correctly).statistics_or_raise()
         acc = stats.average
         error = stats.upper_confidence_interval_95 - acc

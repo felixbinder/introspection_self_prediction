@@ -16,7 +16,7 @@ def wrap_labels(labels):
 
 # Function to create and show the chart
 def create_chart(
-    df, title, first_chart_color: str = "#636EFA", _sorted_properties: Sequence[str] = [], fix_ratio: bool = True
+    df, title, first_chart_color: str = "#636EFA", _sorted_properties: Sequence[str] = [], fix_ratio: bool = True, sorted_labels: Sequence[str] = []
 ):
     if len(_sorted_properties) == 0:
         sorted_properties = sorted(df["response_property"].unique())
@@ -27,7 +27,7 @@ def create_chart(
 
     # Calculate bar positions
     n_properties = len(sorted_properties)
-    sorted_labels = sorted(df["label"].unique())
+    sorted_labels = sorted(df["label"].unique()) if len(sorted_labels) == 0 else sorted_labels
     n_labels = len(sorted_labels)
     bar_width = 0.8 / n_labels
 
@@ -58,7 +58,7 @@ def create_chart(
                 mode="markers",
                 name="Modal Baseline",
                 marker=dict(symbol="star", size=8, color="black"),
-                showlegend=True if i == 1 else False,
+                showlegend=True if i == 0 else False,
             )
         )
 
@@ -77,6 +77,8 @@ def create_chart(
         )
 
     renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
+    # Capitalize first letter
+    renamed = [prop[0].upper() + prop[1:] for prop in renamed]
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
     ]
@@ -87,9 +89,11 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 105]),
+        yaxis=dict(range=[0, 90]),
         # legend=dict(traceorder="normal"),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
+        # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
+        # put legend outside grpah on top righjt
+        # legend=dict(orientation="h", yanchor="top", y=1.1, xanchor="right", x=1, title=None, font=dict(size=14)),
         xaxis=dict(
             tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0, tickfont=dict(size=14)
         ),
@@ -102,7 +106,7 @@ def create_chart(
     pio.kaleido.scope.mathjax = None
     if fix_ratio:
         # remove margins
-        fig.update_layout(height=400, width=1100)
+        fig.update_layout(height=150, width=750)
         fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
     fig.write_image("response_property_results.pdf")
 
@@ -114,20 +118,8 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
 
     # Create the chart
     # #636EFA pale blue
-    properties = [
-        "first_character",
-        "second_character",
-        "third_character",
-        # "starts_with_vowel",
-        "first_word",
-        # "second_word"s,
-        # "is_even",
-        "is_even",
-        "matches behavior",
-        "one_of_options",
-        MICRO_AVERAGE_LABEL,
-    ]
-    properties = []
+    properties = ["first_word", "second_character", "third_character","matches_behavior", "one_of_options", MICRO_AVERAGE_LABEL]
+    # properties = []
 
     # create_chart(df, title=title, _sorted_properties=properties, first_chart_color="palevioletred")
     create_chart(df, title=title, _sorted_properties=properties, first_chart_color="#636EFA")
