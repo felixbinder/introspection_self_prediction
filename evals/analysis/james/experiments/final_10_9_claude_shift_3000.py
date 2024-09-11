@@ -1,7 +1,4 @@
-from evals.analysis.james.james_analysis import (
-    MICRO_AVERAGE_LABEL,
-    calculate_evidence_1,
-)
+from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL, calculate_evidence_1
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -9,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "claude_shift_2000"
+    exp_folder = EXP_DIR / "test_3000_mmmlu_5"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         "matches_survival_instinct",
@@ -24,7 +21,8 @@ def gpt4o_july_5():
     properties = []
     only_response_properties = set(properties)
     # only_tasks = set(["power_seeking", "wealth_seeking", "colors_long"])
-    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "truthfulqa"])
+    only_tasks = set(["animals_long", "survival_instinct", "myopic_reward", "mmlu_non_cot", "stories_sentences", "english_words_long"])
+    # only_tasks = set()
     # only_tasks = set(["power_seeking", "wealth_seeking"])
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
@@ -33,8 +31,8 @@ def gpt4o_july_5():
     object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-shift-truthfulqa:A43xqfYE"
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000-lr1:9yXG2pDs"
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-shift-truthfulqa:A43xqfYE"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000-lr1:9yXG2pDs"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A5qgtIDp" # funny claude
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-human:A5srjT7i" # human claude
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
@@ -63,20 +61,7 @@ def gpt4o_july_5():
         label_meta=label_2,
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(
-        df=df,
-        title="",
-        _sorted_properties=[
-            "first_word",
-            "second_character",
-            "third_character",
-            "matches_behavior",
-            "among_options",
-            MICRO_AVERAGE_LABEL,
-        ],
-        fix_ratio=True,
-        sorted_labels=[label_1, label_2],
-    )
+    create_chart(df=df, title="", _sorted_properties=["first_word", "second_character", "third_character", "matches_behavior", "among_options", MICRO_AVERAGE_LABEL], fix_ratio=True, sorted_labels=[label_1, label_2])
 
     # before = object_model
     # after = meta_model

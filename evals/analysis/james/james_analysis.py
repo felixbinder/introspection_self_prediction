@@ -1551,18 +1551,18 @@ def calculate_evidence_1(
 
     if shifting == "only_shifted":
         flats = flats.filter(lambda x: x.shifted == "shifted")
-    if adjust_entropy:
-        flats = adjust_for_entropy(object_model=object_model, meta_model=meta_model, items=flats)
     if shifting == "only_same":
         flats = flats.filter(lambda x: x.shifted == "same")
     elif shifting == "all":
         pass
+    if adjust_entropy:
+        flats = adjust_for_entropy(object_model=object_model, meta_model=meta_model, items=flats)
     if micro_average:
         flats = add_micro_average(flats)
 
     # recalc mode
     new_flats = Slist()
-    grouped = flats.group_by(lambda x: (x.response_property, x.task, x.meta_model, x.object_model))
+    grouped = flats.group_by(lambda x: (x.response_property, x.meta_model, x.object_model))
     for group, values in grouped:
         values = recalculate_mode(values)
         new_flats.extend(values)

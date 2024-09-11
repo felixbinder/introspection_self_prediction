@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import calculate_evidence_1
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_1,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -34,6 +37,8 @@ def gpt4o_july_5():
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:reproduce-422:9qnTvYzx" # matches behavior repoduction
 
+    label_1 = "Predicting old<br>behavior M"
+    label_2 = "Predicting new<br>behavior M_changed"
     df = calculate_evidence_1(
         shift_before_model=object_model,
         shift_after_model=meta_model,
@@ -50,11 +55,24 @@ def gpt4o_july_5():
         micro_average=True,
         other_evals_to_run=[],
         exclude_noncompliant=True,
-        label_object="1) Predicting old behavior",
-        label_meta="2) Predicting new behavior",
+        label_object=label_1,
+        label_meta=label_2,
     )
     # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(df=df, title="", _sorted_properties=properties, fix_ratio=True)
+    create_chart(
+        df=df,
+        title="",
+        _sorted_properties=[
+            "first_word",
+            "second_character",
+            "third_character",
+            "matches_behavior",
+            "among_options",
+            MICRO_AVERAGE_LABEL,
+        ],
+        fix_ratio=True,
+        sorted_labels=[label_1, label_2],
+    )
 
     # before = object_model
     # after = meta_model

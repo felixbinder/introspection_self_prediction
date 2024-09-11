@@ -2,6 +2,7 @@ import asyncio
 from typing import List, Sequence
 
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 from grugstream import Observable
 from pydantic import BaseModel
@@ -84,6 +85,70 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
         second_token=second_token,
         second_token_proba=second_token_proba,
     )
+
+
+def plot_line_plot(
+    tups_list: List[Sequence[tuple[float, bool]]],
+    modal_baselines: List[float],
+    model_names: List[str],
+    x_axis_title: str = "Probability",
+    y_axis_title: str = "Meta-level accuracy",
+    chart_title: str = "",
+) -> None:
+    fig, ax = plt.subplots(figsize=(3, 3))
+
+    custom_bins = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    # custom_bins = [0.2, 0.4, 0.6, 0.8, 1.0]
+
+    sns.set_style("whitegrid")
+    plt.rcParams["font.size"] = 8
+    plt.rcParams["axes.labelsize"] = 8
+    plt.rcParams["axes.titlesize"] = 10
+    plt.rcParams["xtick.labelsize"] = 6
+    plt.rcParams["ytick.labelsize"] = 6
+    plt.rcParams["legend.fontsize"] = 6
+
+    for i, (tups, modal_baseline, model_name) in enumerate(zip(tups_list, modal_baselines, model_names)):
+        probabilities = np.array([tup[0] for tup in tups])
+        outcomes = np.array([int(tup[1]) for tup in tups])
+
+        color = plt.cm.tab10(i)
+
+        # Use numpy.digitize for binning
+        bin_indices = np.digitize(probabilities, custom_bins)
+
+        binned_probs = []
+        binned_outcomes = []
+        for j in range(1, len(custom_bins)):
+            mask = bin_indices == j
+            if np.any(mask):
+                binned_probs.append((custom_bins[j - 1] + custom_bins[j]) / 2)
+                binned_outcomes.append(np.mean(outcomes[mask]))
+
+        # Plot the line
+        ax.plot(binned_probs, binned_outcomes, color=color, label=model_name, lw=1.5)
+
+        # Add scatter points
+        ax.scatter(binned_probs, binned_outcomes, color=color, s=20, alpha=0.7)
+
+    ax.set_xlabel(x_axis_title)
+    ax.set_ylabel(y_axis_title)
+    ax.set_title(chart_title)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0.2, 1.0)
+    ax.grid(True, linestyle=":", alpha=0.7)
+
+    # Update x-axis to show percentages
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f"{x*100:.0f}%"))
+
+    # Update y-axis to show percentages
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, p: f"{y*100:.0f}%"))
+
+    # Place the legend in the upper left corner
+    ax.legend(loc="upper left", bbox_to_anchor=(0, 1), title="Self-Prediction Trained", title_fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig("animals_log_prob_multi.pdf")
 
 
 def plot_regression(
@@ -172,7 +237,7 @@ async def process_model(model: str, read: List[NumberRow], caller: ModelCallerV2
 
 async def main():
     path = "evals/datasets/val_animals.jsonl"
-    read = read_jsonl_file_into_basemodel(path, NumberRow).take(2000)
+    read = read_jsonl_file_into_basemodel(path, NumberRow).take(3000)
     print(f"Read {len(read)} animals from {path}")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
 
@@ -190,7 +255,8 @@ async def main():
         results.append(plots)
         baselines.append(baseline)
 
-    plot_regression(
+    # plot_regression(
+    plot_line_plot(
         results,
         baselines,
         # models,

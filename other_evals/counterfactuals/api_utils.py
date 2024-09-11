@@ -478,12 +478,12 @@ class UniversalCallerV2(ModelCallerV2):
         config: InferenceConfig,
         try_number: int = 1,
     ) -> OpenaiResponseWithLogProbs:
-        assert "gpt-" in config.model, "Only openai models support log probs for now"
-        # if "llama" in config.model:
-        #     openai.api_base ="https://api.fireworks.ai/inference/v1" # evil hack
-        #     api_key = os.environ.get("FIREWORKS_API_KEY")
-        #     assert api_key is not None, "Need FIREWORKS_API_KEY to call llama"
-        #     openai.api_key = api_key
+        # assert "gpt-" in config.model, "Only openai models support log probs for now"
+        if "llama" in config.model:
+            openai.api_base ="https://api.fireworks.ai/inference/v1" # evil hack
+            api_key = os.environ.get("FIREWORKS_API_KEY")
+            assert api_key is not None, "Need FIREWORKS_API_KEY to call llama"
+            openai.api_key = api_key
         return await self.gpt4_caller.call_with_log_probs(messages, config)
 
 

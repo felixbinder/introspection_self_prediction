@@ -11,7 +11,6 @@ import numpy as np
 from evals.apis.inference.anthropic_api import ANTHROPIC_MODELS, AnthropicChatModel
 from evals.apis.inference.fireworks_api import FireworksModel
 from evals.apis.inference.gemini_api import GeminiModel
-from evals.apis.inference.huggingface import HuggingFaceModel
 from evals.apis.inference.model import InferenceAPIModel
 from evals.apis.inference.openai.chat import OpenAIChatModel
 from evals.apis.inference.openai.completion import OpenAICompletionModel
@@ -95,7 +94,7 @@ class InferenceAPI:
 
         self._gemini_chat = GeminiModel(prompt_history_dir=self.prompt_history_dir)
 
-        self._huggingface_chat = HuggingFaceModel(prompt_history_dir=self.prompt_history_dir)
+        # self._huggingface_chat = HuggingFaceModel(prompt_history_dir=self.prompt_history_dir)
 
         self._fireworks_chat = FireworksModel() if "FIREWORKS_API_KEY" in secrets else None
 
@@ -118,7 +117,8 @@ class InferenceAPI:
         elif model_id in GEMINI_MODELS or "projects/" in model_id:
             return self._gemini_chat
         else:
-            return self._huggingface_chat
+            raise ValueError(f"Unknown model_id: {model_id}")
+            # return self._huggingface_chat
 
     def filter_responses(
         self,

@@ -64,7 +64,7 @@ def create_chart(
                 mode="markers",
                 name="Modal Baseline",
                 marker=dict(symbol="star", size=8, color="black"),
-                showlegend=True if i == 1 else False,
+                showlegend=True if i == 0 else False,
             )
         )
 
@@ -95,7 +95,7 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 85]),
+        yaxis=dict(range=[0, 90]),
         # legend=dict(traceorder="normal"),
         # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         # legend on the right
@@ -125,21 +125,27 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
     # Create the chart
     # #636EFA pale blue
     properties = [
-        "first_character",
+        "first_word",
+        # "first_character",
         "second_character",
         "third_character",
         # "starts_with_vowel",
-        "first_word",
         # "second_word"s,
         # "is_even",
-        "matches behavior",
-        "one_of_options",
+        "matches_behavior",
+        "among_options",
         MICRO_AVERAGE_LABEL,
     ]
-    properties = []
+    # properties = []
 
     # create_chart(df, title=title, _sorted_properties=properties, first_chart_color="palevioletred")
-    create_chart(df, title=title, _sorted_properties=properties, first_chart_color="#636EFA")
+    create_chart(
+        df,
+        title=title,
+        _sorted_properties=properties,
+        first_chart_color="#636EFA",
+        sorted_labels=["Predicting old<br>behavior M", "Predicting new<br>behavior M_changed"],
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,12 @@
+# 10sep
+# 1000 samples, lr =1
+model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-human:A5srjT7i
+# claude, prompted to be funny
+# on model: ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU
+cais_path: ~
+temperature: 0.0
+top_p: 1.0
+max_tokens: null
+num_candidates_per_completion: 1
+insufficient_valids_behaviour: "error"
+
