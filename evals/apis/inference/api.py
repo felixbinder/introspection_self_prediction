@@ -245,8 +245,8 @@ class InferenceAPI:
                 )
             )
         else:
-            if model_class != self._huggingface_chat:
-                kwargs.pop("cais_path", None)
+            # if model_class != self._huggingface_chat:
+            kwargs.pop("cais_path", None)
             candidate_responses = await model_class(
                 model_ids,
                 prompt,

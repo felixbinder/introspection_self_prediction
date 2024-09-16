@@ -22,6 +22,7 @@ def create_chart(
     _sorted_properties: Sequence[str] = [],
     fix_ratio: bool = True,
     sorted_labels: Sequence[str] = [],
+    pdf_name: str = "response_property_results.pdf",
 ):
     if len(_sorted_properties) == 0:
         sorted_properties = sorted(df["response_property"].unique())
@@ -84,7 +85,7 @@ def create_chart(
 
     renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
     # upper case first letter
-    renamed = [prop[0].upper() + prop[1:] for prop in renamed]
+
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
     ]
@@ -112,9 +113,9 @@ def create_chart(
     pio.kaleido.scope.mathjax = None
     if fix_ratio:
         # remove margins
-        fig.update_layout(height=200, width=750)
+        fig.update_layout(height=150, width=750)
         fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
-    fig.write_image("response_property_results.pdf")
+    fig.write_image(pdf_name)
 
     fig.show()
 
@@ -132,7 +133,7 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         # "starts_with_vowel",
         # "second_word"s,
         # "is_even",
-        "matches_behavior",
+        "ethical_stance",
         "among_options",
         MICRO_AVERAGE_LABEL,
     ]
@@ -144,7 +145,7 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         title=title,
         _sorted_properties=properties,
         first_chart_color="#636EFA",
-        sorted_labels=["Predicting old<br>behavior M", "Predicting new<br>behavior M_changed"],
+        sorted_labels=["Predicting old<br>behavior M", "Predicting new<br>behavior M<sub>c</sub>"],
     )
 
 

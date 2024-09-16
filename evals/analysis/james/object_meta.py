@@ -34,7 +34,7 @@ class ObjectAndMeta(BaseModel):
         # if "matches" in self.response_property, rename to "matches behavior"
         new = self.model_copy()
         if "matches" in self.response_property:
-            new.response_property = "matches_behavior"
+            new.response_property = "ethical_stance"
         if "is_either_a_or_c" in self.response_property:
             new.response_property = "among_options"
         if "is_either_b_or_d" in self.response_property:

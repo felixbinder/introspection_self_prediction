@@ -40,11 +40,14 @@ def gpt4o_july_5():
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
 
-    object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
+    # object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
+    # model: ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::A6bWyMnP
+    # on model: ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1
+    object_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-shift-truthfulqa:A43xqfYE"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000-lr1:9yXG2pDs"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::A6bWyMnP" # claude shifted
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A5qgtIDp" # funny claude
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-human:A5srjT7i" # human claude
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior

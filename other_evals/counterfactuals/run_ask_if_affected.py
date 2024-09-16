@@ -386,7 +386,7 @@ async def run_single_ask_if_affected(
         top_p=0.0,
     )
     if balance_data:
-        affected, unaffected = parsed_answers.shuffle("42").split_by(lambda x: x.switched_answer)
+        affected, unaffected = parsed_answers.shuffle("42").filter(lambda x: x.both_successful).split_by(lambda x: x.switched_answer)
         min_length = min(affected.length, unaffected.length)
         print(f"Balancing ground truths to have same number of samples: {min_length}")
         balanced_data = affected.take(min_length) + unaffected.take(min_length)

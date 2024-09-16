@@ -135,6 +135,10 @@ class InferenceResponse(BaseModel):
         else:
             return self.raw_responses[0]
 
+class Prob(BaseModel):
+    token: str
+    prob: float
+
 
 class LogProb(BaseModel):
     token: str
@@ -143,7 +147,9 @@ class LogProb(BaseModel):
     @property
     def proba(self) -> float:
         return math.exp(self.logprob)
-
+    
+    def to_prob(self) -> Prob:
+        return Prob(token=self.token, prob=self.proba)
 
 
 class TokenWithLogProbs(BaseModel):
@@ -153,6 +159,12 @@ class TokenWithLogProbs(BaseModel):
 
     def sorted_logprobs(self) -> Sequence[LogProb]: # Highest to lowest
         return sorted(self.top_logprobs, key=lambda x: x.logprob, reverse=True)
+    
+
+    def sorted_probs(self) -> Sequence[Prob]:
+        return [logprob.to_prob() for logprob in self.sorted_logprobs()]
+    
+
 
 
 
@@ -385,7 +397,7 @@ class FireworksCaller(ModelCallerV2):
 
 class OpenAICaller(ModelCallerV2):
     @async_retry(
-        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError)), wait=wait_fixed(5)
+        retry=retry_if_exception_type((openai.error.RateLimitError, openai.error.APIError, openai.error.APIConnectionError, openai.error.ServiceUnavailableError)), wait=wait_fixed(5)
     )
     async def call_with_log_probs(
         self,

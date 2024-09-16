@@ -378,58 +378,16 @@ def run_sweep_over_other_evals_ids(
 def test_main():
     # What evals to run?
     # eval_list = [WillYouGiveDeontology]
-    eval_list = [BiasDetectAreYouAffected, BiasDetectWhatAnswerWithout]
+    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 1000
-    # What models to run?
-    # prefinetune_model: str = "gpt-3.5-turbo-1106"
-    # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
-    # object_model: str = "gpt-3.5-turbo-0125"
-    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
+    limit = 5000
+    first_model = "gpt-4o-2024-05-13"
+    second_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
+    third_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:resp-blin:A6imEZ8y"
 
-    # half held out, doesn't work
-    # object_model: str = "gpt-3.5-turbo-0125"
-    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z"
 
-    # half held out, 2x more samples
-    object_model = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y"
-
-    # train on all... Train does help!
-    # object_model = "gpt-3.5-turbo-0125"
-    # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9da15ENS"
-    # object_model = "gpt-4o-2024-05-13"
-    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
-    models = Slist(
-        [
-            object_model,
-            meta_model,
-            # "gpt-3.5-turbo",
-            # "gpt-3.5-turbo-0125",
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:nommlu:9YISrgjH", # non mmlu sweep
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d",  # mmlu sweep
-            # "gpt-3.5-turbo-1106",
-            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9XGmIcNV" # train on felix + james'
-            # "gpt-4-0613",
-            # "ft:gpt-4-0613:dcevals-kokotajlo:sweep:9RSQ9BDP" # gpt-4 on gpt -4
-            # "gpt-3.5-turbo-1106",
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:sweep:9WBVcb4d"
-            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9YHdMAcl", # leave out are you sure
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN",  # baseline scrambled
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WPLCVRV",  # train on claude
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo:baliemay20:9WAurjLN", # baseline scrambled
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WOKeIsb", # 12,000 samples gpt-3.5
-            # "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9WE1NjvJ",  # gpt-3.5 on gpt-3.5, on arc other evals, 3600 samples
-            # "claude-3-sonnet-20240229",
-            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9GYUm36T" # all response properites
-            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9Lrb314n",  # ask if affected
-            # "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo::9PutAYsj",
-            # "gpt-4o",
-        ]
-    )
     # We want to run all the combinations of the models
-    object_and_meta_models: Slist[tuple[str, str]] = models.product(models)
+    object_and_meta_models: Slist[tuple[str, str]] = Slist([(first_model, first_model), (second_model, second_model), (third_model, third_model)])
     study_folder = EXP_DIR / "other_evals"
 
     run_sweep_over_other_evals_ids(
@@ -447,7 +405,7 @@ def test_cross_train():
     # eval_list = [WillYouGiveDeontology]
     eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 2500
+    limit = 1000
     # What models to run?
     # prefinetune_model: str = "gpt-3.5-turbo-1106"
     # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
@@ -464,7 +422,7 @@ def test_cross_train():
 
     # leave out only are you sure
     object_model = "gpt-4o-2024-05-13"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9danhPzM"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
     first = (object_model, meta_model)
     second = (meta_model, meta_model)
 
@@ -483,4 +441,5 @@ def test_cross_train():
 
 
 if __name__ == "__main__":
-    test_cross_train()
+    # test_cross_train()
+    test_main()
