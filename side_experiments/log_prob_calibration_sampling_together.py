@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from typing import List, Sequence, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,17 +70,21 @@ class SampledAnimalResponse(BaseModel):
 
         modal_meta_parsed_response = Slist(responses).map(lambda x: x.meta_parsed_response).mode_or_raise()
         # Group by sum
-        object_probs = Slist(responses).map(lambda x: x.object_level_response).group_by(
-            lambda x: x
-        ).map_2(
-            # key: token, value: list of responses
-            lambda key, value: Prob(token=key, prob=len(value) / len(responses))
+        object_probs = (
+            Slist(responses)
+            .map(lambda x: x.object_level_response)
+            .group_by(lambda x: x)
+            .map_2(
+                # key: token, value: list of responses
+                lambda key, value: Prob(token=key, prob=len(value) / len(responses))
+            )
         )
         expected_meta_probs = calc_expected_meta_probs(object_probs)
-        meta_probs = Slist(responses).map(lambda x: x.meta_parsed_response).group_by(
-            lambda x: x
-        ).map_2(
-            lambda key, value: Prob(token=key, prob=len(value) / len(responses))
+        meta_probs = (
+            Slist(responses)
+            .map(lambda x: x.meta_parsed_response)
+            .group_by(lambda x: x)
+            .map_2(lambda key, value: Prob(token=key, prob=len(value) / len(responses)))
         )
 
         return SampledAnimalResponse(
@@ -113,7 +117,9 @@ class SampledAnimalResponse(BaseModel):
 
     def second_expected_with_meta(self) -> Optional[Tuple[float, float]]:
         # Second most likely object-level behaviour
-        second_expected: Optional[str] = Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.token).get(1, or_else=None)
+        second_expected: Optional[str] = (
+            Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.token).get(1, or_else=None)
+        )
         if second_expected is None:
             return None
         return self.second_expected_object_proba(), self.get_meta_proba_for_behaviour(second_expected)
@@ -140,11 +146,13 @@ class SampledAnimalResponse(BaseModel):
 
     def ratio_probabilities(self) -> float:
         if self.second_token_proba is None or self.second_token_proba == 0:
-            return float('inf')  # Avoid division by zero
+            return float("inf")  # Avoid division by zero
         return self.top_1_token_proba / self.second_token_proba
 
 
-async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int) -> Optional[AnimalResponse]:
+async def ask_question(
+    model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int
+) -> Optional[AnimalResponse]:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
 
@@ -162,7 +170,9 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, tr
     top_1_token: str = first_token.top_logprobs[0].token
     top_1_token_proba: float = first_token.top_logprobs[0].proba
     second_token: Optional[str] = first_token.top_logprobs[1].token if len(first_token.top_logprobs) > 1 else None
-    second_token_proba: Optional[float] = first_token.top_logprobs[1].proba if len(first_token.top_logprobs) > 1 else None
+    second_token_proba: Optional[float] = (
+        first_token.top_logprobs[1].proba if len(first_token.top_logprobs) > 1 else None
+    )
 
     parsed = response.single_response.strip()
     if len(parsed) < 2:
@@ -190,7 +200,9 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, tr
     )
 
 
-async def ask_question_sampling(model: str, triplet: NumberRow, caller: ModelCallerV2, n_samples: int = 10) -> SampledAnimalResponse:
+async def ask_question_sampling(
+    model: str, triplet: NumberRow, caller: ModelCallerV2, n_samples: int = 10
+) -> SampledAnimalResponse:
     repeats: Slist[int] = Slist(range(n_samples))
     responses: Slist[Optional[AnimalResponse]] = await repeats.par_map_async(
         lambda repeat: ask_question(model, triplet, caller, repeat),
@@ -233,7 +245,7 @@ def plot_scatter_plot(
         thresh=0.05,
         levels=100,
         alpha=0.3,
-        zorder=1
+        zorder=1,
     )
 
     # Introduce jitter by adding small random noise to the data
@@ -243,28 +255,22 @@ def plot_scatter_plot(
 
     # Create the scatter plot with jitter and increased opacity
     scatter = sns.scatterplot(
-        x=jittered_x,
-        y=jittered_y,
-        color='blue',
-        alpha=0.6,
-        edgecolor='w',
-        s=60,
-        zorder=2,
-        label=model_name
+        x=jittered_x, y=jittered_y, color="blue", alpha=0.6, edgecolor="w", s=60, zorder=2, label=model_name
     )
 
     # Add a y = x reference line
-    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1, zorder=3)
+    plt.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1, zorder=3)
 
     # Calculate and display the Pearson correlation coefficient and p-value
     correlation, p_value = pearsonr(df["Object Probability"], df["Meta Probability"])
     plt.text(
-        0.05, 0.95,
-        f'Pearson r = {correlation:.2f}\nP-value = {p_value:.2e}',
+        0.05,
+        0.95,
+        f"Pearson r = {correlation:.2f}\nP-value = {p_value:.2e}",
         transform=plt.gca().transAxes,
         fontsize=14,
-        verticalalignment='top',
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.7)
+        verticalalignment="top",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.7),
     )
 
     # Perform and plot a linear regression with confidence interval
@@ -273,8 +279,8 @@ def plot_scatter_plot(
         x="Object Probability",
         y="Meta Probability",
         scatter=False,
-        color='red',
-        line_kws={'linewidth':2},
+        color="red",
+        line_kws={"linewidth": 2},
         ci=95,
         # zorder=4
     )
@@ -294,7 +300,7 @@ def plot_scatter_plot(
     plt.yticks(np.arange(0, 1.1, 0.2), [f"{int(y*100)}%" for y in np.arange(0, 1.1, 0.2)], fontsize=12)
 
     # Add legend
-    plt.legend(title="Model", loc='lower right', fontsize=12, title_fontsize=14)
+    plt.legend(title="Model", loc="lower right", fontsize=12, title_fontsize=14)
 
     # Tight layout for better spacing
     plt.tight_layout()
@@ -307,16 +313,11 @@ def plot_scatter_plot(
     # plt.close()
 
 
-
-async def process_model_scatter(
-    model: str, read: List[NumberRow], caller: ModelCallerV2
-) -> pd.DataFrame:
+async def process_model_scatter(model: str, read: List[NumberRow], caller: ModelCallerV2) -> pd.DataFrame:
     stream = (
         Observable.from_iterable(read)
         .map_async_par(
-            lambda triplet: ask_question_sampling(
-                model=model, triplet=triplet, caller=caller, n_samples=20
-            ),
+            lambda triplet: ask_question_sampling(model=model, triplet=triplet, caller=caller, n_samples=20),
             max_par=5,
         )
         .tqdm()
@@ -337,10 +338,9 @@ async def main():
     path = "evals/datasets/val_animals.jsonl"
     train_path = "evals/datasets/train_animals.jsonl"
     limit = 500
-    read = (
-        read_jsonl_file_into_basemodel(path, NumberRow).take(limit)
-        + read_jsonl_file_into_basemodel(train_path, NumberRow).take(limit)
-    )
+    read = read_jsonl_file_into_basemodel(path, NumberRow).take(limit) + read_jsonl_file_into_basemodel(
+        train_path, NumberRow
+    ).take(limit)
     print(f"Read {len(read)} animals from {path}")
     caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
 
@@ -351,9 +351,7 @@ async def main():
 
     # Process and plot for the specified model
     df = await process_model_scatter(
-        model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-        read=read,
-        caller=caller
+        model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja", read=read, caller=caller
     )
 
     # Plot all behaviors on the same scatter plot

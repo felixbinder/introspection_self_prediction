@@ -40,9 +40,8 @@ class AnimalResponse(BaseModel):
     meta_raw_response: str
     meta_parsed_response: str
     object_probs: Sequence[Prob]
-    expected_meta_probs: Sequence[Prob] # calculated from object_probs
-    meta_probs: Sequence[Prob] # calculated from meta_raw_response
-
+    expected_meta_probs: Sequence[Prob]  # calculated from object_probs
+    meta_probs: Sequence[Prob]  # calculated from meta_raw_response
 
     def meta_is_correct(self) -> bool:
         if self.meta_parsed_response is None:
@@ -61,7 +60,6 @@ def calc_expected_meta_probs(object_probs: Sequence[Prob]) -> Sequence[Prob]:
         out[prob.token[1]] += prob.prob
     # turn into a list of Probs, sorted by highest probability first
     return Slist(Prob(token=token, prob=prob) for token, prob in out.items()).sort_by(lambda x: -x.prob)
-
 
 
 async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) -> AnimalResponse:
@@ -99,7 +97,6 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     object_probs = first_token.sorted_probs()
     expected_meta_probs = calc_expected_meta_probs(object_probs)
     meta_probs = first_meta_token.sorted_probs()
-
 
     cleaned = meta_response.single_response.strip().lower()
     # print(f"Cleaned meta response: {cleaned}")
@@ -182,6 +179,7 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
 #     plt.tight_layout()
 #     plt.savefig("animals_log_prob_multi.pdf")
 
+
 def plot_line_plot(
     tups_list: List[Sequence[tuple[float, bool]]],
     modal_baselines: List[float],
@@ -201,7 +199,7 @@ def plot_line_plot(
     plt.rcParams["legend.fontsize"] = 6
 
     # Custom color palette
-    colors = ['#1f77b4', '#F5793A', '#A95AA1']  # Blue, Red, Green
+    colors = ["#1f77b4", "#F5793A", "#A95AA1"]  # Blue, Red, Green
 
     for i, (tups, modal_baseline, model_name) in enumerate(zip(tups_list, modal_baselines, model_names)):
         probabilities = np.array([tup[0] for tup in tups])
@@ -226,17 +224,24 @@ def plot_line_plot(
                 # Calculate confidence interval
                 n = np.sum(mask)
                 se = np.sqrt(mean_outcome * (1 - mean_outcome) / n)
-                margin_of_error = se * stats.t.ppf((1 + 0.95) / 2, n-1)
+                margin_of_error = se * stats.t.ppf((1 + 0.95) / 2, n - 1)
                 error_bars.append(margin_of_error)
 
         # Plot the line
         ax.plot(binned_probs, binned_outcomes, color=color, label=model_name, lw=1.5)
 
         # Add scatter points with error bars
-        ax.errorbar(binned_probs, binned_outcomes,
-                    yerr=error_bars,
-                      fmt='o', color=color,
-                    capsize=3, capthick=1, elinewidth=1, markersize=4)
+        ax.errorbar(
+            binned_probs,
+            binned_outcomes,
+            yerr=error_bars,
+            fmt="o",
+            color=color,
+            capsize=3,
+            capthick=1,
+            elinewidth=1,
+            markersize=4,
+        )
 
     ax.set_xlabel(x_axis_title)
     ax.set_ylabel(y_axis_title)
@@ -253,7 +258,7 @@ def plot_line_plot(
     ax.set_yticks(np.arange(0.2, 1.1, 0.2))
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, p: f"{y*100:.0f}%"))
 
-    ax.legend(title="Self-Prediction Trained", title_fontsize=8, loc='upper left', bbox_to_anchor=(0, 1))
+    ax.legend(title="Self-Prediction Trained", title_fontsize=8, loc="upper left", bbox_to_anchor=(0, 1))
 
     plt.tight_layout()
     plt.savefig("animals_log_prob_multi.pdf")

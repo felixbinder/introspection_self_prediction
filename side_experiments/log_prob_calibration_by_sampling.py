@@ -1,6 +1,6 @@
 import asyncio
-from collections import defaultdict
 import token
+from collections import defaultdict
 from typing import List, Sequence
 
 import matplotlib.pyplot as plt
@@ -74,17 +74,21 @@ class SampledAnimalResponse(BaseModel):
 
         modal_meta_parsed_response = Slist(responses).map(lambda x: x.meta_parsed_response).mode_or_raise()
         # groupby sum
-        object_probs = Slist(responses).map(lambda x: x.object_level_response).group_by(
-            lambda x: x
-        ).map_2(
-            # key: token, value: list of responses
-            lambda key, value: Prob(token=key, prob=len(value) / len(responses))
+        object_probs = (
+            Slist(responses)
+            .map(lambda x: x.object_level_response)
+            .group_by(lambda x: x)
+            .map_2(
+                # key: token, value: list of responses
+                lambda key, value: Prob(token=key, prob=len(value) / len(responses))
+            )
         )
         expected_meta_probs = calc_expected_meta_probs(object_probs)
-        meta_probs = Slist(responses).map(lambda x: x.meta_parsed_response).group_by(
-            lambda x: x
-        ).map_2(
-            lambda key, value: Prob(token=key, prob=len(value) / len(responses))
+        meta_probs = (
+            Slist(responses)
+            .map(lambda x: x.meta_parsed_response)
+            .group_by(lambda x: x)
+            .map_2(lambda key, value: Prob(token=key, prob=len(value) / len(responses)))
         )
 
         return SampledAnimalResponse(
@@ -120,15 +124,18 @@ class SampledAnimalResponse(BaseModel):
 
     def second_expected_with_meta(self) -> tuple[float, float] | None:
         # second most likely object-level behaviour
-        second_expected: str | None = Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.token).get(1, or_else=None)
+        second_expected: str | None = (
+            Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.token).get(1, or_else=None)
+        )
         if second_expected is None:
             return None
         return self.second_expected_object_proba(), self.get_meta_proba_for_behaviour(second_expected)
 
-
     def third_expected_with_meta(self) -> tuple[float, float] | None:
         # third most likely object-level behaviour
-        third_expected: str | None = Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.token).get(2, or_else=None)
+        third_expected: str | None = (
+            Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.token).get(2, or_else=None)
+        )
         if third_expected is None:
             return None
         return self.third_expected_object_proba(), self.get_meta_proba_for_behaviour(third_expected)
@@ -142,7 +149,9 @@ class SampledAnimalResponse(BaseModel):
         return self.top_1_token_proba / self.second_token_proba
 
 
-async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: str | None = None) -> AnimalResponse | None:
+async def ask_question(
+    model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: str | None = None
+) -> AnimalResponse | None:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
 
@@ -171,7 +180,9 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, tr
     meta_convo = [ChatMessageV2(role="user", content=meta_prompt)]
     meta_model = cross_prediction_model if cross_prediction_model is not None else model
     meta_response: OpenaiResponseWithLogProbs = await caller.call_with_log_probs(
-        meta_convo, config=InferenceConfig(model=meta_model, temperature=1.0, top_p=1.0, max_tokens=3), try_number=try_number
+        meta_convo,
+        config=InferenceConfig(model=meta_model, temperature=1.0, top_p=1.0, max_tokens=3),
+        try_number=try_number,
     )
     # if "llama-70b" not in model:
     #     first_meta_token: TokenWithLogProbs = meta_response.response_with_logprobs().content[0]
@@ -199,7 +210,13 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, tr
     )
 
 
-async def ask_question_sampling(model: str, triplet: NumberRow, caller: ModelCallerV2, n_samples: int = 10, cross_prediction_model: str | None = None) -> SampledAnimalResponse:
+async def ask_question_sampling(
+    model: str,
+    triplet: NumberRow,
+    caller: ModelCallerV2,
+    n_samples: int = 10,
+    cross_prediction_model: str | None = None,
+) -> SampledAnimalResponse:
     repeats: Slist[int] = Slist(range(n_samples))
     responses: Slist[AnimalResponse | None] = await repeats.par_map_async(
         lambda repeat: ask_question(model, triplet, caller, repeat, cross_prediction_model=cross_prediction_model)
@@ -209,7 +226,7 @@ async def ask_question_sampling(model: str, triplet: NumberRow, caller: ModelCal
 
 
 from scipy.stats import gaussian_kde, pearsonr
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
 def plot_scatter_plot(
@@ -262,12 +279,12 @@ def plot_scatter_plot(
         expected_probs + np.random.normal(0, 0.005, size=expected_probs.shape),  # Adding jitter
         predicted_probs + np.random.normal(0, 0.005, size=predicted_probs.shape),  # Adding jitter
         c=z,
-        cmap='viridis',       # Color map for density
-        s=30,                 # Slightly larger marker size
-        alpha=0.7,            # Adjusted transparency
-        edgecolor='w',        # Marker edge color
-        linewidth=0.5,        # Marker edge width
-        label=model_name
+        cmap="viridis",  # Color map for density
+        s=30,  # Slightly larger marker size
+        alpha=0.7,  # Adjusted transparency
+        edgecolor="w",  # Marker edge color
+        linewidth=0.5,  # Marker edge width
+        label=model_name,
     )
 
     # Optionally, overlay a hexbin plot for alternative density visualization
@@ -276,10 +293,10 @@ def plot_scatter_plot(
 
     # Add a color bar to represent density
     cbar = plt.colorbar(scatter, ax=ax)
-    cbar.set_label('Density')
+    cbar.set_label("Density")
 
     # Add a y = x reference line
-    ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1)
+    ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
 
     # Calculate statistics
     correlation, p_value = pearsonr(expected_probs, predicted_probs)
@@ -288,12 +305,13 @@ def plot_scatter_plot(
 
     # Display the Pearson correlation coefficient, p-value, and MSE
     ax.text(
-        0.05, 0.95,
-        f'Pearson r = {correlation:.2f}\nP-value = {p_value:.2e}\nMAD (no binning)= {mad:.2f}\nMSE = {mse:.2f}',
+        0.05,
+        0.95,
+        f"Pearson r = {correlation:.2f}\nP-value = {p_value:.2e}\nMAD (no binning)= {mad:.2f}\nMSE = {mse:.2f}",
         transform=ax.transAxes,
         fontsize=11,
-        verticalalignment='top',
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5)
+        verticalalignment="top",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5),
     )
 
     # Optionally, perform and plot a linear regression with confidence interval
@@ -302,9 +320,9 @@ def plot_scatter_plot(
         y=predicted_probs,
         ax=ax,
         scatter=False,
-        color='red',
-        line_kws={'linewidth':1.5},
-        ci=95  # 95% confidence interval
+        color="red",
+        line_kws={"linewidth": 1.5},
+        ci=95,  # 95% confidence interval
     )
 
     # Set labels and title
@@ -324,7 +342,7 @@ def plot_scatter_plot(
     ax.set_yticklabels([f"{int(y*100)}%" for y in np.arange(0, 1.1, 0.2)])
 
     # Add legend
-    ax.legend(title="Model", loc='lower right')
+    ax.legend(title="Model", loc="lower right")
 
     # Tight layout for better spacing
     plt.tight_layout()
@@ -370,7 +388,7 @@ def plot_calibration_curve(
     x_axis_title: str = "Model Probability",
     y_axis_title: str = "Model accuracy",
     chart_title: str = "",
-    num_bins: int = 10
+    num_bins: int = 10,
 ) -> None:
     # Bin the data
     bin_means_x, bin_means_y = equal_sized_binning(data, num_bins)
@@ -387,10 +405,10 @@ def plot_calibration_curve(
     plt.rcParams["ytick.labelsize"] = 10
 
     # Create the scatter plot for binned data
-    ax.scatter(bin_means_x, bin_means_y, s=50, color='blue', label=model_name)
+    ax.scatter(bin_means_x, bin_means_y, s=50, color="blue", label=model_name)
 
     # Add a y = x reference line
-    ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1)
+    ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
 
     # Calculate statistics
     expected_probs = np.array([x for x, y in data])
@@ -402,12 +420,13 @@ def plot_calibration_curve(
 
     # Display the Pearson correlation coefficient, p-value, and MSE
     ax.text(
-        0.05, 0.95,
-        f'Pearson r = {correlation:.2f}\nP-value = {p_value:.2e}\nMAD (binned) = {mad:.2f}',
+        0.05,
+        0.95,
+        f"Pearson r = {correlation:.2f}\nP-value = {p_value:.2e}\nMAD (binned) = {mad:.2f}",
         transform=ax.transAxes,
         fontsize=11,
-        verticalalignment='top',
-        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5)
+        verticalalignment="top",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.5),
     )
 
     # Set labels and title
@@ -427,7 +446,7 @@ def plot_calibration_curve(
     ax.set_yticklabels([f"{int(y*100)}%" for y in np.arange(0, 1.1, 0.2)])
 
     # Add legend
-    ax.legend(title="Model", loc='lower right')
+    ax.legend(title="Model", loc="lower right")
 
     # Tight layout for better spacing
     plt.tight_layout()
@@ -442,11 +461,15 @@ def plot_calibration_curve(
 # Removed the commented out old plot_scatter_plot function for clarity
 
 
-async def process_model_scatter(model: str, read: List[NumberRow], caller: ModelCallerV2, cross_prediction_model: str | None = None) -> Slist[tuple[float, float]]:
+async def process_model_scatter(
+    model: str, read: List[NumberRow], caller: ModelCallerV2, cross_prediction_model: str | None = None
+) -> Slist[tuple[float, float]]:
     stream = (
         Observable.from_iterable(read)
         .map_async_par(
-            lambda triplet: ask_question_sampling(model=model, triplet=triplet, caller=caller, n_samples=20, cross_prediction_model=cross_prediction_model),
+            lambda triplet: ask_question_sampling(
+                model=model, triplet=triplet, caller=caller, n_samples=20, cross_prediction_model=cross_prediction_model
+            ),
             max_par=5,
         )
         .tqdm()
@@ -458,8 +481,12 @@ async def process_model_scatter(model: str, read: List[NumberRow], caller: Model
     expected_meta_proba: Slist[tuple[float, float]] = result_clean.map(lambda x: x.first_expected_with_meta())
 
     # second
-    expected_meta_proba_second: Slist[tuple[float, float]] = result_clean.map(lambda x: x.second_expected_with_meta()).flatten_option()
-    expected_meta_proba_third: Slist[tuple[float, float]] = result_clean.map(lambda x: x.third_expected_with_meta()).flatten_option()
+    expected_meta_proba_second: Slist[tuple[float, float]] = result_clean.map(
+        lambda x: x.second_expected_with_meta()
+    ).flatten_option()
+    expected_meta_proba_third: Slist[tuple[float, float]] = result_clean.map(
+        lambda x: x.third_expected_with_meta()
+    ).flatten_option()
 
     # plot_scatter_plot
     plot_scatter_plot(
@@ -506,8 +533,6 @@ async def process_model_scatter(model: str, read: List[NumberRow], caller: Model
         y_axis_title="Predicted Meta Probability",
         chart_title="Third Object-Level Behavior Calibration",
         filename="third_calibration_curve.pdf",
-
-
     )
 
     return expected_meta_proba
