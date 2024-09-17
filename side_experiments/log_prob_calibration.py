@@ -61,7 +61,7 @@ def calc_expected_meta_probs(object_probs: Sequence[Prob]) -> Sequence[Prob]:
         out[prob.token[1]] += prob.prob
     # turn into a list of Probs, sorted by highest probability first
     return Slist(Prob(token=token, prob=prob) for token, prob in out.items()).sort_by(lambda x: -x.prob)
-    
+
 
 
 async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) -> AnimalResponse:
@@ -99,7 +99,7 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2) ->
     object_probs = first_token.sorted_probs()
     expected_meta_probs = calc_expected_meta_probs(object_probs)
     meta_probs = first_meta_token.sorted_probs()
-    
+
 
     cleaned = meta_response.single_response.strip().lower()
     # print(f"Cleaned meta response: {cleaned}")
@@ -222,7 +222,7 @@ def plot_line_plot(
                 binned_probs.append(np.mean(probabilities[mask]))
                 mean_outcome = np.mean(outcomes[mask])
                 binned_outcomes.append(mean_outcome)
-                
+
                 # Calculate confidence interval
                 n = np.sum(mask)
                 se = np.sqrt(mean_outcome * (1 - mean_outcome) / n)
@@ -233,9 +233,9 @@ def plot_line_plot(
         ax.plot(binned_probs, binned_outcomes, color=color, label=model_name, lw=1.5)
 
         # Add scatter points with error bars
-        ax.errorbar(binned_probs, binned_outcomes, 
+        ax.errorbar(binned_probs, binned_outcomes,
                     yerr=error_bars,
-                      fmt='o', color=color, 
+                      fmt='o', color=color,
                     capsize=3, capthick=1, elinewidth=1, markersize=4)
 
     ax.set_xlabel(x_axis_title)

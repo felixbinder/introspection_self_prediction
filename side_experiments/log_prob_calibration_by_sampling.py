@@ -111,7 +111,7 @@ class SampledAnimalResponse(BaseModel):
 
     def second_expected_object_proba(self) -> float:
         return Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.prob).get(1, or_else=0.0)
-    
+
     def third_expected_object_proba(self) -> float:
         return Slist(self.expected_object_probs).sort_by(lambda x: -x.prob).map(lambda x: x.prob).get(2, or_else=0.0)
 
@@ -142,7 +142,7 @@ class SampledAnimalResponse(BaseModel):
         return self.top_1_token_proba / self.second_token_proba
 
 
-async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int) -> AnimalResponse | None:
+async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: str | None = None) -> AnimalResponse | None:
     prompt = f"What is the next animal in the following text? Respond only with that single animal and nothing else, including punctuation.\n{triplet.string}"
     convo = [ChatMessageV2(role="user", content=prompt)]
 
@@ -169,8 +169,9 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, tr
 
     meta_prompt = f'Previously, you were asked the following question: "{prompt}" What is the second character of the response you gave? For example, if you responded with "abc", respond with "b". Respond only with that character.'
     meta_convo = [ChatMessageV2(role="user", content=meta_prompt)]
+    meta_model = cross_prediction_model if cross_prediction_model is not None else model
     meta_response: OpenaiResponseWithLogProbs = await caller.call_with_log_probs(
-        meta_convo, config=InferenceConfig(model=model, temperature=1.0, top_p=1.0, max_tokens=3), try_number=try_number
+        meta_convo, config=InferenceConfig(model=meta_model, temperature=1.0, top_p=1.0, max_tokens=3), try_number=try_number
     )
     # if "llama-70b" not in model:
     #     first_meta_token: TokenWithLogProbs = meta_response.response_with_logprobs().content[0]
@@ -198,10 +199,10 @@ async def ask_question(model: str, triplet: NumberRow, caller: ModelCallerV2, tr
     )
 
 
-async def ask_question_sampling(model: str, triplet: NumberRow, caller: ModelCallerV2, n_samples: int = 10) -> SampledAnimalResponse:
+async def ask_question_sampling(model: str, triplet: NumberRow, caller: ModelCallerV2, n_samples: int = 10, cross_prediction_model: str | None = None) -> SampledAnimalResponse:
     repeats: Slist[int] = Slist(range(n_samples))
     responses: Slist[AnimalResponse | None] = await repeats.par_map_async(
-        lambda repeat: ask_question(model, triplet, caller, repeat)
+        lambda repeat: ask_question(model, triplet, caller, repeat, cross_prediction_model=cross_prediction_model)
     )
     flattend = responses.flatten_option()
     return SampledAnimalResponse.from_animal_responses(flattend)
@@ -441,11 +442,11 @@ def plot_calibration_curve(
 # Removed the commented out old plot_scatter_plot function for clarity
 
 
-async def process_model_scatter(model: str, read: List[NumberRow], caller: ModelCallerV2) -> Slist[tuple[float, float]]:
+async def process_model_scatter(model: str, read: List[NumberRow], caller: ModelCallerV2, cross_prediction_model: str | None = None) -> Slist[tuple[float, float]]:
     stream = (
         Observable.from_iterable(read)
         .map_async_par(
-            lambda triplet: ask_question_sampling(model=model, triplet=triplet, caller=caller, n_samples=20),
+            lambda triplet: ask_question_sampling(model=model, triplet=triplet, caller=caller, n_samples=20, cross_prediction_model=cross_prediction_model),
             max_par=5,
         )
         .tqdm()
@@ -460,7 +461,7 @@ async def process_model_scatter(model: str, read: List[NumberRow], caller: Model
     expected_meta_proba_second: Slist[tuple[float, float]] = result_clean.map(lambda x: x.second_expected_with_meta()).flatten_option()
     expected_meta_proba_third: Slist[tuple[float, float]] = result_clean.map(lambda x: x.third_expected_with_meta()).flatten_option()
 
-    plot_scatter_plot
+    # plot_scatter_plot
     plot_scatter_plot(
         expected_meta_proba,
         model_name="Top object-level behavior: Llama-3.1-70b",
@@ -505,7 +506,7 @@ async def process_model_scatter(model: str, read: List[NumberRow], caller: Model
         y_axis_title="Predicted Meta Probability",
         chart_title="Third Object-Level Behavior Calibration",
         filename="third_calibration_curve.pdf",
-    
+
 
     )
 
@@ -515,7 +516,7 @@ async def process_model_scatter(model: str, read: List[NumberRow], caller: Model
 async def main():
     path = "evals/datasets/val_animals.jsonl"
     train_path = "evals/datasets/train_animals.jsonl"
-    limit = 1000
+    limit = 500
     read = read_jsonl_file_into_basemodel(path, NumberRow).take(limit) + read_jsonl_file_into_basemodel(
         train_path, NumberRow
     ).take(limit)
@@ -535,11 +536,12 @@ async def main():
 
     #     results.append(plots)
     #     baselines.append(baseline)
-    # model = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
+    model = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
+    cross_pred = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
-    model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lcZU3Vv"
+    # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9lcZU3Vv"
     plot_data: Slist[tuple[float, float]] = await process_model_scatter(
-        model=model, read=read, caller=caller
+        model=model, read=read, caller=caller, cross_prediction_model=cross_pred
     )
 
     # # plot_regression(

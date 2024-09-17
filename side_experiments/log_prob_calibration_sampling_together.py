@@ -126,7 +126,7 @@ class SampledAnimalResponse(BaseModel):
             (obj_prob.prob, self.get_meta_proba_for_behaviour(obj_prob.token), obj_prob.token)
             for obj_prob in self.expected_object_probs
         ]
-    
+
     def top_3_object_probs(self) -> List[Tuple[float, float, str]]:
         return [
             (obj_prob.prob, self.get_meta_proba_for_behaviour(obj_prob.token), obj_prob.token)
