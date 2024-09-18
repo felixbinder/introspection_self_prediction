@@ -23,6 +23,7 @@ def create_chart(
     fix_ratio: bool = True,
     sorted_labels: Sequence[str] = [],
     pdf_name: str = "response_property_results.pdf",
+    show_legend: bool = True,
 ):
     if len(_sorted_properties) == 0:
         sorted_properties = sorted(df["response_property"].unique())
@@ -85,6 +86,7 @@ def create_chart(
 
     renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
     # upper case first letter
+    renamed = [prop[0].upper() + prop[1:] for prop in renamed]
 
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
@@ -106,6 +108,9 @@ def create_chart(
         ),
         # margin=dict(b=200)  # Increase bottom margin
     )
+    # remove legend
+    if not show_legend:
+        fig.update_layout(showlegend=False)
     # save as png 1080p
     # fig.write_image("response_property_results.png", width=1920, height=1080)
     import plotly.io as pio
@@ -146,6 +151,8 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         _sorted_properties=properties,
         first_chart_color="#636EFA",
         sorted_labels=["Predicting old<br>behavior M", "Predicting new<br>behavior M<sub>c</sub>"],
+        show_legend=False,
+        pdf_name="claude_shift.pdf",
     )
 
 

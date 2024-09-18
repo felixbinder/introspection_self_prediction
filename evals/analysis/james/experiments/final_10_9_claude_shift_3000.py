@@ -87,6 +87,7 @@ def gpt4o_july_5():
         fix_ratio=True,
         sorted_labels=[label_1, label_2],
         pdf_name="claude_shift.pdf",
+        show_legend=False,
     )
 
     df = calculate_evidence_1(
