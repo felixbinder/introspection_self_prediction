@@ -329,6 +329,7 @@ ConfigToFireworks = {
     "llama-8b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-8b-14aug-20k-jinja",
     "llama-70b-14aug-5k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-5k-jinja",
     "llama-70b-14aug-20k-jinja": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    "llama-70b-14aug-20k-jinja-claude-shift": "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja-claude-shift",
     # "llama-8b-14aug-20k": "accounts/chuajamessh-b7a735/deployedModels/llama-8b-14aug-20k-e9fc69db",
 }
 

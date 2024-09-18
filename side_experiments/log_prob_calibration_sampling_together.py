@@ -254,7 +254,7 @@ def plot_scatter_plot(
     jittered_y = df["Meta Probability"] + np.random.uniform(-jitter_strength, jitter_strength, size=df.shape[0])
 
     # Create the scatter plot with jitter and increased opacity
-    scatter = sns.scatterplot(
+    sns.scatterplot(
         x=jittered_x, y=jittered_y, color="blue", alpha=0.6, edgecolor="w", s=60, zorder=2, label=model_name
     )
 

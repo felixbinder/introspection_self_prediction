@@ -9,7 +9,6 @@ from grugstream import Observable
 from pydantic import BaseModel
 from scipy import stats
 from slist import Slist
-from traitlets import default
 
 from evals.utils import setup_environment
 from other_evals.counterfactuals.api_utils import (

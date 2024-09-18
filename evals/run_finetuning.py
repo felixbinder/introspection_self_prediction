@@ -6,7 +6,7 @@ from pathlib import Path
 
 import hydra
 
-# import torch
+
 from omegaconf import DictConfig
 
 from evals.apis.finetuning.run import FineTuneHyperParams, FineTuneParams, run_finetune
@@ -97,6 +97,7 @@ def main(cfg: DictConfig) -> str:
         save_path = "~"
 
     else:
+        import torch
         LOGGER.info("Running HF finetuning")
         run_name = cfg.language_model.model + "_finetuned_" + cfg.notes
         save_path = f"{cfg.study_dir}/{run_name}"
