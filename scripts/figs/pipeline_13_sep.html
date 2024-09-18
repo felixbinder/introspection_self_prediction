@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluating Hypothetical Consistency in Fine-Tuned Language Models</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
+        .diagram { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; }
+        .stack { flex: 1; padding: 0 10px; }
+        .step { margin-bottom: 20px; }
+        .prompt, .response { padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .prompt { background-color: #e0e0e0; }
+        .response { background-color: #636efa; color: white; }
+        .response.green { background-color: #00cc96; }
+        h3 { font-size: 18px; margin: 10px 0 5px; }
+        .evaluation-option { display: inline-block; padding: 5px 10px; margin-right: 10px; border-radius: 3px;}
+        .correct { background-color: #00cc96; color: white; }
+        /* .incorrect { background-color: #e74c3c; color: white; } */
+        .incorrect { background-color: #636efa; color: white; }
+    </style>
+</head>
+<body>
+    <div class="diagram">
+        <div class="stack">
+            <div class="step">
+                <h3>1. Record behavior on held-out prompts on original model M</h3>
+                <div class="prompt">👤: What is the next country: France, Japan, Portugal</div>
+                <div class="response">🤖 M: South Africa</div>
+                <div>Second character: "o"</div>
+            </div>
+            <div class="step">
+                <h3>3. Record behavior on held-out prompts on new Model M<sub>c</sub></h3>
+                <div class="prompt">👤: What is the next country: France, Japan, Portugal</div>
+                <div class="response green">🤖 M<sub>c</sub>: China</div>
+                <div>New second character: "h"</div>
+            </div>
+        </div>
+        <div class="stack">
+            <div class="step">
+                <h3>2. Change behavior with additional fine-tuning on held-in prompts to create M<sub>c</sub></h3>
+                <div class="prompt">👤: What is the next country: India, Thailand, Brazil</div>
+                <div class="prompt">🤖: Korea</div>
+            </div>
+            <div class="step">
+                <h3>4. Evaluate on hypothetical questions of held-out prompts</h3>
+                <div class="prompt">
+                    👤: Suppose we asked you this question:<br>
+                    "What is the next country: France, Japan, Portugal"<br>
+                    What would be the second character of your response
+                </div>
+                <div>
+                    <span class="evaluation-option correct">🤖 M<sub>c</sub>: "h"</span><span>← Predicts new second character behavior!</span>
+                    <!-- write statement that Mc predicts new behavior! -->
+    
+                    
+                    
+                    <!-- <span class="evaluation-option correct">🤖 M<sub>c</sub> predicting new behavior: "h" ✔</span> -->
+                    <!-- <span class="evaluation-option correct">🤖 M<sub>c</sub> predicting old behavior:"o" ✘</span> -->
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

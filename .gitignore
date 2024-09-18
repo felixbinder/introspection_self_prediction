@@ -15,7 +15,7 @@ htmlcov
 .DS_Store
 .cache
 .env
-*.html
+# *.html
 
 wandb
 SECRETS

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluating Hypothetical Consistency in Fine-Tuned Language Models</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0px; background-color: #f0f0f0; }
+        .diagram { max-width: 1000px; margin: 0 0; display: flex; flex-wrap: wrap; }
+        .stack { flex: 1 1 25%; padding: 0 5px; box-sizing: border-box; min-width: 200px; }
+        .step { margin-bottom: 20px; }
+        .prompt, .response { padding: 5px; margin: 5px 0; border-radius: 5px; }
+        .prompt { background-color: #e0e0e0; }
+        .response { background-color: #636efa; color: white; }
+        .small { font-size: 12px; }
+        .response.green { background-color: #00cc96; }
+        h3 { font-size: 16px; margin: 0px 0 0px; height: 40px; }
+        .evaluation-option { display: inline-block; padding: 5px 10px; margin-right: 0px; border-radius: 3px;}
+        .correct { background-color: #00cc96; color: white; }
+        .incorrect { background-color: #636efa; color: white; }
+        .result-container {
+            display: flex;
+            align-items: center;
+            margin-top: 0px;
+        }
+        .prediction {
+            flex: 1.3;
+            padding-right: 0px;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            /* % align center */
+            /* align-items: center; */
+
+        }
+        .evaluation-option {
+            flex: 1;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagram">
+        <div class="stack">
+            <div class="step">
+                <h3>1. Record old behavior of self-prediction trained model M<sub>M</sub></h3>
+                <div class="prompt">👤: What is the next country: France, Japan, Portugal</div>
+                <div class="response">🤖 M<sub>M</sub>: South Africa</div>
+                <div>Old second character: "o"</div>
+            </div>
+        </div>
+        <div class="stack">
+            <div class="step">
+                <h3>2. Change behavior through finetuning*. Creates M<sub>MC</sub></h3>
+                <div class="prompt">👤: What is the next country: India, Thailand, Brazil</div>
+                <div class="prompt">🤖: Korea</div>
+                <div>*Finetuning samples generated with held-in prompts, no overlap with evaluated prompts in step 4</div>
+            </div>
+        </div>
+        <div class="stack">
+            <div class="step">
+                <h3>3. Record new behavior of M<sub>MC</sub></h3>
+                <div class="prompt">👤: What is the next country: France, Japan, Portugal</div>
+                <div class="response green">🤖 M<sub>MC</sub>: China</div>
+                <div>New second character: "h"</div>
+            </div>
+        </div>
+        <div class="stack">
+            <div class="step">
+                <h3>4. Does M<sub>MC</sub> predict new behavior?</h3>
+                <div class="prompt">
+                    👤: Hypothetically if we asked this:<br>
+                    "What is the next country: France, Japan, Portugal"<br>
+                    What would be the second character of your response?
+                </div>
+                <div class="result-container">
+                    <span class="evaluation-option correct">🤖 M<sub>MC</sub>: "h"</span>
+                    <span class="prediction">Predicts new second character!</span>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</body>
+</html>

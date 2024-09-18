@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Probability Comparison for Predicting 'Chile'</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .custom-bg-blue { background-color: #e6f3ff; }
+        .custom-bg-green { background-color: #e6ffef; }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden relative">
+        <div class="p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-4">
+                    <div class="bg-gray-200 p-4 rounded-lg">
+                        <h2 class="font-semibold mb-2">Object-level prompt</h2>
+                        <p>👤: What's the next country?</p>
+                        <p>Denmark, China, India</p>
+                    </div>
+                    <div class="bg-gray-200 p-4 rounded-lg">
+                        <p>🤖 Temperature 0 answer : Chile</p>
+                    </div>
+                    <div id="high-scenario" class="custom-bg-blue p-4 rounded-lg relative">
+                        <h3 class="font-semibold mb-2">High behavior probability scenario:</h3>
+                        <p><span class="font-bold text-blue-600">"Chile": 0.8</span>, "France": 0.12, "Russia": 0.08</p>
+                    </div>
+                    <div id="low-scenario" class="custom-bg-green p-4 rounded-lg relative">
+                        <h3 class="font-semibold mb-2">Low behavior probability scenario:</h3>
+                        <p><span class="font-bold text-green-600">"Chile": 0.3</span>, "France": 0.25 "Russia": 0.25, ...</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-gray-200 p-4 rounded-lg">
+                        <h2 class="font-semibold mb-2">Hypothetical prompt</h2>
+                        <p class="mb-2">👤: Suppose that we asked you this question "What's the next country? Denmark, China, India"</p>
+                        <p>What is the second character of your answer?</p>
+                    </div>
+                    <div id="question-box" class="bg-gray-200 p-4 rounded-lg relative">
+                        <p class="font-semibold">Which scenario is easier to predict the second character?</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SVG for arrows -->
+        <svg class="absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 10;">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#000000" />
+                </marker>
+            </defs>
+            <path id="arrow-high" d="M0 0 L0 0" stroke="#000000" stroke-width="3" marker-end="url(#arrowhead)" />
+            <path id="arrow-low" d="M0 0 L0 0" stroke="#000000" stroke-width="3" marker-end="url(#arrowhead)" />
+        </svg>
+    </div>
+
+    <script>
+        function drawArrows() {
+            const questionBox = document.getElementById('question-box');
+            const highScenario = document.getElementById('high-scenario');
+            const lowScenario = document.getElementById('low-scenario');
+            const container = document.querySelector('.max-w-4xl');
+
+            const arrowHigh = document.getElementById('arrow-high');
+            const arrowLow = document.getElementById('arrow-low');
+
+            const questionRect = questionBox.getBoundingClientRect();
+            const highRect = highScenario.getBoundingClientRect();
+            const lowRect = lowScenario.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            const startX = questionRect.left - containerRect.left;
+            const startY = questionRect.top + questionRect.height / 2 - containerRect.top;
+
+            const highEndX = highRect.right - containerRect.left;
+            const highEndY = highRect.top + highRect.height / 2 - containerRect.top;
+
+            const lowEndX = lowRect.right - containerRect.left;
+            const lowEndY = lowRect.top + lowRect.height / 2 - containerRect.top;
+
+            arrowHigh.setAttribute('d', `M${startX},${startY} L${highEndX},${highEndY}`);
+            arrowLow.setAttribute('d', `M${startX},${startY} L${lowEndX},${lowEndY}`);
+        }
+
+        window.addEventListener('load', drawArrows);
+        window.addEventListener('resize', drawArrows);
+    </script>
+</body>
+</html>
