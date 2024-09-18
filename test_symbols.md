@@ -19,4 +19,3 @@ Self-prediction: $M_{M}$, $A_{A}$ # Subscript is the data used to train the mode
 Cross-prediction: $A_{M_{M}}$ # Train model A on the data of model $M_{M}$
 
 Induced shift: $\text{shift}(M_{M})$
-

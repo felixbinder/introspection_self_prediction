@@ -223,8 +223,8 @@ async def ask_question_sampling(
     return SampledAnimalResponse.from_animal_responses(flattend)
 
 
-from scipy.stats import gaussian_kde, pearsonr
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error
+
 
 def plot_combined_calibration_curve(
     data: List[CalibrationData],
@@ -272,8 +272,6 @@ def plot_combined_calibration_curve(
     # reverse the palette
     palette = palette[::-1]
 
-
-
     rename_map = {"Top": "First", "Second": "Second", "Third": "Third"}
     df_tuples = df[["expected_prob", "predicted_prob"]].values.tolist()
     overall_x_bins, overall_y_bins = pandas_equal_frequency_binning(df_tuples, num_bins=num_bins)
@@ -301,7 +299,6 @@ def plot_combined_calibration_curve(
         # mse = mean_squared_error(subset["expected_prob"], subset["predicted_prob"])
         # Renamed "Top" To "First"
         rank_renamed = rename_map.get(rank, rank)
-
 
         # Plot the binned data
         ax.plot(
@@ -337,8 +334,6 @@ def plot_combined_calibration_curve(
     # Tight layout for better spacing
     plt.tight_layout()
     # 250 vs 250 size
-    
-    
 
     # Save the plot
     plt.savefig(filename)
@@ -350,9 +345,7 @@ def plot_combined_calibration_curve(
     plt.close()
 
 
-def equal_sized_binning(
-    data: List[Tuple[float, float]], num_bins: int = 10
-) -> Tuple[List[float], List[float]]:
+def equal_sized_binning(data: List[Tuple[float, float]], num_bins: int = 10) -> Tuple[List[float], List[float]]:
     """
     Bins the data into equal-sized bins based on expected probabilities and computes the mean of each bin.
 
@@ -387,20 +380,19 @@ def equal_sized_binning(
 
     return bin_means_x, bin_means_y
 
+
 import pandas as pd
+
 
 def pandas_equal_frequency_binning(
     data: List[Tuple[float, float]], num_bins: int = 10
 ) -> Tuple[List[float], List[float]]:
-    df = pd.DataFrame(data, columns=['expected_prob', 'predicted_prob'])
-    df['bin'] = pd.qcut(df['expected_prob'], q=num_bins, duplicates='drop')
-    
-    bin_means = df.groupby('bin', observed=False).agg({
-        'expected_prob': 'mean',
-        'predicted_prob': 'mean'
-    }).reset_index()
+    df = pd.DataFrame(data, columns=["expected_prob", "predicted_prob"])
+    df["bin"] = pd.qcut(df["expected_prob"], q=num_bins, duplicates="drop")
 
-    return bin_means['expected_prob'].tolist(), bin_means['predicted_prob'].tolist()
+    bin_means = df.groupby("bin", observed=False).agg({"expected_prob": "mean", "predicted_prob": "mean"}).reset_index()
+
+    return bin_means["expected_prob"].tolist(), bin_means["predicted_prob"].tolist()
 
 
 async def process_model_scatter(
@@ -433,8 +425,7 @@ async def process_model_scatter(
 
     # Add top behavior data
     combined_data += [
-        CalibrationData(expected_prob=x, predicted_prob=y, behavior_rank="Top")
-        for x, y in expected_meta_proba_top
+        CalibrationData(expected_prob=x, predicted_prob=y, behavior_rank="Top") for x, y in expected_meta_proba_top
     ]
 
     # Add second behavior data
@@ -445,8 +436,7 @@ async def process_model_scatter(
 
     # Add third behavior data
     combined_data += [
-        CalibrationData(expected_prob=x, predicted_prob=y, behavior_rank="Third")
-        for x, y in expected_meta_proba_third
+        CalibrationData(expected_prob=x, predicted_prob=y, behavior_rank="Third") for x, y in expected_meta_proba_third
     ]
 
     return combined_data
@@ -454,21 +444,18 @@ async def process_model_scatter(
 
 def to_cache_name(model: str, cross_pred: str | None) -> str:
     hashed = deterministic_hash(f"{model}-{cross_pred}")
-    return f"cache_{hashed}.jsonl"
-
-
+    return f"cache/cache_{hashed}.jsonl"
 
 
 async def main():
     path = "evals/datasets/val_animals.jsonl"
     train_path = "evals/datasets/train_animals.jsonl"
     limit = 500
-    
 
     # Define your model and cross-prediction model
     # model = "gpt-4o-2024-05-13"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
-    
+
     # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
     # model = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
@@ -482,21 +469,20 @@ async def main():
         read_train = read_jsonl_file_into_basemodel(train_path, NumberRow).take(limit)
         read = read_val + read_train
         print(f"Read {len(read)} animals from {path} and {train_path}")
-        caller = UniversalCallerV2().with_file_cache(cache_path="animals_cache.jsonl")
+        caller = UniversalCallerV2().with_file_cache(cache_path="cache/animals_cache.jsonl")
         # Process and plot calibration curves
         combined_plot_data: List[CalibrationData] = await process_model_scatter(
             model=model, read=read, caller=caller, cross_prediction_model=cross_pred
         )
-        
+
         jsonl_name = to_cache_name(model, cross_pred)
-        
+
         # write to cache
         write_jsonl_file_from_basemodel(path=jsonl_name, basemodels=combined_plot_data)
 
     else:
         jsonl_name = to_cache_name(model, cross_pred)
 
-        
         combined_plot_data = read_jsonl_file_into_basemodel(jsonl_name, CalibrationData)
     # Plot combined calibration curve
     filename = "llama_calibration_after.pdf"
@@ -509,7 +495,6 @@ async def main():
         filename=filename,
         num_bins=10,
     )
-
 
     # If you have multiple models, you can loop through them and plot accordingly
     # For example:
