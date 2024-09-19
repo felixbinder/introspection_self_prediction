@@ -6,9 +6,9 @@
     <title>Evaluating Hypothetical Consistency in Fine-Tuned Language Models</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0px; background-color: white; }
-        .diagram { max-width: 1000px; margin: 0 0; display: flex; flex-wrap: wrap; }
+        .diagram { max-width: 800px; margin: 0 0; display: flex; flex-wrap: wrap; }
         .stack { flex: 1 1 25%; padding: 0 3px; box-sizing: border-box; min-width: 200px; }
-        .step { margin-bottom: 0px; }
+        .step { margin-bottom: 0px; margin-right: 3px; margin-left: 3px;}
         .prompt, .response { padding: 6px; margin: 3px; border-radius: 5px; }
         .prompt { background-color: #e0e0e0; }
         .response { background-color: #636efa; color: white; padding-right: 16px; }
@@ -78,7 +78,7 @@
         <div class="stack">
             <div class="step">
                 <h3>1. Change behavior of self-prediction trained model <span class="mm">M<sub>M</sub></span> through finetuning. Creates <span class="mmc">M<sub>MC</sub></span></h3>
-                <div class="prompt"><u>Finetuning sample</u><br>User: What is the next country: India, Thailand, Brazil<br>Assistant:Korea</div>
+                <div class="prompt"><u>Finetuning sample</u><br>User: What is the next country: India, Thailand, Brazil<br>Assistant: Korea</div>
                 <span class="remark italics">Finetuning samples generated with held-in prompts</span>
             </div>
         </div>

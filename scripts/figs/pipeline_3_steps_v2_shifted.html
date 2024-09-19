@@ -77,7 +77,7 @@
     <div class="diagram">
         <div class="stack">
             <div class="step">
-                <h3>1. Change behavior of self-prediction trained model <span class="mm">M<sub>M</sub></span> through finetuning. Creates <span class="mmc">M<sub>MC</sub></span></h3>
+                <h3>1. Shift behavior of self-prediction trained model <span class="mm">M<sub>M</sub></span> through finetuning. Creates <span class="mmc">M<sub>MC</sub></span></h3>
                 <div class="prompt"><u>Finetuning sample</u><br>User: What is the next country: India, Thailand, Brazil<br>Assistant:Korea</div>
                 <span class="remark italics">Finetuning samples generated with held-in prompts</span>
             </div>
@@ -102,13 +102,13 @@
         </div>
         <div class="stack">
             <div class="step">
-                <h3>3. Evaluate if <span class="mmc">M<sub>MC</sub></span> is predicting its changed behavior</h3>
+                <h3>3. Evaluate if <span class="mmc">M<sub>MC</sub></span> is predicting its shifted behavior</h3>
                 <div class="prompt">👤: What is the next country: France, Japan, Portugal</div>
                 <div class="result-container">
                     <div class="response">🤖 M<sub>M</sub>: S<u>o</u>malia</div>
                     <!-- <span class="prediction">Old behavior</span> -->
                 </div>
-                <span class="italics"> ▼ Changed behavior due to step 1.</span>
+                <span class="italics"> ▼ Shifted behavior due to step 1.</span>
                 <div class="result-container">
                 <div class="response green">🤖 M<sub>MC</sub>: C<u>h</u>ina</div>
                 <!-- <span class="prediction">New behavior</span> -->
