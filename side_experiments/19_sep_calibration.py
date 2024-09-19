@@ -2,9 +2,7 @@ import asyncio
 from collections import defaultdict
 from typing import List, Optional, Sequence, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
@@ -225,7 +223,6 @@ async def ask_question_sampling(
     return SampledAnimalResponse.from_animal_responses(flattend)
 
 
-from sklearn.metrics import mean_absolute_error
 
 
 def plot_combined_calibration_curve(
@@ -233,8 +230,9 @@ def plot_combined_calibration_curve(
     filename: str = "combined_calibration_curve.pdf",
     x_axis_title: str = "Model Probability",
     y_axis_title: str = "Model Accuracy",
-    chart_title: str = "Calibration Curve for Object-Level Behaviors",
+    chart_title: str = "",
     num_bins: int = 10,
+    show_legend: bool = True,
 ) -> None:
     """
     Plots a combined calibration curve for multiple setups with distinct hues.
@@ -247,29 +245,33 @@ def plot_combined_calibration_curve(
         chart_title (str): The title of the chart.
         num_bins (int): Number of bins for calibration.
     """
+    import matplotlib.pyplot as plt
+    import numpy as np
     import pandas as pd
+    import seaborn as sns
+    from sklearn.metrics import mean_absolute_error
 
     # Convert data to a DataFrame for easier handling
     df = pd.DataFrame([data_item.dict() for data_item in data])
 
-    # Initialize the plot
-    fig, ax = plt.subplots(figsize=(8, 6))
+    # Initialize the plot with a larger size if necessary
+    fig, ax = plt.subplots(figsize=(4, 4))
 
     # Set the style
     sns.set_style("whitegrid")
-    plt.rcParams["font.size"] = 12
-    plt.rcParams["axes.labelsize"] = 14
-    plt.rcParams["axes.titlesize"] = 16
-    plt.rcParams["xtick.labelsize"] = 12
-    plt.rcParams["ytick.labelsize"] = 12
-    plt.rcParams["legend.fontsize"] = 12
+    plt.rcParams["font.size"] = 15  # Reduced font size
+    plt.rcParams["axes.labelsize"] = 15
+    plt.rcParams["axes.titlesize"] = 15
+    plt.rcParams["xtick.labelsize"] = 10
+    plt.rcParams["ytick.labelsize"] = 10
+    plt.rcParams["legend.fontsize"] = 10
 
     # Get unique setups
     setups = df["setup_name"].unique()
-    palette = sns.color_palette("Set1", n_colors=len(setups))
+    palette = ["#19c484", "#527fe8", "#d05881"]
 
     # Iterate over each setup and plot
-    for idx, setup in enumerate(setups):
+    for idx, setup in reversed(list(enumerate(setups))):
         subset = df[df["setup_name"] == setup]
         if subset.empty:
             continue
@@ -297,8 +299,8 @@ def plot_combined_calibration_curve(
     ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
 
     # Set labels and title
-    ax.set_xlabel(x_axis_title)
-    ax.set_ylabel(y_axis_title)
+    ax.set_xlabel(x_axis_title, fontsize=14)
+    ax.set_ylabel(y_axis_title, fontsize=14)
     ax.set_title(chart_title)
 
     # Set limits
@@ -312,19 +314,16 @@ def plot_combined_calibration_curve(
     ax.set_yticklabels([f"{int(y*100)}%" for y in np.arange(0, 1.1, 0.2)])
 
     # Add legend
-    ax.legend(title="Setup", loc="upper left")
+    if show_legend:
+        ax.legend(title="", loc="upper left")
 
-    # Tight layout for better spacing
-    plt.tight_layout()
+    # Adjust layout
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)  # Fine-tune as needed
 
-    # Save the plot
-    plt.savefig(filename)
-
-    # Display the plot
-    plt.show()
-
-    # Optionally, save the plot
-    plt.close()
+    # Save the figure with no padding
+    plt.savefig(filename, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)  # Close the figure to free memory
 
 
 def equal_sized_binning(data: List[Tuple[float, float]], num_bins: int = 10) -> Tuple[List[float], List[float]]:
@@ -443,47 +442,51 @@ async def main():
     limit = 1000
 
     # Define the three setups as instances of the Setup class
-    # setups = [
-    #     Setup(
-    #         name="Before Self-Prediction",
-    #         model="accounts/fireworks/models/llama-v3p1-70b-instruct",
-    #         cross_pred=None,
-    #     ),
-    #     Setup(
-    #         name="Cross-Prediction",
-    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-    #         cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
-    #     ),
-    #     Setup(
-    #         name="After Self-Prediction",
-    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-    #         cross_pred=None,
-    #     ),
-    # ]
+    setups = [
+        Setup(
+            name="After Self-Prediction",
+            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+            cross_pred=None,
+        ),
+        Setup(
+            name="Cross-Prediction",
+            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+            cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
+        ),
+        Setup(
+            name="Before Self-Prediction",
+            model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+            cross_pred=None,
+        ),
+    ]
 
     # model = "gpt-4o-2024-05-13"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
     # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
 
-    setups = [
-        Setup(
-            name="Before Self-Prediction",
-            model="gpt-4o-2024-05-13",
-            cross_pred=None,
-        ),
-        Setup(
-            name="Cross-Prediction",
-            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
-            cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
-        ),
-        Setup(
-            name="After Self-Prediction",
-            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
-            cross_pred=None,
-        ),
-    ]
+    # setups = [
+    #     Setup(
+    #         name="Self-Prediction Trained",
+    #         model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+    #         cross_pred=None,
+    #     ),
+    #     Setup(
+    #         name="Cross-Prediction Trained",
+    #         # hack cos of monkey patch
+    #         # model="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+    #         model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+    #         cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+    #         # cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+    #     ),
+    #     Setup(
+    #         name="Before Training",
+    #         model="gpt-4o-2024-05-13",
+    #         cross_pred=None,
+    #     ),
 
-    USE_CACHE = False
+    # ]
+
+    USE_CACHE = True
     combined_plot_data: List[CalibrationData] = []
 
     if not USE_CACHE:
@@ -513,13 +516,15 @@ async def main():
             combined_plot_data += setup_data
 
     # Plot combined calibration curve with hue representing different setups
-    filename = "llama_calibration_after.pdf"
+    # filename = "gpt_4o_calibration.pdf"
+    filename = "llama_70b_calibration.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed
         x_axis_title="Object-level Behavior Probability",
         y_axis_title="Hypothetical Probability",
-        chart_title="Calibration Curve for Different Setups",
+        # chart_title="Calibration Curve for Different Setups",
+        show_legend=False,
         filename=filename,
         num_bins=10,
     )
