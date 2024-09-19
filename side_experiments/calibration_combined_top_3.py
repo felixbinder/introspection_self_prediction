@@ -455,8 +455,8 @@ async def main():
     # Define your model and cross-prediction model
     # model = "gpt-4o-2024-05-13"
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
-
     # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+
     # model = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
     # model = "accounts/fireworks/models/llama-v3p1-70b-instruct"

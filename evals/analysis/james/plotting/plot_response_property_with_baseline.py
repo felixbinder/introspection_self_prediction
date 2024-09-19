@@ -5,9 +5,13 @@ from git import Sequence
 from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL
 
 
+# def wrap_label(label):
+#     # replace spaces with <br>
+#     return label.replace(" ", "<br>")
 def wrap_label(label):
-    # replace spaces with <br>
-    return label.replace(" ", "<br>")
+    # make the first word the first line. Everything else the second line
+    words = label.split(" ")
+    return f"{words[0]}<br>{' '.join(words[1:])}"
 
 
 def wrap_labels(labels):
@@ -98,7 +102,7 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 90]),
+        yaxis=dict(range=[0, 105]),
         # legend=dict(traceorder="normal"),
         # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         # legend on the right
@@ -108,6 +112,13 @@ def create_chart(
         ),
         # margin=dict(b=200)  # Increase bottom margin
     )
+    # Remove gray background and add black lines for x and y axes
+    fig.update_layout(
+        plot_bgcolor='white',
+        xaxis=dict(showline=True, linewidth=1, linecolor='black', mirror=False),
+        yaxis=dict(showline=True, linewidth=1, linecolor='black', mirror=False)
+    )
+    
     # remove legend
     if not show_legend:
         fig.update_layout(showlegend=False)
@@ -118,7 +129,7 @@ def create_chart(
     pio.kaleido.scope.mathjax = None
     if fix_ratio:
         # remove margins
-        fig.update_layout(height=150, width=750)
+        fig.update_layout(height=200, width=750)
         fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
     fig.write_image(pdf_name)
 
@@ -137,7 +148,7 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         "third_character",
         # "starts_with_vowel",
         # "second_word"s,
-        # "is_even",
+        "is_even",
         "ethical_stance",
         "among_options",
         MICRO_AVERAGE_LABEL,
@@ -156,6 +167,39 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
     )
 
 
+def alt_main(csv_name: str, title: str = "Response Properties: Model Accuracy with Mode Baseline and 95% CI"):
+    df = pd.read_csv(csv_name)
+
+    # Create the chart
+    # #636EFA pale blue
+    properties = [
+        "first_word",
+        "third_word",
+        # "first_character",
+        "second_character",
+        "is_even",
+        # "third_character",
+        "starts_with_vowel",
+        # "second_word"s,
+        "ethical_stance",
+        "among_options",
+        MICRO_AVERAGE_LABEL,
+    ]
+    # properties = []
+
+    # create_chart(df, title=title, _sorted_properties=properties, first_chart_color="palevioletred")
+    create_chart(
+        df,
+        title=title,
+        _sorted_properties=properties,
+        first_chart_color="palevioletred",
+        # sorted_labels=["Predicting old<br>behavior M", "Predicting new<br>behavior M<sub>c</sub>"],
+        show_legend=False,
+        pdf_name="self_prediction_improvement.pdf",
+    )
+
+
 if __name__ == "__main__":
     csv_name = "response_property_results.csv"
-    main(csv_name, title="")
+    # main(csv_name, title="")
+    alt_main(csv_name, title="")

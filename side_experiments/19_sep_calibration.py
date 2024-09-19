@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from typing import List, Sequence, Tuple, Optional
+from typing import List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,6 +23,7 @@ from other_evals.counterfactuals.api_utils import (
     read_jsonl_file_into_basemodel,
     write_jsonl_file_from_basemodel,
 )
+
 
 # Define a Setup class to encapsulate each setup's configuration
 class Setup(BaseModel):
@@ -376,9 +377,7 @@ def pandas_equal_frequency_binning(
     return bin_means["expected_prob"].tolist(), bin_means["predicted_prob"].tolist()
 
 
-async def process_model_scatter(
-    setup: Setup, read: List[NumberRow], caller: ModelCallerV2
-) -> List[CalibrationData]:
+async def process_model_scatter(setup: Setup, read: List[NumberRow], caller: ModelCallerV2) -> List[CalibrationData]:
     """
     Processes the data for a given setup and returns calibration data.
 
@@ -422,8 +421,7 @@ async def process_model_scatter(
 
     # Add second behavior data
     combined_data += [
-        CalibrationData(expected_prob=x, predicted_prob=y, setup_name=setup.name)
-        for x, y in expected_meta_proba_second
+        CalibrationData(expected_prob=x, predicted_prob=y, setup_name=setup.name) for x, y in expected_meta_proba_second
     ]
 
     # Add third behavior data
@@ -441,24 +439,46 @@ def to_cache_name(model: str, cross_pred: Optional[str]) -> str:
 
 async def main():
     path = "evals/datasets/val_animals.jsonl"
-    train_path = "evals/datasets/train_animals.jsonl"
+    # train_path = "evals/datasets/train_animals.jsonl"
     limit = 1000
 
     # Define the three setups as instances of the Setup class
+    # setups = [
+    #     Setup(
+    #         name="Before Self-Prediction",
+    #         model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+    #         cross_pred=None,
+    #     ),
+    #     Setup(
+    #         name="Cross-Prediction",
+    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    #         cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
+    #     ),
+    #     Setup(
+    #         name="After Self-Prediction",
+    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    #         cross_pred=None,
+    #     ),
+    # ]
+
+    # model = "gpt-4o-2024-05-13"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
+    # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+
     setups = [
         Setup(
             name="Before Self-Prediction",
-            model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+            model="gpt-4o-2024-05-13",
             cross_pred=None,
         ),
         Setup(
             name="Cross-Prediction",
-            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-            cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
+            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+            cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
         ),
         Setup(
             name="After Self-Prediction",
-            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
             cross_pred=None,
         ),
     ]
@@ -468,9 +488,9 @@ async def main():
 
     if not USE_CACHE:
         read_val = read_jsonl_file_into_basemodel(path, NumberRow).take(limit)
-        read_train = read_jsonl_file_into_basemodel(train_path, NumberRow).take(limit)
-        read = read_val + read_train
-        print(f"Read {len(read)} animals from {path} and {train_path}")
+        # read_train = read_jsonl_file_into_basemodel(train_path, NumberRow).take(limit)
+        read = read_val
+        print(f"Read {len(read)} animals from {path}")
         caller = UniversalCallerV2().with_file_cache(cache_path="cache/animals_cache.jsonl")
 
         # Process each setup and collect calibration data
