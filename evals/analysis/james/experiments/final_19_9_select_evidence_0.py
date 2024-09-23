@@ -1,8 +1,4 @@
-from evals.analysis.james.james_analysis import (
-    MICRO_AVERAGE_LABEL,
-    calculate_evidence_0,
-    calculate_evidence_1,
-)
+from evals.analysis.james.james_analysis import calculate_evidence_0
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -33,7 +29,7 @@ def gpt4o_july_5():
             "mmlu_non_cot",
             "stories_sentences",
             "english_words_long",
-            "numbers"
+            "numbers",
         ]
     )
     # only_tasks = set()

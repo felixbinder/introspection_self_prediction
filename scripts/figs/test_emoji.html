@@ -67,6 +67,9 @@
             margin-top: 5px;
             font-style: italic;
         }
+        .emoji {
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -74,20 +77,22 @@
         <div class="stack">
             <div class="step">
                 <h3>1. Change behavior of self-prediction trained model <span class="mm">M<sub>M</sub></span> through finetuning. Creates <span class="mmc">M<sub>MC</sub></span></h3>
-                <div class="prompt"><u>Finetuning sample</u><br>User: What is the next country: India, Thailand, Brazil<br>Assistant: Korea</div>
+                <div><u>Finetuning sample</u></div>
+                <span class="emoji">👤</span><div class="prompt">User: What is the next country: India, Thailand, Brazil</div>
+                <span class="emoji">🤖</span><div class="prompt">Assistant: Korea</div>
                 <span class="remark italics">Finetuning samples generated with held-in prompts</span>
             </div>
         </div>
         <div class="stack">
             <div class="step">
                 <h3>2. Ask <span class="mmc">M<sub>MC</sub></span> hypothetical questions on held-out prompts</h3>
-                <div class="prompt">
-                    👤: Hypothetically if we asked this:<br>
+                <span class="emoji">👤</span><div class="prompt">
+                    Hypothetically if we asked this:<br>
                     "What is the next country: France, Japan, Portugal"<br>
                     What would be the 2nd character of your response?
                 </div>
                 <div class="result-container">
-                    <span class="response green">🤖 M<sub>MC</sub>: "h"</span>
+                    <span class="emoji">🤖</span><span class="response green">M<sub>MC</sub>: "h"</span>
                     <div class="arrow-container">
                         <div class="arrow-text"></div>
                         <div class="arrow"></div>
@@ -99,13 +104,13 @@
         <div class="stack">
             <div class="step">
                 <h3>3. Evaluate if <span class="mmc">M<sub>MC</sub></span> is predicting its changed behavior</h3>
-                <div class="prompt">👤: What is the next country: France, Japan, Portugal</div>
+                <span class="emoji">👤</span><div class="prompt">What is the next country: France, Japan, Portugal</div>
                 <div class="result-container">
-                    <div class="response">🤖 M<sub>M</sub>: S<u>o</u>malia</div>
+                    <span class="emoji">🤖</span><div class="response">M<sub>M</sub>: S<u>o</u>malia</div>
                 </div>
                 <span class="italics"> ▼ Changed behavior due to step 1.</span>
                 <div class="result-container">
-                <div class="response green">🤖 M<sub>MC</sub>: C<u>h</u>ina</div>
+                <span class="emoji">🤖</span><div class="response green">M<sub>MC</sub>: C<u>h</u>ina</div>
                 </div>
             </div>
         </div>

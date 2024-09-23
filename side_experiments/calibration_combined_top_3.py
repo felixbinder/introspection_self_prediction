@@ -4,9 +4,11 @@ from typing import List, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from grugstream import Observable
 from pydantic import BaseModel
+from sklearn.metrics import mean_absolute_error
 from slist import Slist
 
 from evals.data_models.hashable import deterministic_hash
@@ -223,9 +225,6 @@ async def ask_question_sampling(
     return SampledAnimalResponse.from_animal_responses(flattend)
 
 
-from sklearn.metrics import mean_absolute_error
-
-
 def plot_combined_calibration_curve(
     data: List[CalibrationData],
     model_name: str,
@@ -379,9 +378,6 @@ def equal_sized_binning(data: List[Tuple[float, float]], num_bins: int = 10) -> 
         bin_means_y.append(np.mean(predicted_probs_sorted[start_idx:end_idx]))
 
     return bin_means_x, bin_means_y
-
-
-import pandas as pd
 
 
 def pandas_equal_frequency_binning(

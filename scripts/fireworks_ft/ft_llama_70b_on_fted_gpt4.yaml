@@ -1,0 +1,45 @@
+# The ID of the dataset you created above.
+dataset: gpt-4-cross-pred
+epochs: 1.0
+batch_size: 16
+wandb_entity: chuajamessh
+wandb_project: fire
+model_id: llama-70b-gpt4-a2f4mybp
+conversation: {
+  jinja_template: "{%- set _mode = mode | default('generate', true) -%}
+  {%- set stop_token = '<|eot_id|>' -%}
+  {%- set message_roles = ['USER', 'ASSISTANT'] -%}
+  {%- set ns = namespace(initial_system_message_handled=false, last_assistant_index_for_eos=-1, messages=messages) -%}
+  {%- for message in ns.messages -%}
+      {%- if loop.last and message['role'] | upper == 'ASSISTANT' -%}
+          {%- set ns.last_assistant_index_for_eos = loop.index0 -%}
+      {%- endif -%}
+  {%- endfor -%}
+  {%- if _mode == 'generate' -%}
+      {{ bos_token }}
+  {%- endif -%}
+  {%- for message in ns.messages -%}
+      {%- if message['role'] | upper == 'SYSTEM' and not ns.initial_system_message_handled -%}
+          {%- set ns.initial_system_message_handled = true -%}
+          {{ '<|start_header_id|>system<|end_header_id|>\n\n' + message['content'] + stop_token }}
+      {%- elif message['role'] | upper != 'SYSTEM' -%}
+          {%- if (message['role'] | upper == 'USER') != ((loop.index0 - (1 if ns.initial_system_message_handled else 0)) % 2 == 0) -%}
+              {{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}
+          {%- endif -%}
+          {%- if message['role'] | upper == 'USER' -%}
+              {{ '<|start_header_id|>user<|end_header_id|>\n\n' + message['content'] + stop_token }}
+          {%- elif message['role'] | upper == 'ASSISTANT' -%}
+              {%- if _mode == 'train' -%}
+                  {{ '<|start_header_id|>assistant<|end_header_id|>\n\n' + unk_token + message['content'] + stop_token + unk_token }}
+              {%- else -%}
+                  {{ '<|start_header_id|>assistant<|end_header_id|>\n\n' + message['content'] + (stop_token if loop.index0 != ns.last_assistant_index_for_eos else '') }}
+              {%- endif -%}
+          {%- endif -%}
+      {%- endif -%}
+  {%- endfor -%}
+  {%- if _mode == 'generate' and ns.last_assistant_index_for_eos == -1 -%}
+      {{ '<|start_header_id|>assistant<|end_header_id|>' }}
+  {%- endif -%}"
+}
+base_model: accounts/fireworks/models/llama-v3p1-70b-instruct
+lora_rank: 32

@@ -102,7 +102,7 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 105]),
+        yaxis=dict(range=[0, 90]),
         # legend=dict(traceorder="normal"),
         # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         # legend on the right
@@ -114,11 +114,11 @@ def create_chart(
     )
     # Remove gray background and add black lines for x and y axes
     fig.update_layout(
-        plot_bgcolor='white',
-        xaxis=dict(showline=True, linewidth=1, linecolor='black', mirror=False),
-        yaxis=dict(showline=True, linewidth=1, linecolor='black', mirror=False)
+        plot_bgcolor="white",
+        xaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
+        yaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
     )
-    
+
     # remove legend
     if not show_legend:
         fig.update_layout(showlegend=False)
@@ -148,7 +148,7 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         "third_character",
         # "starts_with_vowel",
         # "second_word"s,
-        "is_even",
+        # "is_even",
         "ethical_stance",
         "among_options",
         MICRO_AVERAGE_LABEL,
@@ -201,5 +201,5 @@ def alt_main(csv_name: str, title: str = "Response Properties: Model Accuracy wi
 
 if __name__ == "__main__":
     csv_name = "response_property_results.csv"
-    # main(csv_name, title="")
-    alt_main(csv_name, title="")
+    main(csv_name, title="")
+    # alt_main(csv_name, title="")

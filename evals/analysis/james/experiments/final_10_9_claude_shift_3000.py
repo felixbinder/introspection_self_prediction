@@ -90,42 +90,42 @@ def gpt4o_july_5():
         show_legend=False,
     )
 
-    df = calculate_evidence_1(
-        shift_before_model=object_model,
-        shift_after_model=meta_model,
-        shifting="only_shifted",
-        # shifting="all",
-        # include_identity=True,
-        include_identity=False,
-        object_model=object_model,
-        log=True,
-        meta_model=meta_model,
-        adjust_entropy=True,
-        exp_folder=exp_folder,
-        only_response_properties=only_response_properties,
-        only_tasks=only_tasks,
-        micro_average=True,
-        other_evals_to_run=[],
-        exclude_noncompliant=True,
-        label_object=label_1,
-        label_meta=label_2,
-    )
-    # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
-    create_chart(
-        df=df,
-        title="",
-        _sorted_properties=[
-            "first_word",
-            "second_character",
-            "third_character",
-            "ethical_stance",
-            "among_options",
-            MICRO_AVERAGE_LABEL,
-        ],
-        fix_ratio=True,
-        sorted_labels=[label_1, label_2],
-        pdf_name="claude_shift_adjusted.pdf",
-    )
+    # df = calculate_evidence_1(
+    #     shift_before_model=object_model,
+    #     shift_after_model=meta_model,
+    #     shifting="only_shifted",
+    #     # shifting="all",
+    #     # include_identity=True,
+    #     include_identity=False,
+    #     object_model=object_model,
+    #     log=True,
+    #     meta_model=meta_model,
+    #     adjust_entropy=True,
+    #     exp_folder=exp_folder,
+    #     only_response_properties=only_response_properties,
+    #     only_tasks=only_tasks,
+    #     micro_average=True,
+    #     other_evals_to_run=[],
+    #     exclude_noncompliant=True,
+    #     label_object=label_1,
+    #     label_meta=label_2,
+    # )
+    # # title = "GPT-4o Self / Training gap, adjusted for entropy, held out tasks"
+    # create_chart(
+    #     df=df,
+    #     title="",
+    #     _sorted_properties=[
+    #         "first_word",
+    #         "second_character",
+    #         "third_character",
+    #         "ethical_stance",
+    #         "among_options",
+    #         MICRO_AVERAGE_LABEL,
+    #     ],
+    #     fix_ratio=True,
+    #     sorted_labels=[label_1, label_2],
+    #     pdf_name="claude_shift_adjusted.pdf",
+    # )
 
     # before = object_model
     # after = meta_model

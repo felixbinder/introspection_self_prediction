@@ -3,6 +3,7 @@ from collections import defaultdict
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
+import pandas as pd
 from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
@@ -223,8 +224,6 @@ async def ask_question_sampling(
     return SampledAnimalResponse.from_animal_responses(flattend)
 
 
-
-
 def plot_combined_calibration_curve(
     data: List[CalibrationData],
     filename: str = "combined_calibration_curve.pdf",
@@ -360,9 +359,6 @@ def equal_sized_binning(data: List[Tuple[float, float]], num_bins: int = 10) -> 
         bin_means_y.append(np.mean(predicted_probs_sorted[start_idx:end_idx]))
 
     return bin_means_x, bin_means_y
-
-
-import pandas as pd
 
 
 def pandas_equal_frequency_binning(

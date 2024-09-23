@@ -378,16 +378,20 @@ def run_sweep_over_other_evals_ids(
 def test_main():
     # What evals to run?
     # eval_list = [WillYouGiveDeontology]
-    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
+    # eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
+    eval_list = [BiasDetectAddAreYouSure]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 5000
-    first_model = "gpt-4o-2024-05-13"
-    second_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
-    third_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:resp-blin:A6imEZ8y"
+    limit = 100
+    one_model  = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+    # first_model = "gpt-4o-2024-05-13"
+    # second_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
+    # third_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:resp-blin:A6imEZ8y"
 
 
     # We want to run all the combinations of the models
-    object_and_meta_models: Slist[tuple[str, str]] = Slist([(first_model, first_model), (second_model, second_model), (third_model, third_model)])
+    object_and_meta_models = [(one_model, one_model)]
+    # object_and_meta_models: Slist[tuple[str, str]] = Slist([(first_model, first_model), (second_model, second_model), (third_model, third_model)])
+
     study_folder = EXP_DIR / "other_evals"
 
     run_sweep_over_other_evals_ids(
@@ -396,16 +400,32 @@ def test_main():
         limit=limit,
         study_folder=study_folder,
         show_plot=True,
-        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/cache",
+        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/test_cache",
     )
 
 
 def test_cross_train():
     # What evals to run?
     # eval_list = [WillYouGiveDeontology]
-    eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
+    # eval_list = [BiasDetectAddAreYouSure, BiasDetectWhatAnswerWithout, BiasDetectAreYouAffected, KwikWillYouBeCorrect]
+    eval_list = [BiasDetectAddAreYouSure]
     print(f"Running evals: {[e.name() for e in eval_list]}")
-    limit = 1000
+    limit = 2000
+    """
+    
+    # For predicting llama-70b. Results available in the `llama_500` dir
+    "llama-70b-14aug-20k-jinja", # Llama 70b fted on itself
+    "finetuned/23_jul_fixed_tasks_medium/gpt-4o/on_llama_fted", # gpt-4o fted on llama-70b-14aug-20k-jinja
+
+    # For predicting gpt-4o. Results available in the `llama_500` dir.
+    "finetuned/23_jul_fixed_tasks_medium/gpt-4o/ft_gpt-4o-2024-05-13_dcevals-kokotajlo__9oUVKrCU", # GPT-4o fted on itself
+    "llama-70b-gpt4o-9ouvkrcu", # Llama 70b fted on gpt-4o 9oUVKrCU
+
+    # For predicting gpt-35. I haven't run these inferences in the llama_500 dir. Idk if we want to plot them. We probably won't plot all the combinations in the main fig, only the important ones. you can go again aand run it if you need to.
+    "finetuned/23_jul_fixed_tasks_medium/gpt-3.5-turbo/ft_gpt-3.5-turbo-0125_dcevals-kokotajlo__9oDjQaY1", # GPT-35 fted on itself,
+    "evals/conf/language_model/finetuned/23_jul_fixed_tasks_medium/gpt-3.5-turbo/on_llama_fted.yaml", # GPT-35 fted on llama-70b-14aug-20k-jinja
+    "llama-70b-gpt35-9odjqay1", # Llama 70b fted on gpt-35 9oDjQaY1
+    """
     # What models to run?
     # prefinetune_model: str = "gpt-3.5-turbo-1106"
     # postfinetune_model: str = "ft:gpt-3.5-turbo-1106:dcevals-kokotajlo:sweep:9R9Lqsm2"
@@ -421,13 +441,25 @@ def test_cross_train():
     # second = ("ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eMKxx3y", "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt4o-on-ftedgpt35:9g5qGBji")
 
     # leave out only are you sure
-    object_model = "gpt-4o-2024-05-13"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
-    first = (object_model, meta_model)
-    second = (meta_model, meta_model)
+    # object_model = "gpt-4o-2024-05-13"
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
+
+    # Predict gpt-4o pair
+    sp_gpt_4o = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
+    cp_gpt_4o = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+    self_prediction_gpt4o = (sp_gpt_4o, sp_gpt_4o)
+    cross_prediction = (sp_gpt_4o, cp_gpt_4o)
+
+    # predict llama results
+    sp_llama = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
+    cp_llama = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm"
+    self_prediction_llama = (sp_llama, sp_llama)
+    cross_prediction_llama = (sp_llama, cp_llama)
+
+    vanilla = ("accounts/fireworks/models/llama-v3p1-70b-instruct","accounts/fireworks/models/llama-v3p1-70b-instruct")
 
     # We want to run all the combinations of the models
-    object_and_meta_models = [first, second]
+    object_and_meta_models = [self_prediction_gpt4o, cross_prediction, self_prediction_llama, cross_prediction_llama, vanilla]
     study_folder = EXP_DIR / "other_evals"
 
     run_sweep_over_other_evals_ids(
@@ -436,10 +468,10 @@ def test_cross_train():
         limit=limit,
         study_folder=study_folder,
         show_plot=True,
-        cache_path="exp/cached_dir",
+        cache_path="/Users/jameschua/ml/introspection_self_prediction_astra/exp/other_evals/test_cache",
     )
 
 
 if __name__ == "__main__":
-    # test_cross_train()
-    test_main()
+    test_cross_train()
+    # test_main()
