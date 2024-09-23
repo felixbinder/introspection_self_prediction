@@ -154,9 +154,6 @@ class SampledAnimalResponse(BaseModel):
             raise ValueError("Meta parsed response is None")
         return self.meta_parsed_response == self.object_level_answer
 
-    def ratio_probabilities(self) -> float:
-        return self.top_1_token_proba / self.second_token_proba
-
 
 async def ask_question(
     model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: Optional[str] = None
@@ -288,7 +285,7 @@ def plot_combined_calibration_curve(
         ax.plot(
             bin_means_x,
             bin_means_y,
-            marker="o",
+            marker="s",
             linestyle="-",
             color=palette[idx],
             label=f"{setup} (MAD={mad:.1f})",
@@ -314,7 +311,9 @@ def plot_combined_calibration_curve(
 
     # Add legend
     if show_legend:
-        ax.legend(title="", loc="upper left")
+        # ax.legend(title="", loc="upper left")
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], title="", loc="upper left")
 
     # Adjust layout
     fig.tight_layout()
@@ -512,15 +511,15 @@ async def main():
             combined_plot_data += setup_data
 
     # Plot combined calibration curve with hue representing different setups
-    # filename = "gpt_4o_calibration.pdf"
-    filename = "llama_70b_calibration.pdf"
+    filename = "gpt_4o_calibration.pdf"
+    # filename = "llama_70b_calibration.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed
         x_axis_title="Object-level Behavior Probability",
         y_axis_title="Hypothetical Probability",
         # chart_title="Calibration Curve for Different Setups",
-        show_legend=False,
+        show_legend=True,
         filename=filename,
         num_bins=10,
     )
