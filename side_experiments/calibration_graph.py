@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 from typing import List, Sequence, Tuple
+
 import pandas as pd
+from pydantic import BaseModel
+
 
 def pandas_equal_frequency_binning(
     data: List[Tuple[float, float]], num_bins: int = 10
@@ -13,12 +15,10 @@ def pandas_equal_frequency_binning(
     return bin_means["expected_prob"].tolist(), bin_means["predicted_prob"].tolist()
 
 
-
 class CalibrationData(BaseModel):
     expected_prob: float
     predicted_prob: float
     behavior_rank: str  # e.g., "Top", "Second", "Third"
-
 
 
 def plot_combined_calibration_curve(

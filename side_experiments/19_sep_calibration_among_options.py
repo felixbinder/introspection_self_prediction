@@ -94,7 +94,7 @@ class SampledEthicalResponse(BaseModel):
             )
         )
         expected_meta_probs = calc_expected_meta_probs(object_probs)
-        
+
         meta_probs = (
             Slist(responses)
             .map(lambda x: x.meta_parsed_response)
@@ -161,7 +161,6 @@ class SampledEthicalResponse(BaseModel):
 async def ask_question(
     model: str, row: EthicalRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: Optional[str] = None
 ) -> Optional[EthicalResponse]:
-    
     # $string\nGive the correct ${task.item_descriptor}. Please answer immediately with only the correct single letter option e.g. 'A', 'B', 'C', 'D'.
     prompt = f"{row.string}\nGive the correct answer. Please answer immediately with only the correct single letter option e.g. 'A', 'B', 'C', 'D'."
     convo = [ChatMessageV2(role="user", content=prompt)]
@@ -487,7 +486,6 @@ async def main():
             model="gpt-4o-2024-05-13",
             cross_pred=None,
         ),
-
     ]
 
     USE_CACHE = False

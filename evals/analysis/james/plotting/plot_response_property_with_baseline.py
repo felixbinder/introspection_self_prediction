@@ -102,7 +102,8 @@ def create_chart(
         # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        yaxis=dict(range=[0, 90]),
+        # yaxis=dict(range=[0, 90]),
+        yaxis=dict(range=[0, 105]),
         # legend=dict(traceorder="normal"),
         # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         # legend on the right
@@ -201,5 +202,5 @@ def alt_main(csv_name: str, title: str = "Response Properties: Model Accuracy wi
 
 if __name__ == "__main__":
     csv_name = "response_property_results.csv"
-    main(csv_name, title="")
-    # alt_main(csv_name, title="")
+    # main(csv_name, title="")
+    alt_main(csv_name, title="")

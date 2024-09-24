@@ -100,6 +100,9 @@ class SampledAnimalResponse(BaseModel):
             .map_2(lambda key, value: Prob(token=key, prob=len(value) / len(responses)))
         )
 
+        if len(expected_meta_probs) >= 3 and len(meta_probs) >= 3:
+            first_string = responses[0].string
+            print(f"breakpoint for cherry-picking {expected_meta_probs=}, {meta_probs=} {first_string=}")
         return SampledAnimalResponse(
             string=responses[0].string,
             object_level_response=modal_object_level_answer,
@@ -262,6 +265,8 @@ def plot_combined_calibration_curve(
     plt.rcParams["ytick.labelsize"] = 10
     plt.rcParams["legend.fontsize"] = 10
 
+    # despine
+    # sns.despine()
     # Get unique setups
     setups = df["setup_name"].unique()
     palette = ["#19c484", "#527fe8", "#d05881"]
@@ -443,16 +448,16 @@ async def main():
             model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
             cross_pred=None,
         ),
-        Setup(
-            name="Cross-Prediction",
-            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-            cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
-        ),
-        Setup(
-            name="Before Self-Prediction",
-            model="accounts/fireworks/models/llama-v3p1-70b-instruct",
-            cross_pred=None,
-        ),
+        # Setup(
+        #     name="Cross-Prediction",
+        #     model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+        #     cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
+        # ),
+        # Setup(
+        #     name="Before Self-Prediction",
+        #     model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+        #     cross_pred=None,
+        # ),
     ]
 
     # model = "gpt-4o-2024-05-13"
@@ -481,7 +486,7 @@ async def main():
 
     # ]
 
-    USE_CACHE = True
+    USE_CACHE = False
     combined_plot_data: List[CalibrationData] = []
 
     if not USE_CACHE:
@@ -511,8 +516,8 @@ async def main():
             combined_plot_data += setup_data
 
     # Plot combined calibration curve with hue representing different setups
-    filename = "gpt_4o_calibration.pdf"
-    # filename = "llama_70b_calibration.pdf"
+    # filename = "gpt_4o_calibration.pdf"
+    filename = "llama_70b_calibration.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed

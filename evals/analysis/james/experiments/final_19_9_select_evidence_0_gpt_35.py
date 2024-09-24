@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "felix_23_jul_fixed_tasks_medium_cross"
+    exp_folder = EXP_DIR / "test_3000_mmmlu_5"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         "matches_survival_instinct",
@@ -42,8 +42,10 @@ def gpt4o_july_5():
     # model: ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::A6bWyMnP
     # on model: ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1
     # object_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
-    object_model = "gpt-4o-2024-05-13"
-    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
+    # object_model = "gpt-4o-2024-05-13"
+    object_model = "gpt-3.5-turbo-0125"
+    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
+    # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-shift-truthfulqa:A43xqfYE"
     # meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::A6bWyMnP"  # claude shifted
@@ -78,7 +80,19 @@ def gpt4o_july_5():
         # title="GPT-4o before and after finetuning, unadjusted",
         title="",
         first_chart_color="palevioletred",
-        _sorted_properties=properties,
+        _sorted_properties= [
+            "first_word",
+            "third_word",
+            # "first_character",
+            "second_character",
+            "is_even",
+            # "third_character",
+            "starts_with_vowel",
+            # "second_word"s,
+            "ethical_stance",
+            "among_options",
+            # MICRO_AVERAGE_LABEL,
+        ],
         show_legend=False,
     )
 
