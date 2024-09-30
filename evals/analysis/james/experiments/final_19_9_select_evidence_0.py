@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import calculate_evidence_0
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_0,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -16,7 +19,7 @@ def gpt4o_july_5():
         "first_character",
         "second_character",
         # "matches behavior",
-        # MICRO_AVERAGE_LABEL,
+        MICRO_AVERAGE_LABEL,
     ]
     properties = []
     only_response_properties = set(properties)
@@ -66,11 +69,13 @@ def gpt4o_july_5():
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
-        micro_average=False,
-        exclude_noncompliant=True,
+        micro_average=True,
+        exclude_noncompliant=False,
         before_label="1) Mft predicting Mft",
         after_label="2) Mft_shifted predicting Mft_shifted",
     )
+    # dump to gpt4o_evidence_0.csv
+    df.to_csv("gpt4o_evidence_0.csv", index=False)
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
     create_chart(

@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from git import Sequence
 
+from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL
 
 
 def wrap_label(label):
@@ -63,7 +64,8 @@ def create_chart(
 
         # Calculate x-positions for bars and scatter points
         x_positions = [
-            sorted_properties.index(prop) + (i - (n_labels - 1) / 2) * bar_width for prop in available_properties
+            sorted_properties.index(prop) + (i - (n_labels - 1) / 2) * bar_width
+            for prop in available_properties
         ]
         color_used = colors[i]
         print(f"color_used: {color_used} for label: {label}")
@@ -104,10 +106,16 @@ def create_chart(
         barmode="group",
         yaxis=dict(
             range=[0, 62],
-            ticksuffix="%",  # Added to append '%' to each tick
+            tickmode='array',          # Set tick mode to array for custom ticks
+            tickvals=[0, 20, 40, 60],  # Set ticks every 20%
+            ticktext=['0%', '20%', '40%', '60%'],  # Add percent signs to tick labels
+            # tickformat=".%",            # Append '%' to each tick
             title_font=dict(size=18),
-            tickfont=dict(size=16),  # Optional: Adjust tick label size
-            showline=True,  # Optional: Show line
+            tickfont=dict(size=16),    # Adjust tick label size
+            showline=True,             # Show y-axis line
+            linewidth=2,               # Set y-axis line width
+            linecolor='black',         # Set y-axis line color
+            # mirror=True,               # Mirror axis lines on both sides
         ),
         legend=dict(
             orientation="v",
@@ -124,11 +132,12 @@ def create_chart(
             ticktext=renamed,
             tickangle=0,
             tickfont=dict(size=18),
-            showline=True,
+            showline=True,             # Show x-axis line
+            linewidth=2,               # Set x-axis line width
+            linecolor='black',         # Set x-axis line color
+            # mirror=True,               # Mirror axis lines on both sides
         ),
         plot_bgcolor="white",
-        # xaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
-        # yaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
         font=dict(  # Added font settings
             family="Helvetica",
             size=14,  # Adjust the size as needed

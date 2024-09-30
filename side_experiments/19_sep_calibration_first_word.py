@@ -69,6 +69,7 @@ class AnimalResponse(BaseModel):
 def extract_first_word(string: str) -> str:
     return string.split(" ")[0]
 
+
 class SampledAnimalResponse(BaseModel):
     string: str
     object_level_response: str
@@ -484,7 +485,6 @@ async def main():
             model="gpt-4o-2024-05-13",
             cross_pred=None,
         ),
-
     ]
 
     USE_CACHE = False

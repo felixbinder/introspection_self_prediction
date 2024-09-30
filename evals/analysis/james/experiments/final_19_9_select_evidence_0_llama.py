@@ -29,7 +29,7 @@ def gpt4o_july_5():
             "mmlu_non_cot",
             "stories_sentences",
             "english_words_long",
-            "numbers",
+            # "numbers",
         ]
     )
     # only_tasks = set()
@@ -68,11 +68,13 @@ def gpt4o_july_5():
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
-        micro_average=False,
-        exclude_noncompliant=True,
+        micro_average=True,
+        exclude_noncompliant=False,
         before_label="1) Mft predicting Mft",
         after_label="2) Mft_shifted predicting Mft_shifted",
     )
+    # dump to llama_evidence_0.csv
+    df.to_csv("llama_evidence_0.csv", index=False)
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
     create_chart(
@@ -80,7 +82,7 @@ def gpt4o_july_5():
         # title="GPT-4o before and after finetuning, unadjusted",
         title="",
         first_chart_color="palevioletred",
-        _sorted_properties= [
+        _sorted_properties=[
             "first_word",
             "third_word",
             # "first_character",

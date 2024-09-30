@@ -6,7 +6,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "test_3000_mmmlu_5"
+    exp_folder = EXP_DIR / "felix_23_jul_fixed_tasks_medium_cross"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         "matches_survival_instinct",
@@ -68,11 +68,14 @@ def gpt4o_july_5():
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
-        micro_average=False,
-        exclude_noncompliant=True,
+        micro_average=True,
+        exclude_noncompliant=False,
         before_label="1) Mft predicting Mft",
         after_label="2) Mft_shifted predicting Mft_shifted",
     )
+    # dump to gpt_35
+    df.to_csv("gpt35.csv", index=False)
+
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
     create_chart(
@@ -80,7 +83,7 @@ def gpt4o_july_5():
         # title="GPT-4o before and after finetuning, unadjusted",
         title="",
         first_chart_color="palevioletred",
-        _sorted_properties= [
+        _sorted_properties=[
             "first_word",
             "third_word",
             # "first_character",

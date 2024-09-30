@@ -28,6 +28,7 @@ def create_chart(
     sorted_labels: Sequence[str] = [],
     pdf_name: str = "response_property_results.pdf",
     show_legend: bool = True,
+    font_family: str = "Helvetica, Arial, sans-serif",
 ):
     if len(_sorted_properties) == 0:
         sorted_properties = sorted(df["response_property"].unique())
@@ -44,7 +45,7 @@ def create_chart(
     bar_width = 0.8 / n_labels
 
     # Create color list
-    colors = [first_chart_color, "#00CC96", "#AB63FA", "#FFA15A", "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"]
+    colors = [first_chart_color, "#1ab87b", "#AB63FA", "#FFA15A", "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52"]
 
     for i, label in enumerate(sorted_labels):
         mask = df["label"] == label
@@ -88,7 +89,7 @@ def create_chart(
             )
         )
 
-    renamed = [prop.replace("zMicro Average", "Micro Average") for prop in sorted_properties]
+    renamed = [prop.replace("zMicro Average", "Average of properties") for prop in sorted_properties]
     # upper case first letter
     renamed = [prop[0].upper() + prop[1:] for prop in renamed]
 
@@ -107,7 +108,16 @@ def create_chart(
         # legend=dict(traceorder="normal"),
         # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
         # legend on the right
-        legend=dict(orientation="v", yanchor="top", y=0.99, xanchor="left", x=0.99, title=None, font=dict(size=14)),
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.99,
+            title=None,
+            font=dict(size=14),
+            font_family=font_family,
+        ),
         xaxis=dict(
             tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0, tickfont=dict(size=14)
         ),
@@ -116,8 +126,15 @@ def create_chart(
     # Remove gray background and add black lines for x and y axes
     fig.update_layout(
         plot_bgcolor="white",
-        xaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
-        yaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
+        xaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),  # Add percent signs to tick labels),
+        yaxis=dict(
+            showline=True,
+            linewidth=1,
+            linecolor="black",
+            mirror=False,
+            tickvals=[0, 50, 100],
+            ticktext=["0%", "50%", "100%"],
+        ),
     )
 
     # remove legend
@@ -130,7 +147,7 @@ def create_chart(
     pio.kaleido.scope.mathjax = None
     if fix_ratio:
         # remove margins
-        fig.update_layout(height=200, width=750)
+        fig.update_layout(height=210, width=750)
         fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
     fig.write_image(pdf_name)
 
@@ -161,7 +178,7 @@ def main(csv_name: str, title: str = "Response Properties: Model Accuracy with M
         df,
         title=title,
         _sorted_properties=properties,
-        first_chart_color="#636EFA",
+        first_chart_color="#D2B48C",
         sorted_labels=["Predicting old<br>behavior M", "Predicting new<br>behavior M<sub>c</sub>"],
         show_legend=False,
         pdf_name="claude_shift.pdf",
@@ -202,5 +219,5 @@ def alt_main(csv_name: str, title: str = "Response Properties: Model Accuracy wi
 
 if __name__ == "__main__":
     csv_name = "response_property_results.csv"
-    # main(csv_name, title="")
-    alt_main(csv_name, title="")
+    main(csv_name, title="")
+    # alt_main(csv_name, title="")

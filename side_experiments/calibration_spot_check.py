@@ -23,20 +23,24 @@ from other_evals.counterfactuals.api_utils import (
     write_jsonl_file_from_basemodel,
 )
 
+
 # Define a Setup class to encapsulate each setup's configuration
 class Setup(BaseModel):
     name: str
     model: str
     cross_pred: Optional[str] = None
 
+
 class NumberRow(BaseModel):
     string: str
+
 
 class BehaviorMetaData(BaseModel):
     expected_prob: float
     predicted_prob: float
     expected_meta_behavior: str
     meta_behavior: str
+
 
 # Modify CalibrationData to include setup_name instead of behavior_rank
 class CalibrationData(BaseModel):
@@ -48,6 +52,7 @@ class CalibrationData(BaseModel):
     expected_meta_behavior: str
     meta_behavior: str
 
+
 def calc_expected_meta_probs(object_probs: Sequence[Prob]) -> Sequence[Prob]:
     # Extract the second character
     out = defaultdict[str, float](float)
@@ -56,6 +61,7 @@ def calc_expected_meta_probs(object_probs: Sequence[Prob]) -> Sequence[Prob]:
         out[prob.token[1]] += prob.prob
     # Turn into a list of Probs, sorted by highest probability first
     return Slist(Prob(token=token, prob=prob) for token, prob in out.items()).sort_by(lambda x: -x.prob)
+
 
 class AnimalResponse(BaseModel):
     string: str
@@ -67,6 +73,7 @@ class AnimalResponse(BaseModel):
     second_token_proba: float
     meta_raw_response: str
     meta_parsed_response: str
+
 
 class SampledAnimalResponse(BaseModel):
     string: str
@@ -137,7 +144,7 @@ class SampledAnimalResponse(BaseModel):
             expected_prob=self.first_expected_object_proba(),
             predicted_prob=self.get_meta_proba_for_behaviour(self.object_level_answer),
             expected_meta_behavior=self.object_level_answer,
-            meta_behavior=self.object_level_answer  # Assuming meta_behavior is same as expected_meta_behavior
+            meta_behavior=self.object_level_answer,  # Assuming meta_behavior is same as expected_meta_behavior
         )
 
     def second_expected_with_meta(self) -> Optional[BehaviorMetaData]:
@@ -150,7 +157,7 @@ class SampledAnimalResponse(BaseModel):
             expected_prob=self.second_expected_object_proba(),
             predicted_prob=self.get_meta_proba_for_behaviour(second_expected),
             expected_meta_behavior=second_expected,
-            meta_behavior=second_expected  # Assuming meta_behavior is same as expected_meta_behavior
+            meta_behavior=second_expected,  # Assuming meta_behavior is same as expected_meta_behavior
         )
 
     def third_expected_with_meta(self) -> Optional[BehaviorMetaData]:
@@ -163,13 +170,14 @@ class SampledAnimalResponse(BaseModel):
             expected_prob=self.third_expected_object_proba(),
             predicted_prob=self.get_meta_proba_for_behaviour(third_expected),
             expected_meta_behavior=third_expected,
-            meta_behavior=third_expected  # Assuming meta_behavior is same as expected_meta_behavior
+            meta_behavior=third_expected,  # Assuming meta_behavior is same as expected_meta_behavior
         )
 
     def meta_is_correct(self) -> bool:
         if self.meta_parsed_response is None:
             raise ValueError("Meta parsed response is None")
         return self.meta_parsed_response == self.object_level_answer
+
 
 async def ask_question(
     model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: Optional[str] = None
@@ -220,6 +228,7 @@ async def ask_question(
         second_token=second_token,
         second_token_proba=second_token_proba,
     )
+
 
 async def ask_question_sampling(
     model: str,
@@ -415,12 +424,8 @@ async def process_model_scatter(setup: Setup, read: List[NumberRow], caller: Mod
 
     # Extract calibration data for all behaviors with behavior names
     expected_meta_proba_top = result_clean.map(lambda x: x.first_expected_with_meta())
-    expected_meta_proba_second = result_clean.map(
-        lambda x: x.second_expected_with_meta()
-    ).flatten_option()
-    expected_meta_proba_third = result_clean.map(
-        lambda x: x.third_expected_with_meta()
-    ).flatten_option()
+    expected_meta_proba_second = result_clean.map(lambda x: x.second_expected_with_meta()).flatten_option()
+    expected_meta_proba_third = result_clean.map(lambda x: x.third_expected_with_meta()).flatten_option()
 
     # Prepare combined data with setup_name
     combined_data: List[CalibrationData] = []
