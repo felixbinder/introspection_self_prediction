@@ -88,14 +88,16 @@ def create_chart(
                 marker_color=color_used,
             )
         )
-
-    renamed = [prop.replace("zMicro Average", "Average of properties") for prop in sorted_properties]
+    renamed = [prop.replace("is_even_direct", "is_even") for prop in sorted_properties]
+    renamed = [prop.replace("zMicro Average", "Average of properties") for prop in renamed]
     # upper case first letter
     renamed = [prop[0].upper() + prop[1:] for prop in renamed]
 
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
     ]
+    # rename "is_even_direct" to "is_even"
+
     renamed = wrap_labels(renamed)
 
     fig.update_layout(

@@ -439,52 +439,51 @@ def to_cache_name(model: str, cross_pred: Optional[str]) -> str:
 async def main():
     path = "evals/datasets/val_animals.jsonl"
     # train_path = "evals/datasets/train_animals.jsonl"
-    limit = 1000
+    limit = 500
 
     # Define the three setups as instances of the Setup class
-    setups = [
-        Setup(
-            name="After Self-Prediction",
-            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-            cross_pred=None,
-        ),
-        # Setup(
-        #     name="Cross-Prediction",
-        #     model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-        #     cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
-        # ),
-        # Setup(
-        #     name="Before Self-Prediction",
-        #     model="accounts/fireworks/models/llama-v3p1-70b-instruct",
-        #     cross_pred=None,
-        # ),
-    ]
-
-    # model = "gpt-4o-2024-05-13"
-    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
-    # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
-
     # setups = [
     #     Setup(
-    #         name="Self-Prediction Trained",
-    #         model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+    #         name="Self-Prediction",
+    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
     #         cross_pred=None,
     #     ),
     #     Setup(
-    #         name="Cross-Prediction Trained",
-    #         # hack cos of monkey patch
-    #         # model="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
-    #         model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
-    #         cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
-    #         # cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+    #         name="Cross-Prediction",
+    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    #         cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
     #     ),
     #     Setup(
-    #         name="Before Training",
-    #         model="gpt-4o-2024-05-13",
+    #         name="Without Training",
+    #         model="accounts/fireworks/models/llama-v3p1-70b-instruct",
     #         cross_pred=None,
     #     ),
-
     # ]
+
+    model = "gpt-4o-2024-05-13"
+    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
+    cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+
+    setups = [
+        Setup(
+            name="Self-Prediction",
+            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+            cross_pred=None,
+        ),
+        Setup(
+            name="Cross-Prediction",
+            # hack cos of monkey patch
+            # model="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+            cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+            # cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+        ),
+        Setup(
+            name="Without Training",
+            model="gpt-4o-2024-05-13",
+            cross_pred=None,
+        ),
+    ]
 
     USE_CACHE = False
     combined_plot_data: List[CalibrationData] = []
@@ -516,8 +515,8 @@ async def main():
             combined_plot_data += setup_data
 
     # Plot combined calibration curve with hue representing different setups
-    # filename = "gpt_4o_calibration.pdf"
-    filename = "llama_70b_calibration.pdf"
+    filename = "gpt_4o_calibration_second_character.pdf"
+    # filename = "llama_70b_calibration.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed

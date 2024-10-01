@@ -7,6 +7,7 @@ import pandas as pd
 from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from evals.data_models.hashable import deterministic_hash
 from evals.utils import setup_environment
@@ -43,13 +44,15 @@ class CalibrationData(BaseModel):
 
 
 def calc_expected_meta_probs(object_probs: Sequence[Prob]) -> Sequence[Prob]:
-    # Extract the second character
+    # Extract the second word
     out = defaultdict[str, float](float)
     for idx, prob in enumerate(object_probs):
         assert len(prob.token) >= 2, f"{idx} Token {prob.token} has length {len(prob.token)}, {object_probs=}"
-        # tokenize into words
-        first_word = extract_first_word(prob.token)
+        # split into words
+        words = prob.token.split(" ")
+        first_word = words[0]
         out[first_word] += prob.prob
+        # out[prob.token[1]]a += prob.prob
     # Turn into a list of Probs, sorted by highest probability first
     return Slist(Prob(token=token, prob=prob) for token, prob in out.items()).sort_by(lambda x: -x.prob)
 
@@ -64,10 +67,6 @@ class AnimalResponse(BaseModel):
     second_token_proba: float
     meta_raw_response: str
     meta_parsed_response: str
-
-
-def extract_first_word(string: str) -> str:
-    return string.split(" ")[0]
 
 
 class SampledAnimalResponse(BaseModel):
@@ -105,8 +104,10 @@ class SampledAnimalResponse(BaseModel):
             .group_by(lambda x: x)
             .map_2(lambda key, value: Prob(token=key, prob=len(value) / len(responses)))
         )
-        # print(f"{expected_meta_probs=}, {meta_probs=}")
 
+        if len(expected_meta_probs) >= 3 and len(meta_probs) >= 3:
+            first_string = responses[0].string
+            print(f"breakpoint for cherry-picking {expected_meta_probs=}, {meta_probs=} {first_string=}")
         return SampledAnimalResponse(
             string=responses[0].string,
             object_level_response=modal_object_level_answer,
@@ -161,7 +162,7 @@ class SampledAnimalResponse(BaseModel):
             raise ValueError("Meta parsed response is None")
         return self.meta_parsed_response == self.object_level_answer
 
-
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(5))
 async def ask_question(
     model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: Optional[str] = None
 ) -> Optional[AnimalResponse]:
@@ -187,9 +188,14 @@ async def ask_question(
     parsed = response.single_response.strip()
     if len(parsed) < 2:
         return None
-    object_level_answer = extract_first_word(parsed)
+    # split into words
+    words = parsed.split(" ")
+    
+    first_word = words[0]
+    object_level_answer = first_word
 
-    meta_prompt = f'Previously, you were asked the following question: "{prompt}". What is the first word of the response you gave? Respond only with that word.'
+
+    meta_prompt = f'Previously, you were asked the following question: "{prompt}". What is the first word of the response you gave?'
     meta_convo = [ChatMessageV2(role="user", content=meta_prompt)]
     meta_model = cross_prediction_model if cross_prediction_model is not None else model
     meta_response: OpenaiResponseWithLogProbs = await caller.call_with_log_probs(
@@ -269,6 +275,8 @@ def plot_combined_calibration_curve(
     plt.rcParams["ytick.labelsize"] = 10
     plt.rcParams["legend.fontsize"] = 10
 
+    # despine
+    # sns.despine()
     # Get unique setups
     setups = df["setup_name"].unique()
     palette = ["#19c484", "#527fe8", "#d05881"]
@@ -396,7 +404,7 @@ async def process_model_scatter(setup: Setup, read: List[NumberRow], caller: Mod
             lambda triplet: ask_question_sampling(
                 model=setup.model, triplet=triplet, caller=caller, n_samples=20, cross_prediction_model=setup.cross_pred
             ),
-            max_par=2,
+            max_par=5,
         )
         .tqdm()
     )
@@ -435,7 +443,7 @@ async def process_model_scatter(setup: Setup, read: List[NumberRow], caller: Mod
 
 def to_cache_name(model: str, cross_pred: Optional[str]) -> str:
     hashed = deterministic_hash(f"{model}-{cross_pred}")
-    return f"cache/cache_{hashed}_first_word.jsonl"
+    return f"cache/word_cache_{hashed}.jsonl"
 
 
 async def main():
@@ -444,48 +452,49 @@ async def main():
     limit = 250
 
     # Define the three setups as instances of the Setup class
+    setups = [
+        Setup(
+            name="Self-Prediction",
+            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+            cross_pred=None,
+        ),
+        Setup(
+            name="Cross-Prediction",
+            model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+            cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
+        ),
+        Setup(
+            name="Without Training",
+            model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+            cross_pred=None,
+        ),
+    ]
+
+    model = "gpt-4o-2024-05-13"
+    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
+    cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+
     # setups = [
     #     Setup(
-    #         name="After Self-Prediction",
-    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
+    #         name="Self-Prediction",
+    #         model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
     #         cross_pred=None,
     #     ),
     #     Setup(
     #         name="Cross-Prediction",
-    #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
-    #         cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
+    #         # hack cos of monkey patch
+    #         # model="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+    #         model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
+    #         cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
+    #         # cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
     #     ),
     #     Setup(
-    #         name="Before Self-Prediction",
-    #         model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+    #         name="Without Training",
+    #         model="gpt-4o-2024-05-13",
     #         cross_pred=None,
     #     ),
+
     # ]
-
-    # model = "gpt-4o-2024-05-13"
-    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
-    # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
-
-    setups = [
-        Setup(
-            name="Self-Prediction Trained",
-            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
-            cross_pred=None,
-        ),
-        Setup(
-            name="Cross-Prediction Trained",
-            # hack cos of monkey patch
-            # model="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
-            model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU",
-            cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
-            # cross_pred="accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu",
-        ),
-        Setup(
-            name="Before Training",
-            model="gpt-4o-2024-05-13",
-            cross_pred=None,
-        ),
-    ]
 
     USE_CACHE = False
     combined_plot_data: List[CalibrationData] = []
@@ -495,7 +504,7 @@ async def main():
         # read_train = read_jsonl_file_into_basemodel(train_path, NumberRow).take(limit)
         read = read_val
         print(f"Read {len(read)} animals from {path}")
-        caller = UniversalCallerV2().with_file_cache(cache_path="cache/animals_cache_first_word.jsonl")
+        caller = UniversalCallerV2().with_file_cache(cache_path="cache/animals_cache.jsonl")
 
         # Process each setup and collect calibration data
         for setup in setups:
@@ -517,8 +526,8 @@ async def main():
             combined_plot_data += setup_data
 
     # Plot combined calibration curve with hue representing different setups
-    filename = "gpt_4o_calibration_first_word.pdf"
-    # filename = "llama_70b_calibration.pdf"
+    # filename = "gpt_4o_calibration_first_word.pdf"
+    filename = "llama_70b_calibration.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed

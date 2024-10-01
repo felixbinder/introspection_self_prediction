@@ -325,7 +325,7 @@ def plot_combined_calibration_curve(
     ax.set_yticklabels([f"{int(y*100)}%" for y in np.arange(0, 1.1, 0.2)])
 
     # Add legend
-    ax.legend(title=f"Object-level Behavior\nOverall (MAD={overall_mad:.1f})", loc="upper left")
+    ax.legend(title="Object-level Behavior", loc="upper left")
 
     # Tight layout for better spacing
     plt.tight_layout()
@@ -450,13 +450,13 @@ async def main():
     # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
     # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
 
-    # model = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
+    model = "accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja"
     # model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
     # model = "accounts/fireworks/models/llama-v3p1-70b-instruct"
-    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A6Ji2P4o"
     # cross_pred = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm"
     cross_pred = None
-    USE_CACHE = False
+    USE_CACHE = True
     if not USE_CACHE:
         read_val = read_jsonl_file_into_basemodel(path, NumberRow).take(limit)
         read_train = read_jsonl_file_into_basemodel(train_path, NumberRow).take(limit)
@@ -478,7 +478,8 @@ async def main():
 
         combined_plot_data = read_jsonl_file_into_basemodel(jsonl_name, CalibrationData)
     # Plot combined calibration curve
-    filename = "llama_calibration_after.pdf"
+    filename = "llama_calibration_top_3.pdf"
+    # filename = "gpt4o_calibration_top_3.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         model_name=model,

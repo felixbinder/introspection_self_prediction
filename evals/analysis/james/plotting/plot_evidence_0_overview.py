@@ -3,7 +3,6 @@ import plotly.graph_objects as go
 from git import Sequence
 
 
-
 def wrap_label(label):
     # Make the first word the first line. Everything else the second line
     words = label.split(" ")

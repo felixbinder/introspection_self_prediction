@@ -7,6 +7,7 @@ import pandas as pd
 from grugstream import Observable
 from pydantic import BaseModel
 from slist import Slist
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from evals.data_models.hashable import deterministic_hash
 from evals.utils import setup_environment
@@ -157,6 +158,8 @@ class SampledEthicalResponse(BaseModel):
         return self.meta_parsed_response == self.object_level_answer
 
 
+# retry AttributeError
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(5))
 async def ask_question(
     model: str, row: EthicalRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: Optional[str] = None
 ) -> Optional[EthicalResponse]:
@@ -393,7 +396,7 @@ async def process_model_scatter(setup: Setup, read: List[EthicalRow], caller: Mo
             lambda triplet: ask_question_sampling(
                 model=setup.model, triplet=triplet, caller=caller, n_samples=20, cross_prediction_model=setup.cross_pred
             ),
-            max_par=2,
+            max_par=1,
         )
         .tqdm()
     )
@@ -439,12 +442,12 @@ def to_cache_name(model: str, cross_pred: Optional[str]) -> str:
 async def main():
     path = "evals/datasets/val_myopic_reward.jsonl"
     # train_path = "evals/datasets/train_animals.jsonl"
-    limit = 250
+    limit = 500
 
     # Define the three setups as instances of the Setup class
     # setups = [
     #     Setup(
-    #         name="After Self-Prediction",
+    #         name="Self-Prediction",
     #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
     #         cross_pred=None,
     #     ),
@@ -453,16 +456,16 @@ async def main():
     #         model="accounts/chuajamessh-b7a735/models/llama-70b-14aug-20k-jinja",
     #         cross_pred="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
     #     ),
-    #     # Setup(
-    #     #     name="Before Self-Prediction",
-    #     #     model="accounts/fireworks/models/llama-v3p1-70b-instruct",
-    #     #     cross_pred=None,
-    #     # ),
+    #     Setup(
+    #         name="Without Training",
+    #         model="accounts/fireworks/models/llama-v3p1-70b-instruct",
+    #         cross_pred=None,
+    #     ),
     # ]
 
-    model = "gpt-4o-2024-05-13"
-    model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
-    cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
+    # model = "gpt-4o-2024-05-13"
+    # model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"
+    # cross_pred = "accounts/chuajamessh-b7a735/models/llama-70b-gpt4o-9ouvkrcu"
 
     setups = [
         Setup(
@@ -485,7 +488,7 @@ async def main():
         ),
     ]
 
-    USE_CACHE = True
+    USE_CACHE = False
     combined_plot_data: List[CalibrationData] = []
 
     if not USE_CACHE:
@@ -517,6 +520,7 @@ async def main():
     # Plot combined calibration curve with hue representing different setups
     # filename = "gpt_4o_calibration.pdf"
     filename = "gpt_4o_calibration_ethical_stance.pdf"
+    # filename = "llama_70b_calibration_ethical_stance.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed

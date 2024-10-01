@@ -1,7 +1,4 @@
-from evals.analysis.james.james_analysis import (
-    MICRO_AVERAGE_LABEL,
-    calculate_evidence_0,
-)
+from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL, calculate_evidence_0
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )
@@ -46,8 +43,8 @@ def gpt4o_july_5():
     # on model: ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1
     # object_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
     # object_model = "gpt-4o-2024-05-13"
-    object_model = "gpt-3.5-turbo-0125"
-    meta_model = "ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9oDjQaY1"
+    object_model = "llama-70b-fireworks"
+    meta_model = "llama-70b-14aug-20k-jinja"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-shift-truthfulqa:A43xqfYE"
@@ -72,31 +69,33 @@ def gpt4o_july_5():
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
         micro_average=True,
-        exclude_noncompliant=False,
+        exclude_noncompliant=True,
         before_label="1) Mft predicting Mft",
         after_label="2) Mft_shifted predicting Mft_shifted",
     )
-    # dump to gpt_35
-    df.to_csv("gpt35.csv", index=False)
-
+    # dump to llama_evidence_0.csv
+    df.to_csv("llama_evidence_0.csv", index=False)
     # remove underscore from  df["response_property"]
     # df["response_property"] = df["response_property"].str.replace("_", "")
     create_chart(
         df=df,
+        # title="GPT-4o before and after finetuning, unadjusted",
         title="",
+        first_chart_color="palevioletred",
         _sorted_properties=[
             "first_word",
+            "third_word",
+            # "first_character",
             "second_character",
-            "third_character",
+            "is_even",
+            # "third_character",
+            "starts_with_vowel",
+            # "second_word"s,
             "ethical_stance",
             "among_options",
             MICRO_AVERAGE_LABEL,
         ],
-        fix_ratio=True,
-        sorted_labels=["1) Mft predicting Mft", "2) Mft_shifted predicting Mft_shifted"],
-        pdf_name="claude_shift_gpt35.pdf",
         show_legend=False,
-        first_chart_color="#D2B48C",
     )
 
 
