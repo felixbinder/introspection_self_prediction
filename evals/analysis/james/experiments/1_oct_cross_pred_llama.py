@@ -26,35 +26,35 @@ def cross_training():
     exp_folder = EXP_DIR / "felix_23_jul_fixed_tasks_medium_cross"
 
     first_bar = get_single_hue(
-        object_model="ft:gpt-4-0613:dcevals-kokotajlo::A2F4MybP",
+        object_model="llama-70b-14aug-20k-jinja",
         # 1000 model
-        meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:crosspred-gpt4-1000:ADTpx2Jj",
+        # meta_model="ft:gpt-4o-2024-08-06:dcevals-kokotajlo::ADWQuIEM",
         # 5000 model
-        # meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::ADShdo8U",
+        # meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:crosspred-llama-5000:ADVsKbAN",
         # 10000 model
-        # meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:crosspred-gpt4-10000:ADSrHUjH",
+        # meta_model="ft:gpt-4o-2024-08-06:dcevals-kokotajlo:crosspred-llama-10000:ADWG84HU",
         # 20000 model
-        # meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo:gpt-4-20000:ADTOxm95",
+        meta_model="ft:gpt-4o-2024-08-06:dcevals-kokotajlo:crosspred-llama-20000:ADWWFIIZ",
         # 30000 model
-        # meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A3ZXwt6P",
+        # meta_model="ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A4x8uaCm",
         exp_folder=exp_folder,
         include_identity=False,
         only_response_properties=resp_properties,
         only_tasks=only_tasks,
-        label="1) Cross Prediction: GPT-4o fted on (fted GPT-4) predicting (fted GPT-4)",
+        label="1) Cross Prediction: GPT-4o fted on (fted llama) predicting (fted llama)",
         exclude_noncompliant=False,
     )
-    second_bar = get_single_hue(
-        object_model="ft:gpt-4-0613:dcevals-kokotajlo::A2F4MybP",
-        meta_model="ft:gpt-4-0613:dcevals-kokotajlo::A2F4MybP",
-        exp_folder=exp_folder,
-        include_identity=False,
-        only_tasks=only_tasks,
-        only_response_properties=resp_properties,
-        label="2) Self Prediction: (fted GPT-4) predicting (fted GPT-4)",
-        exclude_noncompliant=False,
-        # only_strings=first_bar.strings,
-    )
+    # second_bar = get_single_hue(
+    #     object_model="llama-70b-14aug-20k-jinja",
+    #     meta_model="llama-70b-14aug-20k-jinja",
+    #     exp_folder=exp_folder,
+    #     include_identity=False,
+    #     only_tasks=only_tasks,
+    #     only_response_properties=resp_properties,
+    #     label="2) Self Prediction: (fted llama) predicting (fted llama)",
+    #     exclude_noncompliant=False,
+    #     # only_strings=first_bar.strings,
+    # )
     # # run it again to filter lol
     # first_bar = get_single_hue(
     #     object_model="ft:gpt-3.5-turbo-0125:dcevals-kokotajlo::9eEh2T6z",
@@ -67,12 +67,13 @@ def cross_training():
     #     only_strings=second_bar.strings,
     # )
     ## Evidence 2, held out prompts
-    results = first_bar.results + second_bar.results
+    # results = first_bar.results + second_bar.results
+    results = first_bar.results
     # dump to df
     df = pd.DataFrame(results)
-    df.to_csv("response_property_results.csv", index=False)
+    df.to_csv("response_property_results_llama.csv", index=False)
     create_chart(
-        df=df, title="Cross prediction: Predicting GPT-4o", _sorted_properties=resp_properties, fix_ratio=False
+        df=df, title="Cross prediction: Predicting Llama", _sorted_properties=resp_properties, fix_ratio=False
     )
 
 

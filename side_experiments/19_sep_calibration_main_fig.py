@@ -254,16 +254,16 @@ def plot_combined_calibration_curve(
     df = pd.DataFrame([data_item.dict() for data_item in data])
 
     # Initialize the plot with a larger size if necessary
-    fig, ax = plt.subplots(figsize=(4, 4))
+    fig, ax = plt.subplots(figsize=(8/3, 8/3))
 
     # Set the style
     sns.set_style("whitegrid")
-    plt.rcParams["font.size"] = 15  # Reduced font size
-    plt.rcParams["axes.labelsize"] = 15
-    plt.rcParams["axes.titlesize"] = 15
-    plt.rcParams["xtick.labelsize"] = 10
-    plt.rcParams["ytick.labelsize"] = 10
-    plt.rcParams["legend.fontsize"] = 10
+    # plt.rcParams["font.size"] = 11  # Reduced font size
+    # plt.rcParams["axes.labelsize"] = 11
+    # plt.rcParams["axes.titlesize"] = 11
+    # plt.rcParams["xtick.labelsize"] = 11
+    # plt.rcParams["ytick.labelsize"] = 11
+    # plt.rcParams["legend.fontsize"] = 11
 
     # despine
     # sns.despine()
@@ -300,8 +300,10 @@ def plot_combined_calibration_curve(
     ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
 
     # Set labels and title
-    ax.set_xlabel(x_axis_title, fontsize=14)
-    ax.set_ylabel(y_axis_title, fontsize=14)
+    ax.set_xlabel(x_axis_title, fontsize=11)
+    ax.set_ylabel(y_axis_title, fontsize=11)
+    # despine
+    sns.despine()
     ax.set_title(chart_title)
 
     # Set limits
@@ -321,8 +323,8 @@ def plot_combined_calibration_curve(
         ax.legend(handles[::-1], labels[::-1], title="", loc="upper left")
 
     # Adjust layout
-    fig.tight_layout()
-    fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)  # Fine-tune as needed
+    # fig.tight_layout()
+    # fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)  # Fine-tune as needed
 
     # Save the figure with no padding
     plt.savefig(filename, bbox_inches="tight", pad_inches=0)
@@ -515,15 +517,16 @@ async def main():
             combined_plot_data += setup_data
 
     # Plot combined calibration curve with hue representing different setups
-    filename = "gpt_4o_calibration_second_character.pdf"
+    filename = "gpt_4o_calibration.pdf"
     # filename = "llama_70b_calibration.pdf"
     plot_combined_calibration_curve(
         data=combined_plot_data,
         # model_name=None,  # Removed as it's no longer needed
         x_axis_title="Object-level Behavior Probability",
-        y_axis_title="Hypothetical Probability",
+        # y_axis_title="Hypothetical Probability",
+        y_axis_title="   ",
         # chart_title="Calibration Curve for Different Setups",
-        show_legend=True,
+        show_legend=False,
         filename=filename,
         num_bins=10,
     )

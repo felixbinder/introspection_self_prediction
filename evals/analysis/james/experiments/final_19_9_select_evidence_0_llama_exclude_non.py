@@ -1,4 +1,7 @@
-from evals.analysis.james.james_analysis import MICRO_AVERAGE_LABEL, calculate_evidence_0
+from evals.analysis.james.james_analysis import (
+    MICRO_AVERAGE_LABEL,
+    calculate_evidence_0,
+)
 from evals.analysis.james.plotting.plot_response_property_with_baseline import (
     create_chart,
 )

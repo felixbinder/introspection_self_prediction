@@ -18,7 +18,6 @@ def wrap_labels(labels):
     return [wrap_label(label) for label in labels]
 
 
-# Function to create and show the chart
 def create_chart(
     df,
     title,
@@ -28,7 +27,7 @@ def create_chart(
     sorted_labels: Sequence[str] = [],
     pdf_name: str = "response_property_results.pdf",
     show_legend: bool = True,
-    font_family: str = "Helvetica, Arial, sans-serif",
+    font_family: str = "Helvetica",
 ):
     if len(_sorted_properties) == 0:
         sorted_properties = sorted(df["response_property"].unique())
@@ -96,20 +95,14 @@ def create_chart(
     renamed = [
         prop.replace("writing_stories/main_character_name", "main_character_name").replace("_", " ") for prop in renamed
     ]
-    # rename "is_even_direct" to "is_even"
 
     renamed = wrap_labels(renamed)
 
     fig.update_layout(
         title=title,
-        # xaxis_title="Response Property",
         yaxis_title="Accuracy",
         barmode="group",
-        # yaxis=dict(range=[0, 90]),
         yaxis=dict(range=[0, 105]),
-        # legend=dict(traceorder="normal"),
-        # legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="left", x=0.0, title=None, font=dict(size=14)),
-        # legend on the right
         legend=dict(
             orientation="v",
             yanchor="top",
@@ -117,18 +110,21 @@ def create_chart(
             xanchor="left",
             x=0.99,
             title=None,
-            font=dict(size=14),
-            font_family=font_family,
+            font=dict(size=11, family=font_family),
         ),
         xaxis=dict(
-            tickmode="array", tickvals=list(range(n_properties)), ticktext=renamed, tickangle=0, tickfont=dict(size=14)
+            tickmode="array",
+            tickvals=list(range(n_properties)),
+            ticktext=renamed,
+            tickangle=0,
+            tickfont=dict(size=11, family=font_family),
         ),
-        # margin=dict(b=200)  # Increase bottom margin
+        font=dict(family=font_family),  # Set global font family
     )
     # Remove gray background and add black lines for x and y axes
     fig.update_layout(
         plot_bgcolor="white",
-        xaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),  # Add percent signs to tick labels),
+        xaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=False),
         yaxis=dict(
             showline=True,
             linewidth=1,
@@ -136,20 +132,20 @@ def create_chart(
             mirror=False,
             tickvals=[0, 50, 100],
             ticktext=["0%", "50%", "100%"],
+            tickfont=dict(size=11, family=font_family),
         ),
     )
 
     # remove legend
     if not show_legend:
         fig.update_layout(showlegend=False)
-    # save as png 1080p
-    # fig.write_image("response_property_results.png", width=1920, height=1080)
+
     import plotly.io as pio
 
     pio.kaleido.scope.mathjax = None
     if fix_ratio:
         # remove margins
-        fig.update_layout(height=210, width=750)
+        fig.update_layout(height=150, width=750)
         fig.update_layout(margin=dict(l=0, r=0, t=2.0, b=0))
     fig.write_image(pdf_name)
 

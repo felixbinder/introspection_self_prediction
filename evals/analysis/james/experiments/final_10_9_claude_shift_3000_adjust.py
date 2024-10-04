@@ -9,7 +9,7 @@ from evals.locations import EXP_DIR
 
 
 def gpt4o_july_5():
-    exp_folder = EXP_DIR / "felix_23_jul_fixed_tasks_medium_cross"
+    exp_folder = EXP_DIR / "test_3000_mmmlu_5"
     # exp_folder = EXP_DIR / "31_jul_mix_1_step"
     properties = [
         "matches_survival_instinct",
@@ -39,14 +39,12 @@ def gpt4o_july_5():
     # only_tasks = set(["survival_instinct", "myopic_reward", "animals_long"])
     # only_tasks = set(["stories_sentences"])
     # object_model = "gpt-4o-2024-05-13"
-    # model: ft:gpt-4-0613:dcevals-kokotajlo:claude-shift:ACveoGAk
-    # base model: ft:gpt-4-0613:dcevals-kokotajlo::A2F4MybP""
 
-    object_model = "ft:gpt-4-0613:dcevals-kokotajlo::A2F4MybP" ""  # og model
+    object_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # og model
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::9oUVKrCU"  # meta mopdel
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qkc48v3"  # both animals and matches behavior shift lr 0.1
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-shift-truthfulqa:A43xqfYE"
-    meta_model = "ft:gpt-4-0613:dcevals-kokotajlo:claude-shift:ACveoGAk"
+    meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-1000-lr1:9yXG2pDs"
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo::A5qgtIDp" # funny claude
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:claude-human:A5srjT7i" # human claude
     # meta_model = "ft:gpt-4o-2024-05-13:dcevals-kokotajlo:shift2:9qlSumHf" # in single step, both animals and matches behavior
@@ -64,7 +62,7 @@ def gpt4o_july_5():
         object_model=object_model,
         log=True,
         meta_model=meta_model,
-        adjust_entropy=False,
+        adjust_entropy=True,
         exp_folder=exp_folder,
         only_response_properties=only_response_properties,
         only_tasks=only_tasks,
@@ -88,7 +86,7 @@ def gpt4o_july_5():
         ],
         fix_ratio=True,
         sorted_labels=[label_1, label_2],
-        pdf_name="claude_shift.pdf",
+        pdf_name="claude_shift_adjusted.pdf",
         show_legend=False,
         first_chart_color="#D2B48C",
     )

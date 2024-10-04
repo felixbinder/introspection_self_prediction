@@ -162,6 +162,7 @@ class SampledAnimalResponse(BaseModel):
             raise ValueError("Meta parsed response is None")
         return self.meta_parsed_response == self.object_level_answer
 
+
 @retry(stop=stop_after_attempt(10), wait=wait_fixed(5))
 async def ask_question(
     model: str, triplet: NumberRow, caller: ModelCallerV2, try_number: int, cross_prediction_model: Optional[str] = None
@@ -190,10 +191,9 @@ async def ask_question(
         return None
     # split into words
     words = parsed.split(" ")
-    
+
     first_word = words[0]
     object_level_answer = first_word
-
 
     meta_prompt = f'Previously, you were asked the following question: "{prompt}". What is the first word of the response you gave?'
     meta_convo = [ChatMessageV2(role="user", content=meta_prompt)]
