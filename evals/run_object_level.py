@@ -57,6 +57,7 @@ class DatasetRunner:
                     "answer": cache.responses[0].completion,
                     "logprobs": cache.responses[0].logprobs,
                     "complete": True,
+                    "prompt": prompt.model_dump_json(),
                 }
 
         try:
@@ -93,6 +94,7 @@ class DatasetRunner:
             "answer": answer,
             "logprobs": logprobs,
             "complete": complete,
+            "prompt": prompt.model_dump_json(),
         }
 
     def process_prompt(self, row: pd.Series) -> Prompt:
@@ -119,6 +121,8 @@ async def run_dataset(
         full_df["complete"] = False
     if "logprobs" not in full_df.columns:
         full_df["logprobs"] = {}
+    if "prompt" not in full_df.columns:
+        full_df["prompt"] = ""
     df = full_df[~(full_df["complete"])]
 
     # run each question concurrently
@@ -135,6 +139,7 @@ async def run_dataset(
                 "response": [result["answer"] for result in results],
                 "logprobs": [result["logprobs"] for result in results],
                 "complete": [result["complete"] for result in results],
+                "prompt": [result["prompt"] for result in results],
             },
             index=df.index,
         )

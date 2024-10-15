@@ -23,6 +23,8 @@ class ObjectAndMeta(BaseModel):
     after_shift_ans: str | None
     object_prompt: str
     meta_prompt: str
+    object_full_prompt: str | None = None  # includes json
+    meta_full_prompt: str | None = None  # includes json
 
     modal_response_property_answer: str
 

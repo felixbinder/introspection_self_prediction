@@ -49,6 +49,7 @@ class LoadedObject(BaseModel):
     object_model: str
     response_property: str
     response_property_answer: str
+    prompt: str | None = None
     # is_meta: bool
 
 
@@ -63,6 +64,7 @@ class LoadedMeta(BaseModel):
     task: str
     meta_model: str
     task_set: str
+    prompt: str | None = None
 
 
 ## Step 1: Load the meta things.
@@ -125,6 +127,7 @@ def load_meta_dfs(
                         # is_meta=not df_is_object_level
                         task_set=task_set,
                         base_prompt=config_key["prompt"]["base_prompt"],
+                        prompt=row["prompt"] if "prompt" in row else None,
                     )
                 )
             except ValidationError as e:
@@ -193,6 +196,7 @@ def load_meta_dfs(
                         object_model=model_name,
                         response_property=response_property,
                         response_property_answer=clean_for_comparison(object_level_response),
+                        prompt=row["prompt"] if "prompt" in row else None,
                     )
                 )
 
@@ -556,6 +560,8 @@ def flat_object_meta(
                     after_shift_ans=after_shift_ans,
                     object_prompt=obj.prompt_method,
                     meta_prompt=meta.prompt_method,
+                    object_full_prompt=obj.prompt,
+                    meta_full_prompt=meta.prompt,
                 )
             )
 
