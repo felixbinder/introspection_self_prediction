@@ -1,15 +1,12 @@
-import pandas as pd
+from pathlib import Path
+
+from pydantic import BaseModel, TypeAdapter
 from slist import Slist
 
 from evals.analysis.james.james_analysis import single_comparison_flat
 from evals.analysis.james.object_meta import ObjectAndMeta
-
 from evals.locations import EXP_DIR
 from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
-
-
-from typing import Literal
-from pydantic import BaseModel, TypeAdapter
 
 
 class ChatMessage(BaseModel):
@@ -17,7 +14,14 @@ class ChatMessage(BaseModel):
     content: str
 
 
-class StandardTestData(BaseModel):
+rename_map = {
+    "matches_target": "ethical_stance",
+    "is_either_a_or_c": "among_a_or_c",
+    "is_either_b_or_d": "among_b_or_d",
+}
+
+
+class DataRow(BaseModel):
     # The original question from the dataset e.g. mmlu
     original_question: str
     original_dataset: str
@@ -25,12 +29,19 @@ class StandardTestData(BaseModel):
     hypothetical_prompt: list[ChatMessage]
     # e.g. first_word, second_character
     behavioral_property: str
-    # only exists for ethical stance
+    # only exists for ethical stance behavioral properties
     option_matching_ethical_stance: str | None
-    
+
+    def rename_properties(self):
+        new = self.model_copy()
+        if new.behavioral_property in rename_map:
+            new.behavioral_property = rename_map[new.behavioral_property]
+        return new
+
+
 def parsed_string_into_list_chat_message(parsed: str) -> list[ChatMessage]:
-    ta  = TypeAdapter(dict[str,list[ChatMessage]])
-    result =  ta.validate_json(parsed)
+    ta = TypeAdapter(dict[str, list[ChatMessage]])
+    result = ta.validate_json(parsed)
     assert "messages" in result
     return result["messages"]
 
@@ -40,41 +51,68 @@ def remove_redundant_sys_prompt(chat: list[ChatMessage]) -> list[ChatMessage]:
     return [x for x in chat if x.content != ""]
 
 
-
-def convert_to_dump(test_data: ObjectAndMeta) -> StandardTestData:
+def convert_to_dump(test_data: ObjectAndMeta) -> DataRow:
     object_full = test_data.object_full_prompt
     assert object_full is not None
     hypo_full = test_data.meta_full_prompt
     assert hypo_full is not None
 
-    return StandardTestData(
+    return DataRow(
         original_question=test_data.string,
         original_dataset=test_data.task,
         object_level_prompt=remove_redundant_sys_prompt(parsed_string_into_list_chat_message(object_full)),
         hypothetical_prompt=remove_redundant_sys_prompt(parsed_string_into_list_chat_message(hypo_full)),
         behavioral_property=test_data.response_property,
-        option_matching_ethical_stance=None,
+        option_matching_ethical_stance=test_data.target,
     )
-
 
 
 def dump_all():
     """
-    --val_tasks='{"survival_instinct": ["matches_survival_instinct"], "myopic_reward": ["matches_myopic_reward"], "animals_long": ["first_character", "second_character", "third_character", "first_and_second_character", "first_word", "second_word", "starts_with_vowel", "third_word"], "mmlu_non_cot": ["is_either_a_or_c", "is_either_b_or_d"], "english_words_long": ["first_character", "second_character", "third_character", "first_and_second_character", "first_word", "second_word", "starts_with_vowel", "third_word"], "stories_sentences": ["first_character", "second_character", "third_character", "first_and_second_character", "first_word", "second_word", "starts_with_vowel", "third_word"]}'
+    "survival_instinct": ["matches_survival_instinct"],
+    "myopic_reward": ["matches_myopic_reward"],
+    "animals_long": [
+        "first_character",
+        "second_character",
+        "third_character",
+        "first_word",
+        "second_word",
+        "starts_with_vowel",
+        "third_word",
+    ],
+    "mmlu_non_cot": ["is_either_a_or_c", "is_either_b_or_d"],
+    "english_words_long": [
+        "first_character",
+        "second_character",
+        "third_character",
+        "first_word",
+        "second_word",
+        "starts_with_vowel",
+        "third_word",
+    ],
+    "stories_sentences": [
+        "first_character",
+        "second_character",
+        "third_character",
+        "first_word",
+        "second_word",
+        "starts_with_vowel",
+        "third_word",
+    ],
     """
     only_tasks = set(
         [
-            "animals_long",
             "survival_instinct",
             "myopic_reward",
-            "mmlu_non_cot",
-            "stories_sentences",
-            "english_words_long",
+            # "animals_long",
+            # "mmlu_non_cot",
+            # "stories_sentences",
+            # "english_words_long",
         ]
     )
     # only_tasks = {}
     resp_properties = set()
-    exp_folder = EXP_DIR / "test_csv"
+    exp_folder = EXP_DIR / "test_dump"
 
     results: Slist[ObjectAndMeta] = single_comparison_flat(
         object_model="test",
@@ -83,17 +121,13 @@ def dump_all():
         only_tasks=only_tasks,
         exclude_noncompliant=False,
     )
-    # dump 
-    write_jsonl_file_from_basemodel("dump.jsonl", results.map(convert_to_dump))
+    # dump
+    converted: Slist[DataRow] = results.map(convert_to_dump).map(lambda x: x.rename_properties())
+    folder = Path("dataset_release/test")
+    # group by dataset + behavioral property
+    groups = converted.group_by(lambda x: f"{x.original_dataset}_{x.behavioral_property}.jsonl")
+    for group, items in groups:
+        write_jsonl_file_from_basemodel(folder / group, items)
 
 
 dump_all()
-# def test_parse_one_file():
-#     with open("dataset_dumps/test/distractor_fact/mmlu_distractor_fact.jsonl", "r") as f:
-#         for line in f.readlines():
-#             # read into the basemodel
-#             parsed = StandardTestData.model_validate_json(line)
-#             print(parsed.biased_question)
-#             print(f"Biased towards: {parsed.biased_option}")
-#             print(f"Ground truth: {parsed.ground_truth}")
-

@@ -25,6 +25,7 @@ class ObjectAndMeta(BaseModel):
     meta_prompt: str
     object_full_prompt: str | None = None  # includes json
     meta_full_prompt: str | None = None  # includes json
+    target: str | None = None  # only for ethical stance
 
     modal_response_property_answer: str
 

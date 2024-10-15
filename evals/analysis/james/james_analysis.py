@@ -50,6 +50,7 @@ class LoadedObject(BaseModel):
     response_property: str
     response_property_answer: str
     prompt: str | None = None
+    target: str | None = None
     # is_meta: bool
 
 
@@ -197,6 +198,7 @@ def load_meta_dfs(
                         response_property=response_property,
                         response_property_answer=clean_for_comparison(object_level_response),
                         prompt=row["prompt"] if "prompt" in row else None,
+                        target=row["target"] if "target" in row else None,
                     )
                 )
 
@@ -562,6 +564,7 @@ def flat_object_meta(
                     meta_prompt=meta.prompt_method,
                     object_full_prompt=obj.prompt,
                     meta_full_prompt=meta.prompt,
+                    target=obj.target,
                 )
             )
 
