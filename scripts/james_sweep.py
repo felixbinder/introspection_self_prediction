@@ -344,7 +344,7 @@ class StudyRunner:
 
     def run_study(self):
         SHIFT_DATA: bool = False
-        pool = Pool(2)  # No clue why there is a race condition on the same CSV wth?
+        pool = Pool(1)  # No clue why there is a race condition on the same CSV wth?
 
         #### run object level completions on train ####
         object_train_commands = []

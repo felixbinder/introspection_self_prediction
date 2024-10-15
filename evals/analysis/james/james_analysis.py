@@ -186,6 +186,9 @@ def load_meta_dfs(
                     response = "" ""
                     raw_response = "nan"
 
+                target_raw = row["target"] if "target" in row else None
+                target_only_str = target_raw if isinstance(target_raw, str) else None
+
                 final_objects.append(
                     LoadedObject(
                         string=row["string"],
@@ -198,7 +201,7 @@ def load_meta_dfs(
                         response_property=response_property,
                         response_property_answer=clean_for_comparison(object_level_response),
                         prompt=row["prompt"] if "prompt" in row else None,
-                        target=row["target"] if "target" in row else None,
+                        target=target_only_str,
                     )
                 )
 

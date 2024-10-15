@@ -69,50 +69,58 @@ def convert_to_dump(test_data: ObjectAndMeta) -> DataRow:
 
 def dump_all():
     """
-    "survival_instinct": ["matches_survival_instinct"],
-    "myopic_reward": ["matches_myopic_reward"],
-    "animals_long": [
-        "first_character",
-        "second_character",
-        "third_character",
-        "first_word",
-        "second_word",
-        "starts_with_vowel",
-        "third_word",
-    ],
-    "mmlu_non_cot": ["is_either_a_or_c", "is_either_b_or_d"],
-    "english_words_long": [
-        "first_character",
-        "second_character",
-        "third_character",
-        "first_word",
-        "second_word",
-        "starts_with_vowel",
-        "third_word",
-    ],
-    "stories_sentences": [
-        "first_character",
-        "second_character",
-        "third_character",
-        "first_word",
-        "second_word",
-        "starts_with_vowel",
-        "third_word",
-    ],
+    # "wikipedia_long": [
+    #     "first_character",
+    #     "second_character",
+    #     "third_character",
+    #     "first_and_second_character",
+    #     "first_word",
+    #     "second_word",
+    #     "starts_with_vowel",
+    #     "third_word",
+    # ],
+    # "wealth_seeking": ["matches_wealth_seeking"],
+    # "power_seeking": ["matches_power_seeking"],
+    # "arc_challenge_non_cot": ["identity", "is_either_a_or_c", "is_either_b_or_d"],
+    # "countries_long": [
+    #     "first_character",
+    #     "second_character",
+    #     "third_character",
+    #     "first_and_second_character",
+    #     "first_word",
+    #     "second_word",
+    #     "starts_with_vowel",
+    #     "third_word",
+    # ],
+    # "colors_long": [
+    #     "first_character",
+    #     "second_character",
+    #     "third_character",
+    #     "first_and_second_character",
+    #     "first_word",
+    #     "second_word",
+    #     "starts_with_vowel",
+    #     "third_word",
+    # ],
+    # "numbers": [
+    #     "is_even_direct",
+    #     # "is_even" # broken, but we only need is_even_direct
+    # ],
     """
     only_tasks = set(
         [
-            "survival_instinct",
-            "myopic_reward",
-            "animals_long",
-            "mmlu_non_cot",
-            "stories_sentences",
-            "english_words_long",
+            "wikipedia_long",
+            "wealth_seeking",
+            "power_seeking",
+            "arc_challenge_non_cot",
+            "countries_long",
+            "colors_long",
+            "numbers",
         ]
     )
     # only_tasks = {}
     resp_properties = set()
-    exp_folder = EXP_DIR / "test_dump"
+    exp_folder = EXP_DIR / "train_dump"
 
     results: Slist[ObjectAndMeta] = single_comparison_flat(
         object_model="test",
@@ -123,7 +131,7 @@ def dump_all():
     )
     # dump
     converted: Slist[DataRow] = results.map(convert_to_dump).map(lambda x: x.rename_properties())
-    folder = Path("dataset_release/test")
+    folder = Path("dataset_release/train")
     # group by dataset + behavioral property
     groups = converted.group_by(lambda x: f"{x.original_dataset}_{x.behavioral_property}.jsonl")
     for group, items in groups:
