@@ -25,8 +25,8 @@ class DataRow(BaseModel):
     # The original question from the dataset e.g. mmlu
     original_question: str
     original_dataset: str
-    object_level_prompt: list[ChatMessage]
-    hypothetical_prompt: list[ChatMessage]
+    object_level_prompt: str
+    hypothetical_prompt: str
     # e.g. first_word, second_character
     behavioral_property: str
     # only exists for ethical stance behavioral properties
@@ -50,6 +50,10 @@ def remove_redundant_sys_prompt(chat: list[ChatMessage]) -> list[ChatMessage]:
     # remove the empty sys prompts
     return [x for x in chat if x.content != ""]
 
+def first_user_message(chat: list[ChatMessage]) -> str:
+    first = [x for x in chat if x.role == "user"][0]
+    return first.content
+
 
 def convert_to_dump(test_data: ObjectAndMeta) -> DataRow:
     object_full = test_data.object_full_prompt
@@ -60,10 +64,10 @@ def convert_to_dump(test_data: ObjectAndMeta) -> DataRow:
     return DataRow(
         original_question=test_data.string,
         original_dataset=test_data.task,
-        object_level_prompt=remove_redundant_sys_prompt(parsed_string_into_list_chat_message(object_full)),
-        hypothetical_prompt=remove_redundant_sys_prompt(parsed_string_into_list_chat_message(hypo_full)),
+        object_level_prompt=first_user_message(parsed_string_into_list_chat_message(object_full)),
+        hypothetical_prompt=first_user_message(parsed_string_into_list_chat_message(hypo_full)),
         behavioral_property=test_data.response_property,
-        option_matching_ethical_stance=test_data.target,
+        option_matching_ethical_stance=test_data.target if test_data.response_property == "matches_target" else None,
     )
 
 
@@ -111,6 +115,7 @@ def dump_all():
         ]
     )
     # only_tasks = {}
+    resp_properties = set()
     exp_folder = EXP_DIR / "test_dump"
 
     results: Slist[ObjectAndMeta] = single_comparison_flat(
@@ -123,10 +128,12 @@ def dump_all():
     # dump
     converted: Slist[DataRow] = results.map(convert_to_dump).map(lambda x: x.rename_properties())
     folder = Path("dataset_release/test")
-    # group by dataset + behavioral property
-    groups = converted.group_by(lambda x: f"{x.original_dataset}_{x.behavioral_property}.jsonl")
-    for group, items in groups:
-        write_jsonl_file_from_basemodel(folder / group, items)
+    # write_jsonl_file_from_basemodel(folder / "test.jsonl", converted)
+    # group by behavioral property as the subset
+    # groups = converted.group_by(lambda x: f"{x.original_dataset}_{x.behavioral_property}.jsonl")
+    groups = converted.group_by(lambda x: f"{x.behavioral_property}.jsonl")
+    for group, test_subset in groups:
+        write_jsonl_file_from_basemodel(folder / group, test_subset)
 
 
 dump_all()

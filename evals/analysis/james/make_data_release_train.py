@@ -119,7 +119,6 @@ def dump_all():
         ]
     )
     # only_tasks = {}
-    resp_properties = set()
     exp_folder = EXP_DIR / "train_dump"
 
     results: Slist[ObjectAndMeta] = single_comparison_flat(

@@ -1,33 +1,34 @@
-from pathlib import Path
-from typing import List, Optional, Dict
+import os
+from typing import List, Optional
 
+import dotenv
+from datasets import Dataset, DatasetDict, Features, Value
+from huggingface_hub import HfApi
 from pydantic import BaseModel, TypeAdapter
 from slist import Slist
-from datasets import Dataset, DatasetDict, Features, Value, ClassLabel
 
 from evals.analysis.james.james_analysis import single_comparison_flat
 from evals.analysis.james.object_meta import ObjectAndMeta
 from evals.locations import EXP_DIR
-from other_evals.counterfactuals.api_utils import write_jsonl_file_from_basemodel
 
-from huggingface_hub import HfApi, HfFolder, Repository
-import dotenv
 dotenv.load_dotenv()
-import os
 
 # Define your Hugging Face repository details
 HF_REPO_NAME = "thejaminator/introspection_self_predict"  # Replace with your desired repository name
 HF_PRIVATE = False  # Set to True if you want the dataset to be private
 
+
 class ChatMessage(BaseModel):
     role: str
     content: str
+
 
 rename_map = {
     "matches_target": "ethical_stance",
     "is_either_a_or_c": "among_a_or_c",
     "is_either_b_or_d": "among_b_or_d",
 }
+
 
 class DataRow(BaseModel):
     original_question: str
@@ -37,11 +38,12 @@ class DataRow(BaseModel):
     behavioral_property: str
     option_matching_ethical_stance: Optional[str]
 
-    def rename_properties(self) -> 'DataRow':
+    def rename_properties(self) -> "DataRow":
         new = self.model_copy()
         if new.behavioral_property in rename_map:
             new.behavioral_property = rename_map[new.behavioral_property]
         return new
+
 
 def parsed_string_into_list_chat_message(parsed: str) -> List[ChatMessage]:
     ta = TypeAdapter(dict[str, List[ChatMessage]])
@@ -49,13 +51,16 @@ def parsed_string_into_list_chat_message(parsed: str) -> List[ChatMessage]:
     assert "messages" in result
     return result["messages"]
 
+
 def remove_redundant_sys_prompt(chat: List[ChatMessage]) -> List[ChatMessage]:
     # Remove the empty system prompts
     return [x for x in chat if x.content != ""]
 
+
 def first_user_message(chat: List[ChatMessage]) -> str:
     first = [x for x in chat if x.role == "user"][0]
     return first.content
+
 
 def convert_to_dump(test_data: ObjectAndMeta) -> DataRow:
     object_full = test_data.object_full_prompt
@@ -72,7 +77,8 @@ def convert_to_dump(test_data: ObjectAndMeta) -> DataRow:
         option_matching_ethical_stance=test_data.target if test_data.response_property == "matches_target" else None,
     )
 
-def dump_all() -> List[DataRow]:
+
+def dump_all() -> Slist[DataRow]:
     """
     Process and convert all test data into a list of DataRow instances.
     """
@@ -94,41 +100,52 @@ def dump_all() -> List[DataRow]:
         only_tasks=only_tasks,
         exclude_noncompliant=False,
     )
-    
+
     # Convert and rename properties
     converted: Slist[DataRow] = results.map(convert_to_dump).map(lambda x: x.rename_properties())
 
     return converted
 
-def create_hf_dataset(data: List[DataRow]) -> DatasetDict:
+
+def create_hf_dataset(data: List[DataRow], is_ethical_stance: bool) -> DatasetDict:
     """
     Convert a list of DataRow instances into a Hugging Face DatasetDict.
     """
     # Convert DataRow instances to dictionaries
     data_dicts = [row.dict() for row in data]
 
-    
-
-    features = Features({
-        "original_question": Value("string"),
-        "original_dataset": Value("string"),
-        "object_level_prompt": Value("string"),
-        "hypothetical_prompt": Value("string"),
-        "behavioral_property": Value("string"),
-        "option_matching_ethical_stance": Value("string"),
-    })
+    if is_ethical_stance:
+        features = Features(
+            {
+                "original_question": Value("string"),
+                "original_dataset": Value("string"),
+                "object_level_prompt": Value("string"),
+                "hypothetical_prompt": Value("string"),
+                "behavioral_property": Value("string"),
+                "option_matching_ethical_stance": Value("string"),
+            }
+        )
+    else:
+        features = Features(
+            {
+                "original_question": Value("string"),
+                "original_dataset": Value("string"),
+                "object_level_prompt": Value("string"),
+                "hypothetical_prompt": Value("string"),
+                "behavioral_property": Value("string"),
+            }
+        )
 
     # Create a Dataset
     dataset = Dataset.from_list(data_dicts, features=features)
 
     # Organize into a DatasetDict with 'test' split
-    dataset_dict = DatasetDict({
-        "test": dataset
-    })
+    dataset_dict = DatasetDict({"test": dataset})
 
     return dataset_dict
 
-def push_to_huggingface(dataset_dict: DatasetDict, repo_name: str, private: bool = False):
+
+def push_to_huggingface(dataset_dict: DatasetDict, config: str, repo_name: str, private: bool = False):
     """
     Push the DatasetDict to the Hugging Face Hub.
     """
@@ -149,8 +166,9 @@ def push_to_huggingface(dataset_dict: DatasetDict, repo_name: str, private: bool
         raise e
 
     # Push the dataset
-    dataset_dict.push_to_hub(repo_name, token=hf_token)
+    dataset_dict.push_to_hub(repo_name, config_name=config, token=hf_token)
     print(f"Dataset pushed to Hugging Face Hub at https://huggingface.co/datasets/{repo_name}")
+
 
 def main():
     # Step 1: Process and convert data
@@ -158,15 +176,24 @@ def main():
     converted_data = dump_all()
     print(f"Total records processed: {len(converted_data)}")
 
-    # Step 2: Create Hugging Face Dataset
-    print("Creating Hugging Face Dataset...")
-    hf_dataset = create_hf_dataset(converted_data)
-    print("Hugging Face Dataset created.")
+    # group by behavioral property
+    grouped = converted_data.group_by(lambda x: x.behavioral_property)
 
-    # Step 3: Push to Hugging Face Hub
-    print("Pushing dataset to Hugging Face Hub...")
-    push_to_huggingface(hf_dataset, HF_REPO_NAME, private=HF_PRIVATE)
-    print("Dataset successfully pushed.")
+    for behavioral_property, group in grouped:
+        print(f"Behavioral Property: {behavioral_property}")
+        print(f"Total records: {len(group)}")
+
+        # Step 2: Create Hugging Face Dataset
+        print("Creating Hugging Face Dataset...")
+        is_ethical_stance = behavioral_property == "ethical_stance"
+        hf_dataset = create_hf_dataset(group, is_ethical_stance)
+        print("Hugging Face Dataset created.")
+
+        # Step 3: Push to Hugging Face Hub
+        print("Pushing dataset to Hugging Face Hub...")
+        push_to_huggingface(hf_dataset, config=behavioral_property, repo_name=HF_REPO_NAME, private=HF_PRIVATE)
+        print("Dataset successfully pushed.")
+
 
 if __name__ == "__main__":
     main()
