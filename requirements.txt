@@ -3,6 +3,7 @@ accelerate==0.28.0
 anthropic
 datasets
 fire
+fireworks-ai
 hydra-core
 openai==0.28.0
 pandas

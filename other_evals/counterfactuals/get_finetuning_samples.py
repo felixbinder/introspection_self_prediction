@@ -104,7 +104,7 @@ async def test_main():
     write_jsonl_file_from_basemodel("test_finetune_samples.jsonl", finetune_samples.shuffle("42"))
     # load secrets
     secrets = load_secrets("SECRETS")
-    org = secrets["OWAIN_ORG"]
+    org = secrets["DEFAULT_ORG"]
     assert org is not None
     openai.organization = org
     syncer = WandbSyncer.create(

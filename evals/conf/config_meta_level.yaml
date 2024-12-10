@@ -48,7 +48,7 @@ task:
   set: val # either all, train, or val. For meta level, use val.
 
 # API
-organization: OWAIN_ORG
+organization: DEFAULT_ORG
 anthropic_tag: ANTHROPIC_API_KEY
 openai_tag: OPENAI_API_KEY
 anthropic_num_threads: 12

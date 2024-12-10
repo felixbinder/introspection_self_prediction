@@ -60,11 +60,10 @@ The best starting point to see how inference and finetuning works is to use the 
 python -m scripts.sweep_full_study \
 --study_name="full_sweep_test" \
 --model_configs="gpt-3.5-turbo" \
---val_only_model_configs="gpt-4" \
---task_configs="wikipedia" \
+--val_only_model_configs="gpt-4o" \
+--tasks='{"wikipedia": ["identity", "sentiment"]}' \
 --prompt_configs="minimal" \
---response_property_configs="identity,sentiment" \
---val_task_configs="number_triplets" \
+--val_tasks='{"number_triplets": ["identity", "sentiment"]}' \
 --n_object_train=1000 \
 --n_object_val=250 \
 --n_meta_val=50
