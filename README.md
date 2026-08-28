@@ -1,3 +1,5 @@
+
+
 # Looking Inward: Language Models Can Learn About Themselves by Introspection
 
 This repository holds code for the paper [Looking Inward: Language Models Can Learn About Themselves by Introspection]([https://openreview.net/pdf?id=eb5pkwIB5i](https://arxiv.org/abs/2410.13787)).
@@ -50,7 +52,7 @@ This repository contains the `run.py` script and associated files for conducting
 
 1. Ask team get added to the project
 2. Install gcloud CLI. Configure with project=roots-api-1475521819980, location=us-central1
-3. Follow instructions for authenticating to Vertex: (Authenticate to Vertex AI  |  Google Cloud)[https://cloud.google.com/vertex-ai/docs/authentication]
+3. Follow instructions for authenticating to Vertex: [Authenticate to Vertex AI  |  Google Cloud](https://cloud.google.com/vertex-ai/docs/authentication)
 
 
 ## Usage
