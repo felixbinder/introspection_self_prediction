@@ -224,14 +224,7 @@ async def async_main(cfg: DictConfig):
         LOGGER.info(f"Generated data{cfg.base_seed}.csv at {filename}")
     else:
         LOGGER.info(f"File {filename} exists. Skipping generation.")
-    model = cfg.language_model.model
-    if "llama-" in model or "claude-3-5-sonnet-20240620" in model or "claude-3-haiku-20240307" in model:
-        # If using llama, its not an moe, so no need to take mode
-        print(f"Setting n_samples to 1 since using {cfg.language_model.model}")
-        n_samples = 1
-    else:
-        print("Setting n_samples to cfg", cfg.n_samples)
-        n_samples = cfg.n_samples
+    n_samples = get_n_samples(cfg)
 
     # run dataset (with retry)
     complete = await async_function_with_retry(
@@ -248,6 +241,18 @@ async def async_main(cfg: DictConfig):
         shutil.copy(filename, filename.parent / f"{filename.stem.replace('raw_data', 'data')}.csv")
     print(exp_dir)  # print the experiment directory for scripting purposes
     return complete
+
+
+def get_n_samples(cfg) -> int:
+    """Number of samples per string. Models that are sampled only once are never collated by mode-of-n."""
+    model = cfg.language_model.model
+    if "llama-" in model or "claude-3-5-sonnet-20240620" in model or "claude-3-haiku-20240307" in model:
+        # If using llama, its not an moe, so no need to take mode
+        print(f"Setting n_samples to 1 since using {model}")
+        return 1
+    n_samples = cfg.get("n_samples", 1)
+    print("Setting n_samples to cfg", n_samples)
+    return n_samples
 
 
 def setup_data_file(cfg, exp_dir, filename):
@@ -275,7 +280,7 @@ def setup_data_file(cfg, exp_dir, filename):
         output_path=filename,
         seed=cfg.seed,
         how=cfg.get("n_shot_seeding", "true"),
-        repeat=cfg.get("n_samples", 1),
+        repeat=get_n_samples(cfg),
     )
     return new_filename
 
